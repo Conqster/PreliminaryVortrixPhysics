@@ -18,7 +18,6 @@ bool Shader::Create(const std::string_view name, const std::string_view  ver, co
 
 	
 	mID = glCreateProgram();
-	VX_INFO("The shader program {", mName, "}, ID: ", mID);
 
 	std::string debug_defines;
 	if(force_debug)
@@ -48,7 +47,7 @@ bool Shader::Create(const std::string_view name, const std::string_view  ver, co
 	if (!result)
 	{
 		glGetProgramInfoLog(mID, sizeof(eLog), NULL, eLog);
-		VX_WARN("[ERROR VALIDATING PROGRAM {", mName, ")]: ", eLog);
+		VX_LOG_WARN("[ERROR VALIDATING PROGRAM {", mName, ")]: ", eLog);
 
 
 		//need to destroy shader if compiled 
@@ -130,7 +129,7 @@ std::string Shader::ReadFile(const std::string_view shader_file, bool remove_ver
 	std::ifstream fileStream(shader_file.data(), std::ios::in);
 	if (!fileStream.is_open())
 	{
-		VX_WARN("[Reading Shader File {", mName,"}]: Failed to read %s, file doesn't exist.\n", shader_file);
+		VX_LOG_WARN("[Reading Shader File {", mName,"}]: Failed to read %s, file doesn't exist.\n", shader_file);
 		return "";
 	}
 
@@ -208,7 +207,7 @@ unsigned int Shader::CompileShader(GLenum shader_type, const std::string& source
 
 		//VX_WARN("[SHADER]: Couldn't create a shader {", _type, "}, ", eLog, "File source: ", src);
 		const char* debug_src = (debug_defines.empty()) ? "N/A" : debug_defines.c_str();
-		VX_WARN("[SHADER]: Couldn't create a shader {", _type, "}, ", eLog, "\nShader Debug Defines: \n", debug_src, "\nFile source: \n", source.c_str());
+		VX_LOG_WARN("[SHADER]: Couldn't create a shader {", _type, "}, ", eLog, "\nShader Debug Defines: \n", debug_src, "\nFile source: \n", source.c_str());
 		
 		exit(-1);
 	}
@@ -225,7 +224,7 @@ GLint Shader::GetUniformLocation(std::string_view name)
 	if (it != cacheUniformLocations.end())
 		return it->second;
 
-	VX_WARN("[SHADER UNIFORM (WARNING) program {", mName, "}]: uniform '", name, "' doesn't exist!!!!!");
+	VX_LOG_WARN("[SHADER UNIFORM (WARNING) program {", mName, "}]: uniform '", name, "' doesn't exist!!!!!");
 	return -1;
 	//int location = glGetUniformLocation(mID, name.data());
 

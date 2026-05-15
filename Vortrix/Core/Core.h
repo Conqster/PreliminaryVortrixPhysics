@@ -18,15 +18,15 @@
 #define VX_STRINGIFY(x) #x
 
 ///Detect machine compiler 
-#if defined(_MSC_VER)
-#pragma message("_MSC_VER is defined (MSVC compiler). Value = " VX_STRINGIFY(_MSC_VER))
-#elif defined(__clang__)
-#pragma message("__clang__ is defined (Clang complier)")
-#elif defined(__GNUC__)
-#pragma message("__GNUC__ is defined (GCC complier)")
-#else
-#pragma message("Unknown compiler")
-#endif // defined(_MSC_VER)
+//#if defined(_MSC_VER)
+//#pragma message("_MSC_VER is defined (MSVC compiler). Value = " VX_STRINGIFY(_MSC_VER))
+//#elif defined(__clang__)
+//#pragma message("__clang__ is defined (Clang complier)")
+//#elif defined(__GNUC__)
+//#pragma message("__GNUC__ is defined (GCC complier)")
+//#else
+//#pragma message("Unknown compiler")
+//#endif // defined(_MSC_VER)
 
 
 /// CPU arch
@@ -54,7 +54,7 @@
 
 
 #if defined(_MSC_VER)
-	#define DEBUG_BREAK() __debugbreak()
+	#define VX_DEBUG_BREAK() __debugbreak()
 #endif // defined(_MSC_VER)
 
 
@@ -88,6 +88,7 @@
 //standard c++ includes
 #include <vector>
 
+#include <filesystem>
 namespace vx
 {
 
@@ -134,11 +135,13 @@ namespace vx
 	//TODO(Conqster): later use a build system CMAKE for PROJECT_SOURCE_DIR rather than in code
 //#define PROJECT_SOURCE_DIR "C:\\Users\\okeja\\Desktop\\Personal Projects\\PhysicsEngineRendering\\"
 
-	inline const char* StripProjectPath(const char* file_path)
+	inline std::string StripProjectPath(const char* file_path)
 	{
 #if defined(PROJECT_SOURCE_DIR)
-		if (const char* base = std::strstr(file_path, PROJECT_SOURCE_DIR))
-			return base + std::strlen(PROJECT_SOURCE_DIR);
+		//if (const char* base = std::strstr(file_path, PROJECT_SOURCE_DIR))
+		//	return base + std::strlen(PROJECT_SOURCE_DIR);
+
+		return std::filesystem::relative(file_path, PROJECT_SOURCE_DIR).string();
 #endif // defined(PROJECT_SOURCE_DIR)
 
 

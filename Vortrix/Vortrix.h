@@ -12,3 +12,5 @@
 #include "Maths/VortrixMaths.h"
 
 #include "Core/Colours.h"
+
+#include "Core/StackStringOverloads.h"

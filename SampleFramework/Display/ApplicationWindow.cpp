@@ -121,7 +121,7 @@ bool ApplicationWindow::Init(const char* base_name, const WindowSpecification& w
 	if (!glfwInit())
 	//if (!glfw_state)
 	{
-		VX_ERROR("Failed to initialise GLFW!!!!!!");
+		VX_LOG_ERROR("Failed to initialise GLFW!!!!!!");
 		return false;
 	}
 
@@ -161,14 +161,14 @@ bool ApplicationWindow::Init(const char* base_name, const WindowSpecification& w
 	GLenum GlewInitResult = glewInit();
 	if (GlewInitResult != GLEW_OK)
 	{
-		VX_ERROR("Glew Init failed, ERROR: ", glewGetErrorString(GlewInitResult));
+		VX_LOG_ERROR("Glew Init failed, ERROR: ", glewGetErrorString(GlewInitResult));
 		glfwDestroyWindow(mWindow);
 		glfwTerminate();
 		return false;
 	}
 
 	bool bindless_tex_was_support = glfwExtensionSupported("GL_ARB_bindless_texture");
-	(bindless_tex_was_support) ? VX_INFO("Device supports bindless_texture") : VX_INFO("Device doesnt supports bindless_texture");
+	(bindless_tex_was_support) ? VX_LOG_INFO("Device supports bindless_texture") : VX_LOG_INFO("Device doesnt supports bindless_texture");
 	sSupportsBindless = (win_spec.disableBindlessSupport) ? false : bindless_tex_was_support;
 	VX_ASSERT_WARN(!win_spec.disableBindlessSupport, "Bindless Support was disabled");
 	VX_ASSERT_WARN(bindless_tex_was_support, "GL_ARB_bindless_texture not supported");
@@ -305,7 +305,7 @@ bool ApplicationWindow::CreateDisplayWindow(const char* name, bool full_screen)
 	if (!mWindow)
 	{
 		glfwGetError(&err_desc);
-		VX_ERROR("Failed to create GLFW Window: ", err_desc);
+		VX_LOG_ERROR("Failed to create GLFW Window: ", err_desc);
 		glfwTerminate();
 		return false;
 	}
@@ -354,7 +354,7 @@ void ApplicationWindow::OnWindowResizeCallback(GLFWwindow* window, int width, in
 	if (win->mWindowResizeListener)
 		win->mWindowResizeListener(width, height);
 
-	VX_INFO("New Window Display Screen width: ", width, ", height: ", height);
+	VX_LOG_INFO("New Window Display Screen width: ", width, ", height: ", height);
 }
 
 void ApplicationWindow::OnWindowPosCallback(GLFWwindow* window, int x, int y)
@@ -365,13 +365,13 @@ void ApplicationWindow::OnWindowPosCallback(GLFWwindow* window, int x, int y)
 		win->mWindowPos[1] = y;
 	}
 
-	VX_INFO("New Window Pos x: ", x, ", y: ", y);
+	VX_LOG_INFO("New Window Pos x: ", x, ", y: ", y);
 }
 
 void ApplicationWindow::OnWindowMinimisedCallback(GLFWwindow* window, int iconified)
 {
 	if (ApplicationWindow* win = (ApplicationWindow*)glfwGetWindowUserPointer(window))
 		win->mMinimised = (iconified == GLFW_TRUE) ? true : false;
-	VX_INFO("Minimised: ", iconified);
+	VX_LOG_INFO("Minimised: ", iconified);
 }
 

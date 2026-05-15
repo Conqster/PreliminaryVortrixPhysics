@@ -13,7 +13,7 @@ bool DebugGizmosRenderer::Init(ApplicationWindow* window)
 {
 	if (!this)
 	{
-		VX_WARN("Failed to initialise debug gizmos renderer, memory error.");
+		VX_LOG_WARN("Failed to initialise debug gizmos renderer, memory error.");
 		return false;
 	}
 
@@ -77,7 +77,7 @@ void DebugGizmosRenderer::DrawLine(const vx::Vec3& v0, const vx::Vec3& v1, const
 {
 	if (!this)
 	{
-		VX_WARN("Failed to use debug gizmos renderer, memory error.");
+		VX_LOG_WARN("Failed to use debug gizmos renderer, memory error.");
 		return;
 	}
 
@@ -95,7 +95,7 @@ void DebugGizmosRenderer::DrawWireTriangle(const vx::Vec3& v1, const vx::Vec3& v
 {
 	if (!this)
 	{
-		VX_WARN("Failed to use debug gizmos renderer, memory error.");
+		VX_LOG_WARN("Failed to use debug gizmos renderer, memory error.");
 		return;
 	}
 	DrawLine(v1, v2, colour);
@@ -107,7 +107,7 @@ void DebugGizmosRenderer::DrawSolidTriangle(const vx::Vec3& v0, const vx::Vec3& 
 {
 	if (!this)
 	{
-		VX_WARN("Failed to use debug gizmos renderer, memory error.");
+		VX_LOG_WARN("Failed to use debug gizmos renderer, memory error.");
 		return;
 	}
 
@@ -148,7 +148,7 @@ void DebugGizmosRenderer::DrawWireDisc(const vx::Vec3& center, float radius, flo
 {
 	if (!this)
 	{
-		VX_WARN("Failed to use debug gizmos renderer, memory error.");
+		VX_LOG_WARN("Failed to use debug gizmos renderer, memory error.");
 		return;
 	}
 	float step = ratio / segments;
@@ -188,7 +188,7 @@ void DebugGizmosRenderer::DrawArrow(const vx::Vec3& v0, const vx::Vec3& v1, cons
 {
 	if (!this)
 	{
-		VX_WARN("Failed to use debug gizmos renderer, memory error.");
+		VX_LOG_WARN("Failed to use debug gizmos renderer, memory error.");
 		return;
 	}
 

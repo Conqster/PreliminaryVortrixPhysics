@@ -20,11 +20,10 @@ namespace vx {
 
 			oss << "\nFile: " << StripProjectPath(file) << " (Line: " << line << ").";
 
-
 			if (lvl == 1)
-				VX_WARN(oss.str());
+				VX_LOG_WARN(oss.str());
 			else if (lvl == 2)
-				VX_ERROR(oss.str());
+				VX_LOG_ERROR(oss.str());
 		}
 	}
 }

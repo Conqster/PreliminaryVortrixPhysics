@@ -145,7 +145,7 @@ Application::Application(const ApplicationSpecification& app_spec)
 {
 	mLastFrameTime = glfwGetTime();
 
-	VX_INFO("Launching Application Program, \n\tName: ",
+	VX_LOG_INFO("Launching Application Program, \n\tName: ",
 		app_spec.name, "\n\tWindow Size: {", 
 		app_spec.windowSize[0], ", ", 
 		app_spec.windowSize[1], "}\n\tDisableBindlessSupport: ", 
@@ -202,7 +202,7 @@ Application::Application(const ApplicationSpecification& app_spec)
 		{
 			delete mDebugGizmos;
 			mDebugGizmos = nullptr;
-			VX_WARN("[APP -- {", app_spec.name.c_str(), "}], Failed to initialise debug gizmos renderer");
+			VX_LOG_WARN("[APP -- {", app_spec.name.c_str(), "}], Failed to initialise debug gizmos renderer");
 		}
 		//mDebugGizmos->SetLineWidth(4.0f);
 		mDebugGizmos->SetLineWidth(2.0f);
@@ -215,7 +215,6 @@ Application::Application(const ApplicationSpecification& app_spec)
 		size_t buff_size = shape_size * 1024;
 		mShapeArena.Init(buff_size);
 	}
-
 
 
 	/// generate test scenario
@@ -241,7 +240,7 @@ Application::Application(const ApplicationSpecification& app_spec)
 	mScenarioCatergoies.catergories.push_back(std::move(stacking_scenarios));
 
 
-	mCurrScenario = mScenarioCatergoies.scenarios.at(1).get();
+	//mCurrScenario = mScenarioCatergoies.scenarios.at(1).get();
 }
 
 Application::~Application()
@@ -2832,7 +2831,7 @@ void Application::CreateNewPhysicsBodyWindow()
 				ImGui::DragFloat("Half Cylinder height (m)", &mNewPhyObjectSettings.halfExtents[1], 0.1f, 0.0f);
 				break;
 			default:
-				VX_WARN("UNKNOWN Create Shape type!!!");
+				VX_LOG_WARN("UNKNOWN Create Shape type!!!");
 				ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "UNKNOWN Create Shape type!!!");
 				break;
 

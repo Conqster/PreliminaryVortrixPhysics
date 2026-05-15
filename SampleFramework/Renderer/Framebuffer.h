@@ -250,7 +250,7 @@ public:
 		else
 		{
 			if (p_attachment->Width() != mWidth || p_attachment->Height() != mHeight)
-				VX_WARN("[FRAMEBUFFER]: Attachment size mismatch");
+				VX_LOG_WARN("[FRAMEBUFFER]: Attachment size mismatch");
 		}
 	}
 	//resize all buffer
@@ -562,7 +562,7 @@ public:
 			h = mDepthAttachment.Height();
 		}
 		else
-			VX_WARN("No attachment found; undefined viewport");
+			VX_LOG_WARN("No attachment found; undefined viewport");
 
 
 		mFramebuffer.Bind();
@@ -586,7 +586,7 @@ public:
 			break;
 		}
 
-		if(p_att == nullptr) VX_WARN("No attachment found;");
+		if(p_att == nullptr) VX_LOG_WARN("No attachment found;");
 		p_att->Bind(slot);
 	}
 

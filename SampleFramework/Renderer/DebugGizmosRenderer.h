@@ -174,7 +174,7 @@ public:
 	float GetLineWidth() const { return mLineWidth; }
 	void SetLineWidth(float value) {
 		if (!this){
-			VX_WARN("Failed to set debug gizmos renderer line width, memory error.");
+			VX_LOG_WARN("Failed to set debug gizmos renderer line width, memory error.");
 			return;
 		}
 		mLineWidth = value;

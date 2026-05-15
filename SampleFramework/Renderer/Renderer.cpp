@@ -33,7 +33,7 @@ void Renderer::Initialise(ApplicationWindow* display_window)
 	success &= mTex2ScreenShader.Create("texture_screen", "assets/shaders/TextureToScreen.vert", "assets/shaders/TextureToScreen.frag");
 
 	VX_ASSERT_WARN(success, "Failed create a shaders!!!");
-	VX_INFO("Successfully create a shaders!!!");
+	VX_LOG_DEBUG("Successfully create a shaders!!!");
 	//if (success)
 	//	VX_ASSERT_WARN(success, "Successfully create a shaders!!!!!!\n");
 	//else
@@ -43,9 +43,9 @@ void Renderer::Initialise(ApplicationWindow* display_window)
 	//}
 
 
-	GLint max_vertices;
-	glGetIntegerv(GL_MAX_GEOMETRY_OUTPUT_VERTICES, &max_vertices);
-	VX_INFO("maximum vertices: ", int(max_vertices));
+	//GLint max_vertices;
+	//glGetIntegerv(GL_MAX_GEOMETRY_OUTPUT_VERTICES, &max_vertices);
+	//VX_LOG_DEBUG("maximum vertices: ", int(max_vertices));
 
 
 	mBrickTexture =  TextureFactory::CreateFromFile("assets/textures/floor_brick/patterned_brick_floor_diff.jpg", true, "Brick");

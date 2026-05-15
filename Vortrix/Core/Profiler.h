@@ -174,7 +174,7 @@ namespace vx
 				if (mDurationMS)
 					*mDurationMS = ms;
 				if (sAllowConsoleLog && bLog)
-					VX_INFO(mName, " - time: ", ms, "ms.");
+					VX_LOG_INFO(mName, " - time: ", ms, "ms.");
 
 				ProfilerCollector::Instance().AddSample(mName, ms);
 			}

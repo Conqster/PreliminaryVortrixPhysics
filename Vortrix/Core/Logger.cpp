@@ -43,7 +43,6 @@ namespace vx
 		output.Append(data, len);
 		output.Append("\n", 2);
 
-#if VX_DEBUG
 		if (Contains(mTargetBuffer, ELogBuffer::Console))
 		{
 			const char* lvl_ansi_col = LevelAnsiColour(lvl);
@@ -52,8 +51,6 @@ namespace vx
 			auto reset_ansi_col = kAnsiResetColour;
 			std::cout.write(reset_ansi_col, strlen(reset_ansi_col));
 		}
-#endif // VX_DEBUG
-			//std::cout << std::string(LevelAnsiColour(lvl)) << output << kAnsiResetColour;
 
 		if (Contains(mTargetBuffer, ELogBuffer::File))
 		{

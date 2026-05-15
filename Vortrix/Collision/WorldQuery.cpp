@@ -20,7 +20,7 @@ namespace vx {
 
 	static bool UnsupportedPair(const RayCast&, const Shape* shape, RaycastHit&)
 	{
-		VX_WARN("Unsupportd Ray-vs-{", shape->GetShapeTypeName(), "} Dispatch!!!");
+		VX_LOG_WARN("Unsupportd Ray-vs-{", shape->GetShapeTypeName(), "} Dispatch!!!");
 		return false;
 	}
 

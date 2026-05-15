@@ -14,10 +14,10 @@ namespace vx::Narrowphase {
 		const B* shape_b = static_cast<const B*>(b);
 
 		if (!shape_a && a)
-			VX_WARN("Trying to dynamic cast Shape: ", a->GetShapeTypeName(), " to Shape: ", A::GetDebugName());// , GetEShapeTypeName(A().GetType()))
+			VX_LOG_WARN("Trying to dynamic cast Shape: ", a->GetShapeTypeName(), " to Shape: ", A::GetDebugName());// , GetEShapeTypeName(A().GetType()))
 
 		if (!shape_b && b)
-			VX_WARN("Trying to dynamic cast Shape: ", a->GetShapeTypeName(), " to Shape: ", A::GetDebugName());
+			VX_LOG_WARN("Trying to dynamic cast Shape: ", a->GetShapeTypeName(), " to Shape: ", A::GetDebugName());
 
 		return std::tuple(shape_a, shape_b);
 	}
@@ -328,9 +328,12 @@ namespace vx::Narrowphase {
 		const float radius = sphere->GetRadius();
 		const Vec3 half_extents = box->GetHalfExtents();
 
-		if (VxAbs(rel_center.X()) - radius > half_extents.X() ||
-			VxAbs(rel_center.Y()) - radius > half_extents.Y() ||
-			VxAbs(rel_center.Z()) - radius > half_extents.Z())
+		//if (VxAbs(rel_center.X()) - radius > half_extents.X() ||
+		//	VxAbs(rel_center.Y()) - radius > half_extents.Y() ||
+		//	VxAbs(rel_center.Z()) - radius > half_extents.Z())
+		//	return false;
+
+		if (Vec3::GreaterAny(rel_center.Abs() - Vec3(radius), half_extents))
 			return false;
 
 		Vec3 closest_pt = Vec3::Clamp(rel_center, -half_extents, half_extents);
@@ -857,137 +860,126 @@ namespace vx::Narrowphase {
 		VX_ASSERT_WARN_RETURN(box && capsule, false, "shape(s) null");
 
 
-#define USE_NEW 0
+#define USE_NEW 1
 #if USE_NEW
-		Mat44 box_trans = box->GetTransform();
-		Mat44 box_inv_trans = box_trans.InverseAffine();
 
-		const Vec3& capsule_center = capsule->GetPosition();
-		Vec3 capsule_axis_ws = capsule->GetTransform().GetAxisY() * capsule->GetCylinderHalfHeight();
-		Vec3 pA_ws = capsule_center - capsule_axis_ws;
-		Vec3 pB_ws = capsule_center + capsule_axis_ws;
-		Vec3 A = box_inv_trans.Transform(pA_ws);
-		Vec3 B = box_inv_trans.Transform(pB_ws);
+		const float r = capsule->GetRadius();
+		const Vec3 he = box->GetHalfExtents();
 
-		Vec3 axis = B - A;
-		float r = capsule->GetRadius();
-		Vec3 he = box->GetHalfExtents();
+		const Vec3 c_ws = in_posB;
+		Vec3 axis_ws = in_orientationB.RotateAxisY() * capsule->GetCylinderHalfHeight();
+
+		Vec3 pA_ws = c_ws - axis_ws;
+		Vec3 pB_ws = c_ws + axis_ws;
+
+		//Mat44 box_tran = Mat44::RotationTranslation(in_orientationA, in_posA);
+		//Vec3 A = box_tran.TransformInverse(pA_ws);
+		//Vec3 B = box_tran.TransformInverse(pB_ws);
+		Vec3 A = in_orientationA.InverseRotate(pA_ws - in_posA);
+		Vec3 B = in_orientationA.InverseRotate(pB_ws - in_posA);
 
 		float t;
-		Vec3 pt_seg = Geometry::ClosestPtPointSegment(Vec3(0.0f), A, B, t);
-		Vec3 pt_box = Vec3::Clamp(pt_seg, -he, he);
+		//closeset pt on segment to box origin
+		Vec3 seg_closest = Geometry::ClosestPtPointSegment(Vec3(0.0f), A, B, t);
 
-		Vec3 dist_to_face = he - pt_box.Abs();
-		int ref_axis = (int)dist_to_face.MinAxis();
-		float dist_sq = (pt_seg - pt_box).LengthSq();
+		//closest pt on box to segment
+		Vec3 box_closest = Vec3::Clamp(seg_closest, -he, he);
 
+		Vec3 delta = seg_closest - box_closest;
+		float dist_sq = delta.LengthSq();
 
-
-		//Vec3 n_ls = Vec3::Zero();
-		//n_ls[axis] = (pt_seg[axis] > 0.0f) ? 1.0f : -1.0f;
-		Vec3 n_ls = (dist_sq > 1e-6f) ? (pt_seg - pt_box) / VxSqrt(dist_sq) : Vec3(0.0f);
-		if (dist_sq <= 1e-6f)
-			n_ls[ref_axis] = (pt_seg[ref_axis] > 0.0f) ? 1.0f : -1.0f;
-		Vec3 n_ws = box_trans.Multiply3x3(n_ls).Normalised();
-
-		o_manifold.normal = n_ws;
-		auto& manifold_pt = o_manifold.points;
-		int pts_found = 0;
-
-		Vec3 seg_dir = axis.Normalised();
-		if (VxAbs(seg_dir[ref_axis]) < 0.8f)
+		if (dist_sq < 1e-12f) //inside or very close
 		{
+			Vec3 penetration = he - seg_closest.Abs();
+			int axis = static_cast<int>(penetration.MinAxis());
 
-			auto Clip_Seg_Face = [](
-				const Vec3& A, const Vec3& B,
-				const Vec3& he, int ref_axis,
-				float& t_min, float& t_max)
-				{
-					t_min = 0.0f;
-					t_max = 1.0f;
-					Vec3 dir = B - A;
+			Vec3 n = Vec3(0.0f);
+			n[axis] = (seg_closest[axis] > 0.0f) ? 1.0f : -1.0f;
 
-					//indice for the two axes that form the flat part of the face 
-					int axis_u = (ref_axis + 1) % 3;
-					int axis_v = (ref_axis + 2) % 3;
+			//Vec3 n_ws = box_tran.Multiply3x3(n).Normalised(); //in_orien.Rotate(n)
+			Vec3 n_ws = in_orientationA.Rotate(n).Normalised();
 
-					int axes[2] = { axis_u, axis_v };
-					for (int i = 0; i < 2; ++i)
-					{
-						int ax = axes[i];
-						float denom = dir[ax];
-						float lim = he[ax];
+			//Vec3 p_box_ws = box_tran.Transform(box_closest);
+			Vec3 p_box_ws = in_orientationA.Rotate(box_closest) + in_posA;
+			Vec3 p_caps_ws = p_box_ws - n_ws * r;
 
-						//standard cryus-barsky style 1d clipplinf 
-						if (VxAbs(denom) < 1e-7f)
-						{
-							if (VxAbs(A[ax]) > lim)return false;
-						}
-						else
-						{
-							float t0 = (-lim - A[ax]) / denom;
-							float t1 = (lim - A[ax]) / denom;
+			//later have a helper function .AddPoint(pA, penetration, pB)
+			o_manifold.points[0] = {
+				p_box_ws, 
+				penetration.MinComponent(),
+				p_box_ws - n_ws * penetration
+			};
 
-							t_min = VxMax(t_min, VxMin(t0, t1));
-							t_max = VxMin(t_max, VxMax(t0, t1));
-						}
-					}
-					return t_max > t_min;
-				};
+			o_manifold.normal = n_ws;
+			o_manifold.numManifoldPoints = 1;
+			return true;
+		}
 
-			float t_min, t_max;
-			if (Clip_Seg_Face(A, B, he, ref_axis, t_min, t_max))
-			{
-				Vec3 clipped_a = A + (B - A) * t_min;
-				Vec3 clipped_b = A + (B - A) * t_max;
+		float dist = VxSqrt(dist_sq);
+		float penetration = r - dist;
 
-				Vec3 pts[2] = { clipped_a, clipped_b };
-				for (int i = 0; i < 2; ++i)
-				{
-					//project each clipped point onto the box surface
-					Vec3 p_box_ls = Vec3::Clamp(pts[i], -he, he);
-					Vec3 local_d = pts[i] - p_box_ls;
-					float dist = local_d.Length();
-					float penetration = r - dist;
+		if (penetration <= 0.0f) return false;
 
-					//float p_dist = (pts[i] - Vec3::Clamp(pts[i], -box_half_extents, box_half_extents)).Length();
-					if (penetration > 0.0f)
-					{
-						Vec3 curr_n_ls = (dist > 1e-6f) ? local_d / dist : Vec3(0.0f);
-						if (dist <= 1e-6f)
-							curr_n_ls[ref_axis] = (pts[i][ref_axis] > 0.0f) ? 1.0f : -1.0f;
-						Vec3 curr_n_ws = box_trans.Multiply3x3(curr_n_ls).Normalised();
-						manifold_pt[pts_found++] = {
-							box_trans.Transform(p_box_ls), // pt on box
-							penetration,
-							box_trans.Transform(pts[i]) - curr_n_ws * r, //pt on capsule
-						};
-					}
-				}
+		Vec3 n_ls = delta / dist;
+		//Vec3 n_ws = box_tran.Multiply3x3(n_ls).Normalised();
+		Vec3 n_ws = in_orientationA.Rotate(n_ls).Normalised();
 
-				if (pts_found > 0)
-				{
-					o_manifold.normal = n_ws;
-					o_manifold.numManifoldPoints = pts_found;
-					Geometry::SortContactManifold_Deepest(o_manifold.points.data(), pts_found);
-					return true;
-				}
-			}
+		//Vec3 p_box_ws = box_tran.Transform(box_closest);
+		//Vec3 p_cap_ws = box_tran.Transform(seg_closest) - n_ws * r;
+		Vec3 p_box_ws = in_orientationA.Rotate(box_closest) + in_posA;
+		Vec3 p_cap_ws = (in_orientationA.Rotate(seg_closest) + in_posA) - n_ws * r;
+
+
+		int pt_count = 0;
+		o_manifold.points[pt_count++] =
+		{
+			p_box_ws, 
+			penetration,
+			p_box_ws - n_ws * penetration
+		};
+
+		Vec3 closest_on_seg_A = Geometry::ClosestPtPointSegment(A, A, B, t);
+		Vec3 closest_on_seg_B = Geometry::ClosestPtPointSegment(B, A, B, t);
+
+		Vec3 candidates[2] = { closest_on_seg_A, closest_on_seg_B };
+
+		for (int i = 0; i < 2; ++i)
+		{
+			Vec3 c = Vec3::Clamp(candidates[i], -he, he);
+			Vec3 d = candidates[i] - c;
+			float dist = d.Length();
+
+			float penetration = r - dist;
+			if (penetration <= 0.0f)
+				continue;
+
+			Vec3 n = (dist > 1e-6f) ? d / dist : n_ls;
+
+			//Vec3 nW = box_tran.Multiply3x3(c).Normalised();
+			Vec3 nW = in_orientationA.Rotate(c).Normalised();
+
+			//Vec3 pB = box_tran.Transform(c);
+			Vec3 pB = in_orientationA.Rotate(c) + in_posA;;
+			Vec3 pA = pB - nW * penetration;
+
+			o_manifold.points[pt_count++] ={
+				pB,
+				penetration,
+				pA
+			};
 
 		}
 
-		return false;
-		//fallback 
-		float pentration = r - VxSqrt(dist_sq);
-		if (pentration <= 0.0f)return false;
-		manifold_pt[pts_found++] = {
-			box_trans.Transform(pt_box), //on box
-			pentration,
-			box_trans.Transform(pt_seg) - n_ws * r, // on capsule
-		};
-		o_manifold.numManifoldPoints = pts_found;
+		o_manifold.numManifoldPoints = pt_count;
+
+	
+		o_manifold.normal = n_ws;
+		o_manifold.numManifoldPoints = pt_count;
+		if(pt_count > 1)
+			SortContactManifold_Deepest(o_manifold.points.data(), pt_count);
 		return true;
 
+		
 
 #else
 		///OLD OLD 
@@ -1076,6 +1068,7 @@ namespace vx::Narrowphase {
 					Vec3 p_ws = box_trans.Transform(pts[i]);
 					Vec3 p_box_ls = Vec3::Clamp(pts[i], -box_half_extents, box_half_extents);
 					Vec3 local_d = pts[i] - p_box_ls;
+
 					float dist = local_d.Length();
 					float penetration = r - dist;
 

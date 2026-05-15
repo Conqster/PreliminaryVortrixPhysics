@@ -238,7 +238,7 @@ constexpr TextureFormat DeduceTextureFormat(PixelFormat px_format, PixelType px_
 			return fmt;
 	}
 
-	VX_WARN("Unsupported pixel format, type match, defaulting to TextureFormat::RGBA8");
+	VX_LOG_WARN("Unsupported pixel format, type match, defaulting to TextureFormat::RGBA8");
 	return TextureFormat::RGBA8;
 }
 
@@ -258,7 +258,7 @@ namespace GLConvert
 		case TextureWrap::MirroredRepeat: return GL_MIRRORED_REPEAT;
 		}
 
-		VX_WARN("Unsupported wrap, defaulting to GL_REPEAT");
+		VX_LOG_WARN("Unsupported wrap, defaulting to GL_REPEAT");
 		return GL_REPEAT;
 	}
 
@@ -270,7 +270,7 @@ namespace GLConvert
 		case TextureFilter::Linear: return GL_LINEAR;
 		}
 
-		VX_WARN("Unsupported filter, defaulting to GL_LINEAR");
+		VX_LOG_WARN("Unsupported filter, defaulting to GL_LINEAR");
 		return GL_LINEAR;
 	}
 
@@ -304,7 +304,7 @@ namespace GLConvert
 		}
 
 
-		VX_WARN("Unsupported format, defaulting to GL_RGBA");
+		VX_LOG_WARN("Unsupported format, defaulting to GL_RGBA");
 		return GL_RGBA;
 	}
 
@@ -320,7 +320,7 @@ namespace GLConvert
 		case PixelFormat::DepthStencil: return GL_DEPTH_STENCIL;
 		}
 
-		VX_WARN("Unsupported pixel format, defaulting to GL_RGBA");
+		VX_LOG_WARN("Unsupported pixel format, defaulting to GL_RGBA");
 		return GL_RGBA;
 	}
 
@@ -333,7 +333,7 @@ namespace GLConvert
 		case PixelType::UShort: return GL_UNSIGNED_SHORT;
 		}
 
-		VX_WARN("Unsupported pixel type, defaulting to GL_UNSIGNED_BYTE");
+		VX_LOG_WARN("Unsupported pixel type, defaulting to GL_UNSIGNED_BYTE");
 		return GL_UNSIGNED_BYTE;
 	}
 
@@ -348,7 +348,7 @@ namespace GLConvert
 		case FramebufferTarget::Read: return GL_READ_FRAMEBUFFER;
 		}
 
-		VX_WARN("Unsupported frame buffer target, defaulting to GL_FRAMEBUFFER");
+		VX_LOG_WARN("Unsupported frame buffer target, defaulting to GL_FRAMEBUFFER");
 		return GL_FRAMEBUFFER;
 	}
 
@@ -361,7 +361,7 @@ namespace GLConvert
 		case EAttachmentBufferType::DepthStencil: return GL_DEPTH_STENCIL_ATTACHMENT;
 		}
 
-		VX_WARN("Unsupported attachment type, defaulting to GL_COLOR_ATTACHMENT0");
+		VX_LOG_WARN("Unsupported attachment type, defaulting to GL_COLOR_ATTACHMENT0");
 		return GL_COLOR_ATTACHMENT0;
 	}
 }

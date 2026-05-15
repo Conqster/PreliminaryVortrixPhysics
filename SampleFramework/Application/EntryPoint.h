@@ -6,7 +6,7 @@
 static void CustomAssertHandler(const char* expr, const char* message,
 	const unsigned int lvl, const char* file, unsigned int line, const char* func)
 {
-	VX_ERROR("Assertion Failed (",
+	VX_LOG_ERROR("Assertion Failed (",
 		expr, ") in Function: ", func, "\nMessage: ",
 		((message) ? message : ""),
 		".\nFile: ", file,
@@ -17,14 +17,17 @@ extern Application* CreateApplication(const ApplicationSpecification& app_spec);
 
 int main(int argc, char** argv)
 {
-
-	VX_INFO(
+	VX_LOG_INFO(
 		"Usage:\n"
 		"--win_size x,y\n"
 		"--win_pos x,y\n"
 		"--full_screen\n"
 		"--min_debug_lvl (Debug, Info, Warning, Error)"
 	);
+
+
+	VX_LOG_INFO(VX_BUILD_STR);
+	VX_ASSERT_WARN(false, "Test warning assertion");
 
 	ApplicationSpecification app_spec;
 	app_spec.name = "Vortrix Physics";
@@ -43,7 +46,7 @@ int main(int argc, char** argv)
 
 		if (strncmp(arg, "--full_screen", 14) == 0)
 		{
-			VX_WARN("Enable Full Screen");
+			VX_LOG_WARN("Enable Full Screen");
 			app_spec.launchFullScreen = true;
 		}
 		///Window size 
@@ -59,7 +62,7 @@ int main(int argc, char** argv)
 				app_spec.windowSize[1] = y;
 			}
 			else
-				VX_INFO("Invalid Format, \n\t Usage --win_size x,y");
+				VX_LOG_INFO("Invalid Format, \n\t Usage --win_size x,y");
 		}
 
 		///Window pos
@@ -75,7 +78,7 @@ int main(int argc, char** argv)
 				app_spec.windowPos[1] = y;
 			}
 			else
-				VX_INFO("Invalid Format, \n\t Usage --win_pos x,y \n\t Captured argv", arg, " ", info);
+				VX_LOG_INFO("Invalid Format, \n\t Usage --win_pos x,y \n\t Captured argv", arg, " ", info);
 		}
 
 		if (strncmp(arg, "--disable_gfx_bindless", 23) == 0)

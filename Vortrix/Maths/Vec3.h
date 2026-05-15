@@ -295,6 +295,17 @@ namespace vx
 			__m128 cmp = _mm_cmpgt_ps(v0.mValue, v1.mValue);
 			return (_mm_movemask_ps(cmp) & 0x7) == 0x7;
 		}
+
+		VX_INLINE static bool GreaterAny(const Vec3& v0, const Vec3& v1)
+		{
+			__m128 cmp = _mm_cmpgt_ps(v0.mValue, v1.mValue);
+			//0x7 0b111 ignoring w 
+			//0b0000 0 none 
+			//0b100 etc some !=0 
+			//0b111 all except w
+			return (_mm_movemask_ps(cmp) & 0x7) != 0;
+		}
+
 		VX_INLINE static bool GreaterOrEq(const Vec3& v0, const Vec3& v1)
 		{
 			__m128 cmp = _mm_cmpge_ps(v0.mValue, v1.mValue);

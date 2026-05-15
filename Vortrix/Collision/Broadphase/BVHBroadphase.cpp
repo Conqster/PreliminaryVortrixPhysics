@@ -90,7 +90,7 @@ namespace vx
 		if(rebuild)
 		{
 			mTree.RebuildAllSAH(num_nodes);
-			VX_INFO("Rebuilding BVH");
+			VX_LOG_INFO("Rebuilding BVH");
 		}
 
 

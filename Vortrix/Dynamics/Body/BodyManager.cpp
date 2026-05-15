@@ -23,7 +23,7 @@ namespace vx
 	{
 		if(mBodies.size() >= mMaxBodies - 1)
 		{
-			VX_WARN("Body manager body limit attained");
+			VX_LOG_WARN("Body manager body limit attained");
 			return false;
 		}
 

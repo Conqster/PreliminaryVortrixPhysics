@@ -1,20 +1,23 @@
 #pragma once
-#include "Core.h"
 #include "StackString.h"
 #include "Maths/Vec3.h"
 
 
 namespace vx {
 
+	VX_INLINE size_t ToChar(const Vec3& v, char* buff, size_t size) //needs to be in the same namespace
+	{
+		return snprintf(buff, size, "{x: %.2f, y: %.2f, z: %.2f}", v[0], v[1], v[2]);
+	}
 
-	//template<size_t N>
-	//VX_INLINE StackString<N>& operator<<(StackString<N>& buff, const Vec3& v)
-	//{
-	//	char buffer[64];
-	//	constexpr const char* format = "{x: %.2f, y: %.2f, z: %.2f}";
-	//	int len = snprintf(buffer, sizeof(buffer), format, v[0], v[1], v[2]);
-	//	if (len > 0)
-	//		buff.Append(buffer);
-	//	return buff;
-	//}
+	VX_INLINE size_t ToChar(const Vec2& v, char* buff, size_t size) //needs to be in the same namespace
+	{
+		return snprintf(buff, size, "{x: %.2f, y: %.2f}", v[0], v[1]);
+	}
+
+	VX_INLINE size_t ToChar(const Float3& v, char* buff, size_t size) //needs to be in the same namespace
+	{
+		return snprintf(buff, size, "{x: %.2f, y: %.2f, z: %.2f}", v.x, v.y, v.z);
+	}
+
 }

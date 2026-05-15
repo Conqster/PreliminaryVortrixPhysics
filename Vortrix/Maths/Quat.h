@@ -90,6 +90,8 @@ namespace vx
 		/// Inverse quaternion
 		/// for unit quaternion, inverse == conjugate
 		VX_INLINE Quat Inversed() const;
+		/// so as forward(world) = q.Rotate(local) + t
+		/// and inverse(local) = q.InverseRotate(world - t)
 		/// Rotates a vector by this unit quaternion
 		/// 
 		/// Compute:

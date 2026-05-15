@@ -15,7 +15,7 @@ void GraphicsBuffer::Generate(BufferUsage _type, size_t _size, const void* data,
 {
 	if (_type == BufferUsage::Vertex || _type == BufferUsage::Index)
 	{
-		VX_WARN("vertex and index buffer requires stride and count, buffer not created");
+		VX_LOG_WARN("vertex and index buffer requires stride and count, buffer not created");
 		return;
 	}
 
@@ -88,7 +88,7 @@ void GraphicsBuffer::SegmentBind(size_t size, vx::uint32 slot_point, uint32_t of
 
 	if (type != BufferUsage::Uniform)
 	{
-		VX_WARN("Only uniform buffer support Segment binding");
+		VX_LOG_WARN("Only uniform buffer support Segment binding");
 		return;
 	}
 	GLCall(glBindBufferRange(GL_UNIFORM_BUFFER, slot_point, iD, offset, (GLsizeiptr)size));
@@ -168,6 +168,6 @@ void GraphicsBuffer::AssignGPULabel(const char* name)
 		}
 
 		glObjectLabel(GL_BUFFER, iD, _name.Length(), _name.Data());
-		VX_INFO("Assigned GPU Label ", _name.Data(), " with ID: ", iD);
+		VX_LOG_DEBUG("Assigned GPU Label ", _name.Data(), " with ID: ", iD);
 	}
 }

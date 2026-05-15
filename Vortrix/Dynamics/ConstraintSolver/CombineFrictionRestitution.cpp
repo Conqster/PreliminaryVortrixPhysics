@@ -21,7 +21,7 @@ namespace vx {
 		case vx::ECombineMode::Maximum: return VxMax(f0, f1);
 
 		default:
-			VX_WARN("Custom Friction Combine coeffient not supported yet; defaulting to Average");
+			VX_LOG_WARN("Custom Friction Combine coeffient not supported yet; defaulting to Average");
 			return (f0 + f1) * 0.5f;
 		}
 	}
@@ -42,7 +42,7 @@ namespace vx {
 		case vx::ECombineMode::Maximum: return VxMax(r0, r1);
 
 		default:
-			VX_WARN("Custom Restitution Combine coeffient not supported yet; defaulting to Average");
+			VX_LOG_WARN("Custom Restitution Combine coeffient not supported yet; defaulting to Average");
 			return (r0 + r1) * 0.5f;
 		}
 	}

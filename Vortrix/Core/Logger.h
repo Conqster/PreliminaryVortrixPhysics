@@ -22,19 +22,14 @@
 			Error,
 		};
 
-#if VX_DEBUG
-	constexpr const char* kDefaultLogpath = "Logs/Vortrix.log";
-#else
-	constexpr const char* kDefaultLogpath = "Vortrix.log";
-#endif // VX_DEBUG
+		constexpr const char* kDefaultLogpath = "Logs/Vortrix.log";
 
-
-	constexpr const char* kAnsiRedColour = "\033[1;31m";
-	constexpr const char* kAnsiGreenColour = "\033[1;32m";
-	constexpr const char* kAnsiYellowColour = "\033[1;33m";
-	constexpr const char* kAnsiBlueColour = "\033[1;34m";
-	constexpr const char* kAnsiCyanColour = "\033[1;36m";
-	constexpr const char* kAnsiResetColour = "\033[0m";
+		constexpr const char* kAnsiRedColour = "\033[1;31m";
+		constexpr const char* kAnsiGreenColour = "\033[1;32m";
+		constexpr const char* kAnsiYellowColour = "\033[1;33m";
+		constexpr const char* kAnsiBlueColour = "\033[1;34m";
+		constexpr const char* kAnsiCyanColour = "\033[1;36m";
+		constexpr const char* kAnsiResetColour = "\033[0m";
 
 
 	class Logger
@@ -46,14 +41,8 @@
 			return inst;
 		}
 
-#if VX_DEBUG
 		template<typename... Args>
 		inline void Log(ELogLevel lvl, Args&&... args); //bring back inline
-#else
-		template<typename... Args>
-		inline void Log(ELogLevel lvl, Args&&...);
-#endif // VX_DEBUG
-
 
 		/**
 		* Helpers
@@ -75,8 +64,7 @@
 		template<typename... Args>
 		void LogError(Args&&... args) { Log(ELogLevel::Error, (args)...); }
 
-#if VX_DEBUG
-#endif // VX_DEBUG
+
 		ELogLevel GetMinLevel() const { return mMinLevel; }
 		ELogBuffer GetLogTragetBuffer() const { return mTargetBuffer; }
 		bool GetLogTimestamp() const { return bLogTimestamp; }
@@ -91,8 +79,6 @@
 		~Logger();
 
 		[[nodiscard]] static constexpr const char* LevelToChar(ELogLevel lvl) noexcept;
-#if VX_DEBUG
-#endif // VX_DEBUG
 		[[nodiscard]] static constexpr const char* LevelAnsiColour(ELogLevel lvl) noexcept;
 
 		void WriteLine(ELogLevel lvl, const char* data, size_t len);
@@ -109,22 +95,33 @@
 	
 #include "Logger.inl"
 
-#if VX_DEBUG
+
+
+#if defined(VX_DEBUG) || defined(VX_DEV)
 	/// logs debug-level message for internal development insight.
 	/// Usage: VX_DEBUG("Intergrating particle ", i, ": pos= ", pos, " vel=", vel);
-#define VX_LOG_DEBUG(...) vx::Logger::Instance().LogDebug(__VA_ARGS__)
+	#define VX_LOG_DEBUG(...) vx::Logger::Instance().LogDebug(__VA_ARGS__)
+#else
+	#define VX_LOG_DEBUG(...) ((void)0)
+#endif // defined(VX_DEBUG) || defined(VX_DEV)
 
-/// logs an info-level message for programming event.
-/// Usage: VX_INFO("Physics world initialised: ", body_count, " bodies.");
-#define VX_INFO(...) vx::Logger::Instance().LogInfo(__VA_ARGS__)
+#if defined(VX_DIST)
+	#define VX_LOG_INFO(...) ((void)0)	
+	#define VX_LOG_WARN(...) ((void)0)	
+	#define VX_LOG_ERROR(...) ((void)0)	
+#else
+	/// logs an info-level message for programming event.
+	/// Usage: VX_INFO("Physics world initialised: ", body_count, " bodies.");
+	#define VX_LOG_INFO(...) vx::Logger::Instance().LogInfo(__VA_ARGS__)
 
-/// logs an warning-level message for soft recoverable issue.
-/// Usage: VX_WARN("Particle mass was zero, clamped to 1.0f");
-#define VX_WARN(...) vx::Logger::Instance().LogWarn(__VA_ARGS__)
+	/// logs an warning-level message for soft recoverable issue.
+	/// Usage: VX_WARN("Particle mass was zero, clamped to 1.0f");
+	#define VX_LOG_WARN(...) vx::Logger::Instance().LogWarn(__VA_ARGS__)
 
-/// logs an error-level message for serious issue or breakage.
-//VX_ERROR("Null particle body pointer in collision detection!");
-#define VX_ERROR(...) vx::Logger::Instance().LogError(__VA_ARGS__)
+	/// logs an error-level message for serious issue or breakage.
+	//VX_ERROR("Null particle body pointer in collision detection!");
+	#define VX_LOG_ERROR(...) vx::Logger::Instance().LogError(__VA_ARGS__)
+#endif // defined(VX_DIST)
 
 
 #define VX_LOG_DEBUG_LEVEL vx::ELogLevel::Debug
@@ -132,11 +129,3 @@
 #define VX_LOG_WARNING_LEVEL vx::ELogLevel::Warning
 #define VX_LOG_ERROR_LEVEL vx::ELogLevel::Error
 #define VX_LOG_SET_LEVEL(lvl) Logger::Instance().SetLevel(lvl)
-
-
-#else
-#define VX_LOG_DEBUG(...) ((void)0)
-#define VX_INFO(...) ((void)0)
-#define VX_WARN(...) ((void)0)
-#define VX_ERROR(...) ((void)0)
-#endif // VX_DEBUG

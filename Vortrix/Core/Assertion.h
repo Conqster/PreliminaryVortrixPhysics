@@ -3,10 +3,10 @@
 #include "Core.h"
 
 
-#if VX_DEBUG
+#if defined(VX_DEBUG) || defined(VX_DEV) || defined(VX_REL_ASAN)
 #define VX_CORE_ENABLE_ASSERTS
 #include <iostream>
-#endif // VX_DEBUG
+#endif // defined(VX_DEBUG) || defined(VX_DEV) || defined(VX_REL_ASAN)
 
 
 
@@ -21,7 +21,15 @@ namespace vx
 	using VxAssertFailedFunction = void(*)(const char* expression, const char* message, 
 		const unsigned int lvl, const char* file, unsigned int line, const char* func);
 	extern VxAssertFailedFunction VxAssertionFailedFunc;
-#ifdef VX_CORE_ENABLE_ASSERTS
+
+#if defined(VX_CORE_ENABLE_ASSERTS)
+	/// if we are in ASan mode, downgrade lvl2 (crash) to lvl1 (warning)
+	#if defined(VX_REL_ASAN)
+		#define VX_ASSERT_VAL(lvl) 1
+	#else
+		#define VX_ASSERT_VAL(lvl) lvl
+	#endif // defined(VX_REL_ASAN)
+
 
 	namespace internals {
 		static void DefaultAssertHandler(const char* expr, const char* message,
@@ -35,21 +43,34 @@ namespace vx
 
 #define VX_ASSERT_IMPL(expr, msg, lvl) \
 	do { if(!(expr)) { \
-			if (vx::VxAssertionFailedFunc) vx::VxAssertionFailedFunc(#expr, msg, lvl, __FILE__, __LINE__, __FUNCTION__); \
+			constexpr int actual_lvl = VX_ASSERT_VAL(lvl); \
+			if (vx::VxAssertionFailedFunc) vx::VxAssertionFailedFunc(#expr, msg, actual_lvl, __FILE__, __LINE__, __FUNCTION__); \
 			else \
 			std::cerr << "[ASSERTION FAILED] (no output function hander): " << \
 			#expr << ".\n"; \
-			if(lvl == 2) \
-			DEBUG_BREAK(); \
+			if(actual_lvl == 2) \
+			VX_DEBUG_BREAK(); \
+	 } } while (0)
+
+
+#define VX_ASSERT_RET_IMPL(expr, msg, lvl, ...) \
+	do { if(!(expr)) { \
+			constexpr int actual_lvl = VX_ASSERT_VAL(lvl); \
+			if (VxAssertionFailedFunc) VxAssertionFailedFunc(#expr, msg, actual_lvl, __FILE__, __LINE__, __FUNCTION__); \
+			else \
+			std::cerr << "[ASSERTION FAILED] (no output function hander): " << \
+			#expr << ".\n"; \
+			if(actual_lvl == 2) VX_DEBUG_BREAK(); \
+			return __VA_ARGS__; \
 	 } } while (0)
 
 
 
-#define VX_ASSERT_WITH_MSG(expr, msg) VX_ASSERT_IMPL(expr, msg, 2)
-#define VX_ASSERT_NO_MSG(expr) VX_ASSERT_IMPL(expr, nullptr, 2)
+#define VX_ASSERT_INTERNAL_WITH_MSG(expr, msg) VX_ASSERT_IMPL(expr, msg, 2)
+#define VX_ASSERT_INTERNAL_NO_MSG(expr) VX_ASSERT_IMPL(expr, nullptr, 2)
 
-#define VX_ASSERT_WARN_WITH_MSG(expr, msg) VX_ASSERT_IMPL(expr, msg, 1)
-#define VX_ASSERT_WARN_NO_MSG(expr) VX_ASSERT_IMPL(expr, nullptr, 1)
+#define VX_ASSERT_INTERNAL_WARN_WITH_MSG(expr, msg) VX_ASSERT_IMPL(expr, msg, 1)
+#define VX_ASSERT_INTERNAL_WARN_NO_MSG(expr) VX_ASSERT_IMPL(expr, nullptr, 1)
 
 
 //selector when a macro takes 1 or 2 arguments
@@ -58,30 +79,21 @@ namespace vx
 #define VX_SELECT_3(__1, __2, __3, TARGET_MACRO, ...) TARGET_MACRO
 
 
-#define VX_ASSERT(...) EXPAND_MACRO(VX_SELECT_2(__VA_ARGS__, VX_ASSERT_WITH_MSG, VX_ASSERT_NO_MSG)(__VA_ARGS__) )
-#define VX_ASSERT_WARN(...) EXPAND_MACRO(VX_SELECT_2(__VA_ARGS__, VX_ASSERT_WARN_WITH_MSG, VX_ASSERT_WARN_NO_MSG)(__VA_ARGS__) )
-
-
-#define VX_ASSERT_RET_IMPL(expr, msg, lvl, ...) \
-	do { if(!(expr)) { \
-			if (VxAssertionFailedFunc) VxAssertionFailedFunc(#expr, msg, lvl, __FILE__, __LINE__, __FUNCTION__); \
-			else \
-			std::cerr << "[ASSERTION FAILED] (no output function hander): " << \
-			#expr << ".\n"; \
-			if(lvl == 2) DEBUG_BREAK(); \
-			return __VA_ARGS__; \
-	 } } while (0)
+#define VX_ASSERT(...) EXPAND_MACRO(VX_SELECT_2(__VA_ARGS__, VX_ASSERT_INTERNAL_WITH_MSG, VX_ASSERT_INTERNAL_NO_MSG)(__VA_ARGS__) )
+#define VX_ASSERT_WARN(...) EXPAND_MACRO(VX_SELECT_2(__VA_ARGS__, VX_ASSERT_INTERNAL_WARN_WITH_MSG, VX_ASSERT_INTERNAL_WARN_NO_MSG)(__VA_ARGS__) )
 
 
 
-#define VX_ASSERT_WARN_RET_WITH_MSG(expr, ret_val, msg) VX_ASSERT_RET_IMPL(expr, msg, 1, ret_val)
-#define VX_ASSERT_WARN_RET_NO_MSG(expr, ret_val) VX_ASSERT_RET_IMPL(expr, nullptr, 1, ret_val)
 
-#define VX_ASSERT_WARN_VOID_WITH_MSG(expr, msg) VX_ASSERT_RET_IMPL(expr, msg, 1, )
-#define VX_ASSERT_WARN_VOID_NO_MSG(expr) VX_ASSERT_RET_IMPL(expr, nullptr, 1, )
 
-#define VX_ASSERT_WARN_RETURN(...) EXPAND_MACRO(VX_SELECT_3(__VA_ARGS__, VX_ASSERT_WARN_RET_WITH_MSG, VX_ASSERT_WARN_RET_NO_MSG)(__VA_ARGS__) )
-#define VX_ASSERT_WARN_VOID(...) EXPAND_MACRO(VX_SELECT_2(__VA_ARGS__, VX_ASSERT_WARN_VOID_WITH_MSG, VX_ASSERT_WARN_VOID_NO_MSG)(__VA_ARGS__) )
+#define VX_ASSERT_INTERNAL_WARN_RET_WITH_MSG(expr, ret_val, msg) VX_ASSERT_RET_IMPL(expr, msg, 1, ret_val)
+#define VX_ASSERT_INTERNAL_WARN_RET_NO_MSG(expr, ret_val) VX_ASSERT_RET_IMPL(expr, nullptr, 1, ret_val)
+
+#define VX_ASSERT_INTERNAL_WARN_VOID_WITH_MSG(expr, msg) VX_ASSERT_RET_IMPL(expr, msg, 1, )
+#define VX_ASSERT_INTERNAL_WARN_VOID_NO_MSG(expr) VX_ASSERT_RET_IMPL(expr, nullptr, 1, )
+
+#define VX_ASSERT_WARN_RETURN(...) EXPAND_MACRO(VX_SELECT_3(__VA_ARGS__, VX_ASSERT_INTERNAL_WARN_RET_WITH_MSG, VX_ASSERT_INTERNAL_WARN_RET_NO_MSG)(__VA_ARGS__) )
+#define VX_ASSERT_WARN_VOID(...) EXPAND_MACRO(VX_SELECT_2(__VA_ARGS__, VX_ASSERT_INTERNAL_WARN_VOID_WITH_MSG, VX_ASSERT_INTERNAL_WARN_VOID_NO_MSG)(__VA_ARGS__) )
 
 
 #else
@@ -94,10 +106,13 @@ inline void VxSetAssertFailedFunctionHandler(VxAssertFailedFunction handler) {}
 #define VX_SELECT_2(__1, __2, TARGET_MACRO, ...) TARGET_MACRO
 #define VX_SELECT_3(__1, __2, __3, TARGET_MACRO, ...) TARGET_MACRO
 
+//#define VX_ASSERT_RET_IMPL(expr, msg, ...) \
+//	do { if(!(expr)) { \
+//			return __VA_ARGS__; \
+//	 } } while (0)
+
 #define VX_ASSERT_RET_IMPL(expr, msg, ...) \
-	do { if(!(expr)) { \
-			return __VA_ARGS__; \
-	 } } while (0)
+			return __VA_ARGS__ \
 
 
 #define VX_ASSERT_WARN_RET_WITH_MSG(expr, ret_val, msg) VX_ASSERT_RET_IMPL(expr, msg, ret_val)
@@ -111,3 +126,4 @@ inline void VxSetAssertFailedFunctionHandler(VxAssertFailedFunction handler) {}
 #endif // VX_CORE_ENABLE_ASSERTS
 
 } //namesapce vx
+

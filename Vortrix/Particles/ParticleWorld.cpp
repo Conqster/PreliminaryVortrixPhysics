@@ -59,7 +59,7 @@ namespace vx::Particles
 
 		bApplyGravity = b_enable_gravity;
 
-		VX_INFO(mGravity.Length());
+		VX_LOG_DEBUG(mGravity.Length());
 	}
 
 	void ParticleWorld::CreateSimpleSampleWorld(ParticleWorld* world)
