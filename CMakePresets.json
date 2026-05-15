@@ -1,0 +1,28 @@
+{
+    "version": 3, 
+    "configurePresets": 
+    [
+        
+        {
+            "name": "base-x64",
+            "hidden": true,
+            "architecture": "x64",
+            "binaryDir": "${sourceDir}/build/${presetName}"
+        },
+
+
+        
+        {
+            "name": "vs2022-x64",
+            "inherits": "base-x64",
+            "generator": "Visual Studio 17 2022"
+        },
+        {
+            "name": "vs2026-x64",
+            "inherits": "base-x64",
+            "generator": "Visual Studio 18 2026"
+        }
+
+    ]
+
+}

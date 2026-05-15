@@ -1,0 +1,67 @@
+#include "CapsuleShape.h"
+#include "Geometry/AABB.h"
+
+namespace vx {
+
+	AABB CapsuleShape::GetLocalBounds() const
+	{
+		Vec3 half_extent = GetHalfExtents();
+		return AABB(-half_extent, half_extent);
+	}
+	AABB CapsuleShape::GetWorldBounds(const Mat44& tranform, const Vec3& scale) const
+	{
+		Vec3 scaled_half_extent = scale.Abs() * Vec3(mRadius, mCylinderHalfHeight, mRadius);
+
+		Vec3 center = tranform.GetTranslation();
+		Vec3 axis = tranform.Multiply3x3(GetLocalAxis());
+
+		Vec3 p0 = center - axis * scaled_half_extent.Y();
+		Vec3 p1 = center + axis * scaled_half_extent.Y();
+
+		Vec3 rvec = scaled_half_extent.SplatX();
+
+		Vec3 _min = Vec3::Min(p0, p1) - rvec;
+		Vec3 _max = Vec3::Max(p0, p1) + rvec;
+
+		return AABB(_min, _max);
+	}
+	Vec3 CapsuleShape::SupportWS(const Mat44& in_transform, Vec3 dir) const
+	{
+		const Vec3 local_dir = in_transform.Multiply3x3Transposed(dir);
+
+		Vec3 pointA = local_dir.Y() > 0 ?
+			Vec3(0.0f, mCylinderHalfHeight, 0.0f) :
+			Vec3(0.0f, -mCylinderHalfHeight, 0.0f);
+
+		const Vec3 local_pt = pointA + local_dir.Normalised() * mRadius;
+		return in_transform.Multiply3x3(local_pt) + in_transform.GetTranslation();
+	}
+	MassProperties CapsuleShape::GetMassProperties() const
+	{
+		const float radius_sq = mRadius * mRadius;
+		const float h = mCylinderHalfHeight * 2.0f;
+		const float h_sq = h * h;
+
+		float cylinder_mass = kVxPi * h * radius_sq * mDensity;
+		float hemisphere_mass = (2.0f * kVxPi / 3.0f) * radius_sq * mRadius * mDensity;
+
+
+		//cylinder
+		float height_sq = VxSqr(h);
+		float Iy = radius_sq * cylinder_mass * 0.5f;
+		float Ix = Iy * 0.5f + cylinder_mass * height_sq / 12.0f;
+
+		// From hemispheres
+		const float temp = hemisphere_mass * 4.0f * radius_sq / 5.0f;
+		Iy += temp;
+		Ix += temp + hemisphere_mass * (0.5f * height_sq + (3.0f / 4.0f) * h * mRadius);
+
+
+		const float Mtotal = cylinder_mass + hemisphere_mass * 2.0f;
+
+		MassProperties mp;
+		mp.mass = Mtotal;
+		mp.inertialTensorDiagonal = Float3(Ix, Iy, Ix);
+		return mp;
+	}
+} //namespace vx

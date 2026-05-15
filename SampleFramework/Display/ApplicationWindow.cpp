@@ -1,0 +1,377 @@
+#include <SampleFramework.h>
+#include "ApplicationWindow.h"
+
+#include <GL/glew.h>
+#include <glfw/glfw3.h>
+
+
+unsigned int ApplicationWindow::mWindowWidth;
+unsigned int ApplicationWindow::mWindowHeight;
+
+
+void QuickErrorCallback(int error, const char* desc)
+{
+	fprintf(stderr, "GLFW ERROR %d: %s\n", error, desc);
+}
+
+
+
+//void QuickDebugCallback(GLenum src, GLenum type,
+//	GLuint id, GLenum severity,
+//	GLsizei length, const GLchar* msg,
+//	const void* user_param)
+//{
+//	if (severity == GL_DEBUG_SEVERITY_NOTIFICATION)
+//		return;
+//	printf("OpenGL DEBUG: %s\n", msg);
+//}
+
+//---------------------------------------------------------------------
+#define ANSI_RED_COLOUR "\033[1;31m"	   //4
+#define ANSI_GREEN_COLOUR "\033[1;32m"	   //2
+#define ANSI_YELLOW_COLOUR "\033[1;33m"	   //3
+#define ANSI_BLUE_COLOUR "\033[1;34m"      //1
+#define ANSI_RESET_COLOUR "\033[0m"
+
+
+enum class ESeverityLvl : uint8_t
+{
+	High = 3,
+	Meduim = 2,
+	Low = 1,
+	Notification = 0
+};
+
+
+constexpr const char* GL_SeverityEnumToText(GLenum severity)
+{
+	switch (severity)
+	{
+	case GL_DEBUG_SEVERITY_NOTIFICATION: return "GL_DEBUG_NOTIFICATION";
+	case GL_DEBUG_SEVERITY_MEDIUM: return "GL_DEBUG_WARNING";
+	case GL_DEBUG_SEVERITY_LOW: return "GL_DEBUG_MINOR_ISSUE";
+	case GL_DEBUG_SEVERITY_HIGH: return "GL_DEBUG_ERROR";
+	default: return "GL_DEBUG_UNKNOWN";
+	}
+}
+
+constexpr const char* GL_TypeEnumToText(GLenum type)
+{
+	switch (type)
+	{
+	case GL_DEBUG_TYPE_ERROR: return "API or shader error";
+	case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: return "Using deprecated features";
+	case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR: return "Undefined behaviour";
+	case GL_DEBUG_TYPE_PORTABILITY: return "Non-portable use (vendor-specific feature)";
+	case GL_DEBUG_TYPE_PERFORMANCE: return "Performance warning";
+	case GL_DEBUG_TYPE_OTHER: return "Misc driver message";
+	case GL_DEBUG_TYPE_MARKER: return "Debug marker by application";
+	case GL_DEBUG_TYPE_PUSH_GROUP: return "Group push event";
+	case GL_DEBUG_TYPE_POP_GROUP: return "Group pop event";
+	default: return "Unknown";
+	}
+}
+
+
+constexpr const char* GL_SourceEnumToText(GLenum src)
+{
+	switch (src)
+	{
+	case GL_DEBUG_SOURCE_API: return "OpenGL API";
+	case GL_DEBUG_SOURCE_WINDOW_SYSTEM: return "Window system";
+	case GL_DEBUG_SOURCE_SHADER_COMPILER: return "shader compiler";
+	case GL_DEBUG_SOURCE_THIRD_PARTY: return "Third party/driver";
+	case GL_DEBUG_SOURCE_APPLICATION: return "Custom Application";
+	case GL_DEBUG_SOURCE_OTHER: return "Misc driver source";
+	default: return "Unknown";
+	}
+}
+
+
+inline constexpr const char* ANSI_GL_DebugCol(GLenum severity)
+{
+	switch (severity)
+	{
+	case GL_DEBUG_SEVERITY_NOTIFICATION: return ANSI_BLUE_COLOUR;
+	case GL_DEBUG_SEVERITY_LOW: return ANSI_GREEN_COLOUR;
+	case GL_DEBUG_SEVERITY_MEDIUM: return ANSI_YELLOW_COLOUR;
+	case GL_DEBUG_SEVERITY_HIGH: return ANSI_RED_COLOUR;
+	default: return ANSI_GREEN_COLOUR;
+	}
+}
+
+bool ApplicationWindow::sSupportsBindless = false;
+
+void APIENTRY ErrorMessageCallback(GLenum source, GLenum type, GLuint id,
+	GLenum severity, GLsizei length,
+	const GLchar* message, const void* userParam)
+{
+
+	std::cout << ANSI_GL_DebugCol(severity) << "GL Debug [" << GL_SeverityEnumToText(severity) <<
+		"] (" << GL_SourceEnumToText(source) << ": " << GL_TypeEnumToText(type) <<
+		"): " << message << ".\n" << ANSI_RESET_COLOUR;
+}
+
+bool ApplicationWindow::Init(const char* base_name, const WindowSpecification& win_spec, bool full_screen, const char* name_detail)
+{
+	mBaseTitle = base_name;
+
+	//glfwSetErrorCallback(QuickErrorCallback);
+
+	if (!glfwInit())
+	//if (!glfw_state)
+	{
+		VX_ERROR("Failed to initialise GLFW!!!!!!");
+		return false;
+	}
+
+	mWindowWidth = win_spec.windowSize[0];
+	mWindowHeight = win_spec.windowSize[1];
+
+	mWindowPos[0] = win_spec.windowPos[0];
+	mWindowPos[1] = win_spec.windowPos[1];
+
+	if (win_spec.centerWindow)
+	{
+		//get screen size
+		int screen_width = GetSystemMetrics(SM_CXSCREEN);
+		int screen_height = GetSystemMetrics(SM_CYSCREEN);
+
+		int hw = float(screen_width) * 0.5f;
+		int hh = float(screen_height) * 0.5f;
+
+		int win_hw = win_spec.windowSize[0] * 0.5f;
+		int win_hh = win_spec.windowSize[1] * 0.5f;
+
+		mWindowPos[0] = hw - win_hw;
+		mWindowPos[1] = hh - win_hh;
+	}
+
+
+	if (!CreateDisplayWindow((std::string(base_name) + name_detail).c_str(), full_screen))
+		return false;
+
+	//InitGraphicsInterface();
+
+	const unsigned char* gl_ver = glGetString(GL_VERSION);
+	printf("OpenGL version supported: %s\n", glGetString(GL_VERSION));
+	//std::cout << "Check avaliable/supported open gl verion: " << gl_ver << "\n";
+
+
+	GLenum GlewInitResult = glewInit();
+	if (GlewInitResult != GLEW_OK)
+	{
+		VX_ERROR("Glew Init failed, ERROR: ", glewGetErrorString(GlewInitResult));
+		glfwDestroyWindow(mWindow);
+		glfwTerminate();
+		return false;
+	}
+
+	bool bindless_tex_was_support = glfwExtensionSupported("GL_ARB_bindless_texture");
+	(bindless_tex_was_support) ? VX_INFO("Device supports bindless_texture") : VX_INFO("Device doesnt supports bindless_texture");
+	sSupportsBindless = (win_spec.disableBindlessSupport) ? false : bindless_tex_was_support;
+	VX_ASSERT_WARN(!win_spec.disableBindlessSupport, "Bindless Support was disabled");
+	VX_ASSERT_WARN(bindless_tex_was_support, "GL_ARB_bindless_texture not supported");
+
+	int frame_top_egde;
+	int frame_left_egde;
+	glfwGetWindowFrameSize(mWindow, &frame_left_egde, &frame_top_egde, nullptr, nullptr);
+	glfwSetWindowPos(mWindow, mWindowPos[0] + frame_left_egde, mWindowPos[1] + frame_top_egde);
+
+
+
+	if(win_spec.iconPixel)
+	{
+		GLFWimage img;
+		img.width = win_spec.iconWidth;
+		img.height = win_spec.iconHeight;
+		img.pixels = win_spec.iconPixel;
+		glfwSetWindowIcon(mWindow, 1, &img);
+	}
+
+	glfwSetInputMode(mWindow, GLFW_CURSOR, (mLockCursor) ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+
+	//int flags;
+	//glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
+	//if (flags & GL_CONTEXT_FLAG_DEBUG_BIT)
+	//{
+	//	glEnable(GL_DEBUG_OUTPUT);
+	//	glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+	//	glDebugMessageCallback(ErrorMessageCallback, nullptr);
+
+		glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, nullptr, GL_FALSE);
+	//}
+	glEnable(GL_DEBUG_OUTPUT);
+	glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+	glDebugMessageCallback(ErrorMessageCallback, nullptr);
+
+	return true;
+}
+
+void ApplicationWindow::ToggleLockCursor()
+{
+	glfwSetInputMode(mWindow, GLFW_CURSOR, (mLockCursor = !mLockCursor) ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+}
+
+void ApplicationWindow::ChangeWindowTitle(const char* name)
+{
+	glfwSetWindowTitle(mWindow, name);
+}
+
+const char* ApplicationWindow::GetFullTitle() const
+{
+	return glfwGetWindowTitle(mWindow);
+}
+
+void const ApplicationWindow::SetVSync(bool value)
+{
+	if (mVSync != value)
+	{
+		mVSync = value;
+		glfwSwapInterval(int(mVSync));
+	}
+}
+
+vx::Vec2 ApplicationWindow::MouseCursorPosition() const
+{
+	double x, y;
+	glfwGetCursorPos(mWindow, &x, &y);
+	return vx::Vec2(x, y);
+}
+
+void ApplicationWindow::FlushAndSwapBuffer()
+{
+	glfwSwapBuffers(mWindow);
+	glfwPollEvents();
+}
+
+void ApplicationWindow::SwapBuffer() const
+{
+	glfwSwapBuffers(mWindow);
+}
+
+void ApplicationWindow::PollEvents() const
+{
+	glfwPollEvents();
+}
+
+bool ApplicationWindow::ProgramActive() const
+{
+	return !glfwWindowShouldClose(mWindow);
+}
+
+void ApplicationWindow::Close()
+{
+	glfwSetWindowShouldClose(mWindow, true);
+}
+
+void ApplicationWindow::Destroy() const
+{
+	glfwDestroyWindow(mWindow);
+	glfwTerminate();
+}
+
+
+
+bool ApplicationWindow::CreateDisplayWindow(const char* name, bool full_screen)
+{
+	if (full_screen)
+	{
+		mWindowWidth = GetSystemMetrics(SM_CXSCREEN);
+		mWindowHeight = GetSystemMetrics(SM_CYSCREEN);
+	}
+
+
+	//create custom ui
+	//glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+
+
+	//vx::Colour col(0.95f, 0.32f, 0.11f);
+
+	//int x, y, h;
+	//glfwGetMonitorWorkarea(glfwGetPrimaryMonitor(), &x, &y, nullptr, &h);
+	//const int size = h / 5;
+	//glfwWindowHint(GLFW_POSITION_X, x + size * (1 + (0 & 1)));
+	//glfwWindowHint(GLFW_POSITION_Y, y + size * (1 + (0 >> 1)));
+
+
+	mWindow = glfwCreateWindow(mWindowWidth, mWindowHeight, name, nullptr, nullptr);
+
+	//glfwGetError
+	//GLenum GlewInitResult = glewInit();
+	//if (GlewInitResult != GLEW_OK)
+		//VX_ERROR("Glew Init failed, ERROR: ", glewGetErrorString(GlewInitResult))
+	const char* err_desc;
+	if (!mWindow)
+	{
+		glfwGetError(&err_desc);
+		VX_ERROR("Failed to create GLFW Window: ", err_desc);
+		glfwTerminate();
+		return false;
+	}
+
+	glfwMakeContextCurrent(mWindow);
+
+	glfwSwapInterval(int(mVSync));
+
+	glfwSetInputMode(mWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	glfwSetFramebufferSizeCallback(mWindow, OnWindowResizeCallback);
+	glfwSetWindowPosCallback(mWindow, OnWindowPosCallback);
+	glfwSetWindowIconifyCallback(mWindow, OnWindowMinimisedCallback);
+	glfwSetWindowUserPointer(mWindow, this);
+	
+	return true;
+}
+
+bool ApplicationWindow::InitGraphicsInterface()
+{
+	//opengl hint for glfw
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+	//glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+	return false;
+}
+
+void ApplicationWindow::OnWindowResizeCallback(GLFWwindow* window, int width, int height)
+{
+	ApplicationWindow* win = (ApplicationWindow*)(glfwGetWindowUserPointer(window));
+	if (!win) return;
+
+	mWindowHeight = height;
+	mWindowWidth = width;
+
+	if (width <= 0 || height <= 0)
+	{
+		win->mMinimised = true;
+		return;
+	}
+	
+	win->mMinimised = false;
+
+	if (win->mWindowResizeListener)
+		win->mWindowResizeListener(width, height);
+
+	VX_INFO("New Window Display Screen width: ", width, ", height: ", height);
+}
+
+void ApplicationWindow::OnWindowPosCallback(GLFWwindow* window, int x, int y)
+{
+	if (ApplicationWindow* win = (ApplicationWindow*)glfwGetWindowUserPointer(window))
+	{
+		win->mWindowPos[0] = x;
+		win->mWindowPos[1] = y;
+	}
+
+	VX_INFO("New Window Pos x: ", x, ", y: ", y);
+}
+
+void ApplicationWindow::OnWindowMinimisedCallback(GLFWwindow* window, int iconified)
+{
+	if (ApplicationWindow* win = (ApplicationWindow*)glfwGetWindowUserPointer(window))
+		win->mMinimised = (iconified == GLFW_TRUE) ? true : false;
+	VX_INFO("Minimised: ", iconified);
+}
+

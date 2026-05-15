@@ -1,0 +1,103 @@
+#pragma once
+#include "Application.h"
+
+#include <SampleFramework.h>
+
+static void CustomAssertHandler(const char* expr, const char* message,
+	const unsigned int lvl, const char* file, unsigned int line, const char* func)
+{
+	VX_ERROR("Assertion Failed (",
+		expr, ") in Function: ", func, "\nMessage: ",
+		((message) ? message : ""),
+		".\nFile: ", file,
+		".\nLine: ", line, ".\n\n");
+}
+
+extern Application* CreateApplication(const ApplicationSpecification& app_spec);
+
+int main(int argc, char** argv)
+{
+
+	VX_INFO(
+		"Usage:\n"
+		"--win_size x,y\n"
+		"--win_pos x,y\n"
+		"--full_screen\n"
+		"--min_debug_lvl (Debug, Info, Warning, Error)"
+	);
+
+	ApplicationSpecification app_spec;
+	app_spec.name = "Vortrix Physics";
+	app_spec.disableBindlessSupport = false;
+	app_spec.launchFullScreen = false;
+	app_spec.windowSize[0] = 1920;
+	app_spec.windowSize[1] = 1080;
+	app_spec.windowPos[0] = 0;
+	app_spec.windowPos[1] = 0;
+	///Parse command line parameter
+	///Learning about "int main(int argc, char** argv)"
+	for (int arg_idx = 0; arg_idx < argc; ++arg_idx)
+	{
+		const char* arg = argv[arg_idx];
+		std::cout << arg << "\n";
+
+		if (strncmp(arg, "--full_screen", 14) == 0)
+		{
+			VX_WARN("Enable Full Screen");
+			app_spec.launchFullScreen = true;
+		}
+		///Window size 
+		if (strncmp(arg, "--win_size", 11) == 0)
+		{
+			//might have found something
+			//parse window size
+			const char* info = arg + 11;
+			int x, y;
+			if (sscanf(info, "%d,%d", &x, &y) == 2)
+			{
+				app_spec.windowSize[0] = x;
+				app_spec.windowSize[1] = y;
+			}
+			else
+				VX_INFO("Invalid Format, \n\t Usage --win_size x,y");
+		}
+
+		///Window pos
+		if (strncmp(arg, "--win_pos", 10) == 0)
+		{
+			//might have found something
+			//parse window size
+			const char* info = arg + 10;
+			int x, y;
+			if (sscanf(info, "%d,%d", &x, &y) == 2)
+			{
+				app_spec.windowPos[0] = x;
+				app_spec.windowPos[1] = y;
+			}
+			else
+				VX_INFO("Invalid Format, \n\t Usage --win_pos x,y \n\t Captured argv", arg, " ", info);
+		}
+
+		if (strncmp(arg, "--disable_gfx_bindless", 23) == 0)
+			app_spec.disableBindlessSupport = true;
+	}
+
+	auto app = CreateApplication(app_spec);
+
+	VX_LOG_DEBUG("Size of Application: ", int(sizeof(Application)), " bytes");
+
+	try
+	{
+		app->Run();
+	}
+	catch (const std::exception& e)
+	{
+		std::cerr << e.what() << std::endl;
+		delete app;
+		return EXIT_FAILURE;
+	}
+
+	delete app;
+	return EXIT_SUCCESS;
+}
+
