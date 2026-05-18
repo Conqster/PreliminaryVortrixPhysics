@@ -15,6 +15,9 @@ static void CustomAssertHandler(const char* expr, const char* message,
 
 extern Application* CreateApplication(const ApplicationSpecification& app_spec);
 
+
+#include <thread>
+
 int main(int argc, char** argv)
 {
 	VX_LOG_INFO(
@@ -25,6 +28,8 @@ int main(int argc, char** argv)
 		"--min_debug_lvl (Debug, Info, Warning, Error)"
 	);
 
+	vx::uint32 num_threads = std::thread::hardware_concurrency();
+	VX_LOG_INFO("Number of hardware threads: ", num_threads);
 
 	ApplicationSpecification app_spec;
 	app_spec.name = "Vortrix Physics";

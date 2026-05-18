@@ -183,7 +183,7 @@ namespace vx
 		if (angle < 1e-6f)
 		{
 			//taylor
-			//mRotation = Quat(disp * 0.5f, 1.0f) * mRotation;
+			mOrientation = Quat(disp * 0.5f, 1.0f) * mOrientation;
 			//mRotation = Quat(disp * 0.5f, 1.0f-(angle*angle*0.125f)) * mRotation;
 		}
 		else

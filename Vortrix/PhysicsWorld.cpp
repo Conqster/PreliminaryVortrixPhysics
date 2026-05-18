@@ -31,6 +31,8 @@
 
 #include "SimulationContexts.h"
 
+#include "Dynamics/Joint.h"
+
 namespace vx
 {
 
@@ -342,6 +344,10 @@ namespace vx
 			mContactConstraintSolver.SolvePositionConstraint(mSettings.solver);
 
 
+		if (mTestJoint)
+			mTestJoint->Solve(dt);
+
+
 		//Body& body = mBodyManager.GetBodies()[0];
 		//body.SetPosition(Vec3(9.515f, 7.108f, 0.099f));
 
@@ -559,6 +565,8 @@ namespace vx
 		mHackDebugRenderer = debug_renderer;
 #endif // VX_DEBUG_DRAW
 
+		if (mTestJoint)
+			mTestJoint->DebugGizmos(debug_renderer);
 
 		//debug_renderer->DrawLine(mExperimentRay.origin, mExperimentRay.End(), Colour::sGreen);
 

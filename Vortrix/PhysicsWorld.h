@@ -133,6 +133,7 @@ namespace vx
 		void OnDrawBodies(Renderer* draw_renderer, const RenderSettings& setting);
 		void OnDebugDraw(DebugGizmosRenderer* debug_renderer);
 
+		class Joint* mTestJoint = nullptr;
 
 		void QuickDebugDrawInertia(DebugGizmosRenderer* debug_renderer);
 

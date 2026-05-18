@@ -22,6 +22,8 @@ namespace vx
 	static constexpr double kMaxd = 1.7976931348623158e+308;
 	static constexpr int kMaxi = 2147483647;
 
+	static constexpr float kInf = std::numeric_limits<float>::infinity();
+
 	/// raw max comparisons; NaNs propagates intentionally.
 	/// Preferred to expose numerical errors
 	/// @return Maximum of a and b 

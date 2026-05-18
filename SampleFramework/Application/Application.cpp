@@ -130,6 +130,7 @@ void operator delete[](void* memory, size_t size, std::align_val_t align) noexce
 #include "Scenarios/BoxPyramidStackScenario.h"
 #include "Scenarios/JengaScenario.h"
 #include "Scenarios/WorldQueriesScenario.h"
+#include "Scenarios/JointScenario.h"
 
 Application* CreateApplication(const ApplicationSpecification& app_spec)
 {
@@ -293,6 +294,7 @@ Application::Application(const ApplicationSpecification& app_spec)
 	mScenarioCatergoies.name = "Scenarios";
 	mScenarioCatergoies.scenarios.push_back(vx::MakeScope<SimpleBasicScenario>());
 	mScenarioCatergoies.scenarios.push_back(vx::MakeScope<WorldQueriesScenario>());
+	mScenarioCatergoies.scenarios.push_back(vx::MakeScope<JointScenario>());
 	
 	ScenarioCatergory solver_scenarios;
 	solver_scenarios.name = "Solvers";
