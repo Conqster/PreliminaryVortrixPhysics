@@ -191,7 +191,7 @@ namespace vx
 
 	}
 
-	void PhysicsWorld::GenerateWorldDefaultConfig(float& o_max_bodies, float& o_max_body_pairs, float& o_max_contact_constraint)
+	void PhysicsWorld::GenerateWorldDefaultConfig(int& o_max_bodies, int& o_max_body_pairs, int& o_max_contact_constraint)
 	{
 		o_max_bodies = 16384;
 
@@ -837,10 +837,13 @@ namespace vx
 			float hf_mag1 = ci.halfExtentB.Length();
 
 			Vec3 averge_pt(0.0f);
-			for (const auto& pt : ci.manifold.points)
+			for (int i = 0; i < ci.manifold.PointCount(); ++i)
+			{
+				const auto& pt = ci.manifold.Points()[i];
 				averge_pt += pt.pointA;
+			}
 
-			int count = static_cast<int>(ci.manifold.points.size());
+			int count = static_cast<int>(ci.manifold.PointCount());
 			averge_pt = (count > 0) ? averge_pt / float(count) : (ci.transA.GetTranslation() + ci.transB.GetTranslation()) * 0.5f;
 
 			Vec3 pt = averge_pt - (ci.contactAxis * hf_mag0 * 2.0f);

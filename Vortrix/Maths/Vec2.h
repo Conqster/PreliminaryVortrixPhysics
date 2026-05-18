@@ -193,14 +193,14 @@ namespace vx
 			return os;
 		}
 
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		/// Store SIMD vector into this Vec2
 		/// Uses lower two lanes
 		VX_INLINE void Store(__m128 v)
 		{
 			_mm_storel_pi(reinterpret_cast<__m64*>(this), v);
 		}
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 
 
 		///////NEW NEW 

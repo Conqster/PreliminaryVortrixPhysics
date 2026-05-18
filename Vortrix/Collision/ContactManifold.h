@@ -21,27 +21,59 @@ namespace vx{
 
 	struct ContactManifold
 	{
+		static constexpr int kMaxPoints = 4;
+
+		ContactManifold(Body* _a, Body* _b) :
+			a(_a), b(_b), normal(Vec3::Up()),
+			mPoints({}), mPointCount(0) {}
+
+		~ContactManifold() = default;
+
 		Body* a = nullptr;
 		Body* b = nullptr;
 
 		Vec3 normal = Vec3::Up();
 
-		//std::vector<ManifoldPoint> points;
-		const static int kMaxPoints = 4;
-		std::array<ManifoldPoint, kMaxPoints> points{};
-		int numManifoldPoints = 0;
+
+		VX_INLINE int PointCount() const { return mPointCount; }
 
 
-		void Store(const ManifoldPoint* _points, int count)
-		{
-			numManifoldPoints = VxMin(count, kMaxPoints);
-			//std::memcpy(points.data(), _points, count * sizeof(ManifoldPoint)); //vec3 not trovia
-			std::copy(_points,
-				_points + numManifoldPoints,
-				points.begin());
+		/// use PointsPtr & SetPoint sparingly 
+		/// inotder to support low-level manipulation 
+		/// like geometrical sorting, then set count etc
+		VX_INLINE ManifoldPoint* PointsPtr() { return mPoints.data(); }
+		VX_INLINE const ManifoldPoint* Points() const { return mPoints.data(); }
+		VX_INLINE void SetPointCount(int count)
+		{ 
+			VX_ASSERT(count <= kMaxPoints);
+			mPointCount = count; 
 		}
 
+		VX_INLINE void Store(const ManifoldPoint* _points, int count)
+		{
+			mPointCount = VxMin(count, kMaxPoints);
+			//std::memcpy(points.data(), _points, count * sizeof(ManifoldPoint)); //vec3 not trovia
+			std::copy(_points,
+				_points + mPointCount,
+				mPoints.begin());
+		}
+
+		VX_INLINE void AddPoint(const Vec3& point_a, const Vec3& point_b, float penetration)
+		{
+			VX_ASSERT(mPointCount < kMaxPoints);
+
+			ManifoldPoint& mp = mPoints[mPointCount++];
+			mp.pointA = point_a;
+			mp.peneration = penetration;
+			mp.pointB = point_b;
+		}
+
+		VX_INLINE void Clear() { mPointCount = 0; }
 	private:
+
+		std::array<ManifoldPoint, kMaxPoints> mPoints{};
+		int mPointCount = 0;
+
 		friend class ContactConstraintSolver;
 		friend class CollisionDispatcher;
 		//prevent external swap, except ContactConstraintSolver
@@ -54,9 +86,9 @@ namespace vx{
 		{
 			normal = -normal;
 
-			for (int i = 0; i < numManifoldPoints; ++i)
+			for (int i = 0; i < mPointCount; ++i)
 			{
-				auto& mp = points[i];
+				auto& mp = mPoints[i];
 				std::swap(mp.pointA, mp.pointB);
 			}
 		}

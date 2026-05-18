@@ -138,7 +138,7 @@ namespace vx
 		////| [   xz + wy		  yz - wx      1 - (xx - yy)]|
 		VX_ASSERT(q.IsUnitQuat(), "Quaternion is not unit");
 
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 
 
 		__m128 _q = q.XYZW().Value();
@@ -225,7 +225,7 @@ namespace vx
 		return Mat44(Vec4(1.0f - (yy + zz), xy + zw, xz - yw, 0.0f),
 			Vec4(xy - zw, (1.0f - zz) - xx, yz + xw, 0.0f),
 			Vec4(xz + yw, yz - xw, (1.0f - xx) - yy, 0.0f));
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 	}
 
 	
@@ -243,7 +243,7 @@ namespace vx
 ////| [   xz + wy		  yz - wx      1 - (xx - yy)]|
 		VX_ASSERT(q.IsUnitQuat(1e-6f), "Quaternion is not unit");
 
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 
 
 		__m128 _q = q.XYZW().Value();
@@ -341,7 +341,7 @@ namespace vx
 			Vec4(xy - zw, (1.0f - zz) - xx, yz + xw, 0.0f),
 			Vec4(xz + yw, yz - xw, (1.0f - xx) - yy, 0.0f),
 			Vec4(t, 1.0f));
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 	}
 
 	inline VX_INLINE float& Mat44::operator()(int row, int column)
@@ -432,7 +432,7 @@ namespace vx
 		if (Determinant3x3() < 0.0f) 
 			return false;
 
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 
 
 		/// ????? 
@@ -485,7 +485,7 @@ namespace vx
 		if (VxAbs(y.Dot(z)) > tolerance)return false;
 
 		return true;
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 	}
 
 	inline VX_INLINE Mat44 Mat44::Transposed3x3() const
@@ -502,7 +502,7 @@ namespace vx
 
 	inline VX_INLINE Mat44 Mat44::Transposed() const
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		Mat44 result;
 		__m128 c0 = mCol[0].Value();
 		__m128 c1 = mCol[1].Value();
@@ -523,7 +523,7 @@ namespace vx
 			for (int r = 0; r < 4; ++r)
 				result.mFloats[c * 4 + r] = mFloats[r * 4 + c];
 		return result;
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 	}
 
 	inline VX_INLINE Mat44 Mat44::Inverse3x3() const
@@ -533,7 +533,7 @@ namespace vx
 		VX_ASSERT(VxAbs(det) > kEpsilon, "Matrix is singular (non-invertible)");
 
 
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 
 		const __m128 inv_det = _mm_set1_ps(1.0f / det);
 
@@ -621,7 +621,7 @@ namespace vx
 
 
 		return result;
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 	}
 
 	inline VX_INLINE Mat44 Mat44::InverseAffine() const
@@ -631,7 +631,7 @@ namespace vx
 		const float det3x3 = Determinant3x3();
 		VX_ASSERT(VxAbs(det3x3) > kEpsilon, "Matrix is singular (non-invertible)");
 
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		const __m128 inv_det = _mm_set1_ps(1.0f / det3x3);
 
 		__m128 c0 = mCol[0].Value();
@@ -747,12 +747,12 @@ namespace vx
 			result.mFloats[10] * mFloats[14]);
 
 		return result;
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 	}
 
 	inline VX_INLINE Vec3 Mat44::Multiply3x3(const Vec3& rhs) const
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		/// 0x + 4y + 8z + ;0z
 		/// 1x + 5y + 9z + ;0z
 		/// 2x + 6y + 10z +;0z
@@ -778,7 +778,7 @@ namespace vx
 		return Vec3(mFloats[0] * rhs[0] + mFloats[4] * rhs[1] + mFloats[8] * rhs[2],
 			mFloats[1] * rhs[0] + mFloats[5] * rhs[1] + mFloats[9] * rhs[2],
 			mFloats[2] * rhs[0] + mFloats[6] * rhs[1] + mFloats[10] * rhs[2]);
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 	}
 
 	inline VX_INLINE Vec3 Mat44::Multiply3x3Transposed(const Vec3& rhs) const
@@ -787,7 +787,7 @@ namespace vx
 		/// 4x + 5y + 6z + ;0z
 		/// 8x + 9y + 10z +;0z
 		/// 
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		__m128 v = rhs.Value();
 		/// 0x71 -> 0111 0001 : op first 3 & store 1 (first)
 		/// 0xf1 -> 1111 0001 : op first 4 & store 1 (first)
@@ -815,12 +815,12 @@ namespace vx
 			mFloats[0] * rhs.X() + mFloats[1] * rhs.Y() + mFloats[2] * rhs.Z(),
 			mFloats[4] * rhs.X() + mFloats[5] * rhs.Y() + mFloats[6] * rhs.Z(),
 			mFloats[8] * rhs.X() + mFloats[9] * rhs.Y() + mFloats[10] * rhs.Z());
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 	}
 
 	inline VX_INLINE Vec3 Mat44::MultiplyAffine(const Vec3& rhs) const
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		/// 0x + 4y + 8z + ;0z
 		/// 1x + 5y + 9z + ;0z
 		/// 2x + 6y + 10z +;0z
@@ -849,14 +849,14 @@ namespace vx
 		return Vec3(mFloats[0] * rhs[0] + mFloats[4] * rhs[1] + mFloats[8] * rhs[2] + mFloats[12],
 					mFloats[1] * rhs[0] + mFloats[5] * rhs[1] + mFloats[9] * rhs[2] + mFloats[13],
 					mFloats[2] * rhs[0] + mFloats[6] * rhs[1] + mFloats[10] * rhs[2] + mFloats[14]);
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 	}
 
 	inline VX_INLINE Mat44 Mat44::Multiply3x3(const Mat44& rhs) const
 	{
 		Mat44 result(1.0f); //ensures translate & bottom entries are 0, 0, 0, 1
 		//with diagonal entries as 1 and off-diagonal as 0's
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 
 		/// .SetColumn3 & 
 
@@ -903,7 +903,7 @@ namespace vx
 			result.mFloats[col * 4 + 1] = mFloats[1] * r0 + mFloats[5] * r1 + mFloats[9] * r2;
 			result.mFloats[col * 4 + 2] = mFloats[2] * r0 + mFloats[6] * r1 + mFloats[10] * r2;
 		}
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 		return result;
 	}
 
@@ -911,7 +911,7 @@ namespace vx
 	{
 		Mat44 result(1.0f); //ensures translate & bottom entries are 0, 0, 0, 1
 		//with diagonal entries as 1 and off-diagonal as 0's
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 
 		/// .SetColumn3 & 
 
@@ -967,7 +967,7 @@ namespace vx
 			result.mFloats[i * 4 + 1] = mFloats[4] * c0 + mFloats[5] * c1 + mFloats[6] * c2;
 			result.mFloats[i * 4 + 2] = mFloats[8] * c0 + mFloats[9] * c1 + mFloats[10] * c2;
 		}
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 		return result;
 	}
 
@@ -975,7 +975,7 @@ namespace vx
 	{
 		Mat44 result(1.0f); //ensures translate & bottom entries are 0, 0, 0, 1
 		//with diagonal entries as 1 and off-diagonal as 0's
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 
 		/// .SetColumn3 & 
 
@@ -1051,7 +1051,7 @@ namespace vx
 			result.mFloats[i * 4 + 1] = mFloats[1] * r0 + mFloats[5] * r1 + mFloats[9] * r2;
 			result.mFloats[i * 4 + 2] = mFloats[2] * r0 + mFloats[6] * r1 + mFloats[10] * r2;
 		}
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 		return result;
 	}
 
@@ -1069,7 +1069,7 @@ namespace vx
 		
 
 		Mat44 result;
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		for (int i = 0; i < 4; ++i)
 		{
 			__m128 c = rhs.mCol[i].Value();
@@ -1093,13 +1093,13 @@ namespace vx
 					mFloats[3 * 4 + r] * rhs.mFloats[c * 4 + 3];
 			}
 
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 		return result;
 	}
 
 	inline VX_INLINE Vec4 Mat44::Multiply(const Vec4& rhs) const
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 
 		__m128 v = rhs.Value();
 		__m128 r = _mm_mul_ps(mCol[0].Value(), _mm_shuffle_ps(v, v, _MM_SHUFFLE(0, 0, 0, 0)));
@@ -1112,7 +1112,7 @@ namespace vx
 					mFloats[1] * rhs[0] + mFloats[5] * rhs[1] + mFloats[9] * rhs[2] + mFloats[13] * rhs[3],
 					mFloats[2] * rhs[0] + mFloats[6] * rhs[1] + mFloats[10] * rhs[2] + mFloats[14] * rhs[3],
 					mFloats[3] * rhs[0] + mFloats[7] * rhs[1] + mFloats[11] * rhs[2] + mFloats[15] * rhs[3]);
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 	}
 
 	inline VX_INLINE Mat44 Mat44::MultiplyAffine(const Mat44& rhs) const
@@ -1122,7 +1122,7 @@ namespace vx
 		Mat44 result;
 
 		///3x3 
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		/// .SetColumn3 & 
 		/// .SetTranslation 
 		/// Preserves Affine [0, 0, 0, 1]
@@ -1176,7 +1176,7 @@ namespace vx
 		//bottom row (affine constant) | 3 7 11 15 | -> [0, 0, 0, 1]
 		result.mFloats[3] = result.mFloats[7] = result.mFloats[11] = 0;
 		result.mFloats[15] = 1.0f;
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 
 		return result;
 	}
@@ -1184,13 +1184,13 @@ namespace vx
 	inline VX_INLINE Mat44 Mat44::Add(const Mat44& rhs) const
 	{
 		Mat44 result;
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		for (int i = 0; i < 4; ++i)
 			result.mCol[i] = mCol[i] + rhs.mCol[i];
 #else
 		for (int i = 0; i < 16; ++i)
 			result.mFloats[i] = mFloats[i] + rhs.mFloats[i];
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 		return result;
 	}
 
@@ -1202,14 +1202,14 @@ namespace vx
 		/// but if not waste extra scalar add ops
 		/// so manual add, to minimise waste
 		Mat44 result;
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		for (int i = 0; i < 4; ++i)
 			result.mCol[i] = mCol[i] + rhs.mCol[i]; ///<-- using sse under the hood
 		//result.mCol[i] = _mm_add_ps(mCol[i].Value(), rhs.mCol[i].Value());
 #else
 		for (int i = 0; i < 16; ++i)
 			result.mFloats[i] = mFloats[i] + rhs.mFloats[i];
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 
 		//ensure bottom [0 0 0 1] is consitent
 		//if both affine 0 0 0 would remain 0
@@ -1307,7 +1307,7 @@ namespace vx
 		////| [   xz + wy		  yz - wx      1 - (xx - yy)]|
 		VX_ASSERT(q.IsUnitQuat(), "Quaternion is not unit");
 
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 
 
 		__m128 _q = q.XYZW().Value();
@@ -1397,7 +1397,7 @@ namespace vx
 		mCol[0] = Vec4(1.0f - (yy + zz), xy + zw, xz - yw, 0.0f);
 		mCol[1] = Vec4(xy - zw, (1.0f - zz) - xx, yz + xw, 0.0f);
 		mCol[2] = Vec4(xz + yw, yz - xw, (1.0f - xx) - yy, 0.0f);
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 	}
 
 	inline VX_INLINE void Mat44::SetRotationAndTranslation(const Quat& q, const Vec3& pos)

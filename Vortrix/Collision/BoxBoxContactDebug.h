@@ -22,7 +22,7 @@ namespace vx {
 		Vec3 halfExtentA;
 		Vec3 halfExtentB;
 
-		ContactManifold manifold;
+		ContactManifold manifold{nullptr, nullptr};
 
 		Vec3 contactAxis;
 		bool active = false;

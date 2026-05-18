@@ -7,7 +7,7 @@ namespace vx
 
 	inline Vec4::Vec4(float x, float y, float z, float w)
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		mValue = _mm_setr_ps(x, y, z, w);
 #else
 		mFloats[0] = x;
@@ -19,7 +19,7 @@ namespace vx
 	}
 	inline Vec4::Vec4(float x, float y, float z)
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		mValue = _mm_setr_ps(x, y, z, z);
 #else
 		mFloats[0] = x;
@@ -31,7 +31,7 @@ namespace vx
 
 	inline Vec4::Vec4(float scalar)
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		mValue = _mm_set1_ps(scalar);
 #else
 		for (int i = 0; i < 4; i++)
@@ -45,7 +45,7 @@ namespace vx
 
 	inline Vec4::Vec4(const Vec3 & vec3, float w)
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		/// using blend 
 		/// vec a & b 
 		/// mask 0 write a to corresponding lane 
@@ -57,26 +57,26 @@ namespace vx
 		for (int i = 0; i < 3; i++)
 			mFloats[i] = vec3[i];
 		mFloats[3] = w;
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 	}
 
 	VX_INLINE __m128 Vec4::Value() const
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		return mValue;
 #else
 		return _mm_load_ps(mFloats);
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 	}
 
 	inline __m128& Vec4::Value()
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		return mValue;
 #else
 		__m128 garbage;
 		return garbage;
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 	}
 
 	inline VX_INLINE float& Vec4::operator[](uint32_t i)
@@ -91,7 +91,7 @@ namespace vx
 	}
 	inline VX_INLINE float Vec4::GetLane(const Vec4& v, int idx)
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		return simd::GetLane(v.mValue, idx);
 #else
 		return v.mFloats[idx];
@@ -100,7 +100,7 @@ namespace vx
 
 	inline VX_INLINE Vec4 Vec4::Zero()
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		//return Vec4(_mm_setzero_ps());
 		return _mm_setzero_ps();
 #else
@@ -110,7 +110,7 @@ namespace vx
 
 	inline VX_INLINE void Vec4::ToZero()
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		mValue = _mm_setzero_ps();
 #else
 		for (int i = 0; i < 4; i++)
@@ -120,7 +120,7 @@ namespace vx
 
 	VX_INLINE Vec4 Vec4::Abs() const
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		return _mm_max_ps(_mm_sub_ps(_mm_setzero_ps(), mValue), mValue);
 #else
 		return Vec4(std::fabs(mFloats[0]), std::fabs(mFloats[1]), fabs(mFloats[2]), fabs(mFloats[3]));
@@ -129,7 +129,7 @@ namespace vx
 
 	VX_INLINE Vec4 Vec4::Sign() const
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		return _mm_or_ps(_mm_and_ps(mValue, _mm_set_ps1(-1.0f)), _mm_set_ps1(1.0f));
 #else
 		return Vec4(std::copysign(1.0f, mFloats[0]), std::copysign(1.0f, mFloats[1]), std::copysign(1.0f, mFloats[2]), std::copysign(1.0f, mFloats[3]));
@@ -159,7 +159,7 @@ namespace vx
 
 	inline VX_INLINE Vec4 Vec4::operator+(const Vec4& rhs) const
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		return _mm_add_ps(mValue, rhs.mValue);
 #else
 		return Vec4(mFloats[0] + rhs.mFloats[0],
@@ -171,7 +171,7 @@ namespace vx
 
 	inline VX_INLINE Vec4& Vec4::operator+=(const Vec4& rhs)
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		mValue = _mm_add_ps(mValue, rhs.mValue);
 #else
 		for (int i = 0; i < 4; ++i)
@@ -183,7 +183,7 @@ namespace vx
 
 	inline VX_INLINE Vec4 Vec4::operator-(const Vec4& rhs) const
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		return _mm_sub_ps(this->mValue, rhs.mValue);
 #else
 		return Vec4(mFloats[0] - rhs.mFloats[0],
@@ -195,7 +195,7 @@ namespace vx
 
 	inline VX_INLINE Vec4& Vec4::operator-=(const Vec4& rhs)
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		mValue = _mm_sub_ps(this->mValue, rhs.mValue);
 #else
 		for (int i = 0; i < 4; ++i)
@@ -207,7 +207,7 @@ namespace vx
 
 	inline VX_INLINE Vec4 Vec4::operator*(const float scalar) const
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		//broad cast or load scalar
 		return _mm_mul_ps(mValue, _mm_set_ps1(scalar));
 #else
@@ -220,7 +220,7 @@ namespace vx
 
 	inline VX_INLINE Vec4& Vec4::operator*=(const float scalar)
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		mValue = _mm_mul_ps(mValue, _mm_set_ps1(scalar));
 #else
 		for (int i = 0; i < 4; ++i)
@@ -232,7 +232,7 @@ namespace vx
 
 	inline Vec4 Vec4::operator/(const float scalar) const
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		//return _mm_div_ps(value, _mm_set_ps1(scalar));//<- expensive div per lane
 		//return _mm_mul_ps(value, _mm_set_ps1(1.0f /scalar)); <- loss precision due 1/s, most case fastest 
 
@@ -250,7 +250,7 @@ namespace vx
 
 	inline Vec4& Vec4::operator/=(const float scalar)
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		//return _mm_div_ps(value, _mm_set_ps1(scalar));//<- expensive div per lane
 		//return _mm_mul_ps(value, _mm_set_ps1(1.0f /scalar)); <- loss precision due 1/s, most case fastest 
 
@@ -267,18 +267,18 @@ namespace vx
 
 	inline VX_INLINE Vec4 Vec4::operator-() const
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		return _mm_sub_ps(_mm_setzero_ps(), mValue);
 #else
 		return Vec4(-mFloats[0], -mFloats[1], -mFloats[2], -mFloats[3]);
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 	}
 
 
 
 	inline VX_INLINE Vec4 Vec4::operator*(const Vec4& rhs) const
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		//broad cast or load scalar
 		return _mm_mul_ps(mValue, rhs.mValue);
 #else
@@ -286,19 +286,19 @@ namespace vx
 			mFloats[1] * rhs.mFloats[1],
 			mFloats[2] * rhs.mFloats[2],
 			mFloats[3] * rhs.mFloats[3]);
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 	}
 
 
 	inline VX_INLINE Vec4& Vec4::operator*=(const Vec4& rhs)
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		//broad cast or load scalar
 		mValue = _mm_mul_ps(mValue, rhs.mValue);
 #else
 		for (int i = 0; i < 4; ++i)
 			mFloats[i] *= rhs.mFloats[i];
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 
 		return *this;
 	}
@@ -307,7 +307,7 @@ namespace vx
 
 	Vec4 Vec4::operator/(const Vec4& rhs) const
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		//return _mm_div_ps(value, _mm_set_ps1(scalar));//<- expensive div per lane
 		//return _mm_mul_ps(value, _mm_set_ps1(1.0f /scalar)); <- loss precision due 1/s, most case fastest 
 
@@ -323,7 +323,7 @@ namespace vx
 
 	inline VX_INLINE Vec4& Vec4::operator/=(const Vec4& rhs)
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		//return _mm_div_ps(value, _mm_set_ps1(scalar));//<- expensive div per lane
 		//return _mm_mul_ps(value, _mm_set_ps1(1.0f /scalar)); <- loss precision due 1/s, most case fastest 
 
@@ -338,7 +338,7 @@ namespace vx
 
 	VX_INLINE bool Vec4::operator == (const Vec4& rhs) const
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		__m128 cmp = _mm_cmpeq_ps(mValue, rhs.mValue);
 		int mask = _mm_movemask_ps(cmp);
 		return mask == 0b1111;
@@ -359,7 +359,7 @@ namespace vx
 
 	inline VX_INLINE float Vec4::MinComponent() const
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		//__m128 shuf1 = _mm_shuffle_ps(value, value, _MM_SHUFFLE(2, 3, 0, 1)); // y z w x
 		//__m128 min1 = _mm_min_ps(value, shuf1); // min(x,y) min(y,z) min(z,w) min(w,x)
 		//__m128 shuf2 = _mm_shuffle_ps(min1, min1, _MM_SHUFFLE(1, 0, 3, 2)); // z w x y
@@ -384,7 +384,7 @@ namespace vx
 
 	inline VX_INLINE float Vec4::MaxComponent() const
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		//__m128 shuf1 = _mm_shuffle_ps(value, value, _MM_SHUFFLE(2, 3, 0, 1)); // y z w x
 		//__m128 max1 = _mm_max_ps(value, shuf1); // max(x,y) max(y,z) max(z,w) max(w,x)
 		//__m128 shuf2 = _mm_shuffle_ps(max1, max1, _MM_SHUFFLE(1, 0, 3, 2)); // z w x y
@@ -420,7 +420,7 @@ namespace vx
 
 	inline VX_INLINE Vec4 Vec4::Min(const Vec4& lhs, const Vec4& rhs)
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		return _mm_min_ps(lhs.mValue, rhs.mValue);
 #else
 		return Vec4(std::min(lhs.mFloats[0], rhs.mFloats[0]),
@@ -432,7 +432,7 @@ namespace vx
 
 	inline VX_INLINE Vec4 Vec4::Max(const Vec4& lhs, const Vec4& rhs)
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		return _mm_max_ps(lhs.mValue, rhs.mValue);
 #else
 		return Vec4(std::max(lhs.mFloats[0], rhs.mFloats[0]),
@@ -450,7 +450,7 @@ namespace vx
 
 	inline VX_INLINE float Vec4::Dot(const Vec4& rhs) const
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		/// 0x71 -> 0111 0001 : op first 3 & store 1 (first)
 		/// 0xf1 -> 1111 0001 : op first 4 & store 1 (first)
 		/// 
@@ -481,7 +481,7 @@ namespace vx
 
 	inline VX_INLINE float Vec4::Dot(const Vec4& lhs, const Vec4& rhs)
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		/// 0x71 -> 0111 0001 : op first 3 & store 1 (first)
 		/// 0xf1 -> 1111 0001 : op first 4 & store 1 (first)
 		/// 
@@ -511,7 +511,7 @@ namespace vx
 
 	inline VX_INLINE Vec3 Vec4::Cross3(const Vec4& lhs, const Vec4& rhs)
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		/// y * z - z * y
 		/// z * x - x * z
 		/// x * y - y * x
@@ -559,7 +559,7 @@ namespace vx
 
 	inline VX_INLINE float Vec4::LengthSq() const
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		return _mm_cvtss_f32(_mm_dp_ps(mValue, mValue, 0xf1));
 #else
 		float len_sq = 0.0f;
@@ -571,7 +571,7 @@ namespace vx
 
 	inline VX_INLINE float Vec4::Length() const
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		return _mm_cvtss_f32(_mm_sqrt_ss(_mm_dp_ps(mValue, mValue, 0xf1)));
 #else
 		float len_sq = 0.0f;
@@ -585,7 +585,7 @@ namespace vx
 
 	inline VX_INLINE Vec4 Vec4::Normalised() const
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		/// 0x71 -> 0111 0001 : op first 3 & store 1 (first)
 		/// 0xf1 -> 1111 0001 : op first 4 & store 1 (first)
 		/// 
@@ -618,7 +618,7 @@ namespace vx
 
 	inline VX_INLINE Vec4& Vec4::Normalise()
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		/// 0x71 -> 0111 0001 : op first 3 & store 1 (first)
 		/// 0xf1 -> 1111 0001 : op first 4 & store 1 (first)
 		/// 
@@ -656,7 +656,7 @@ namespace vx
 
 	inline VX_INLINE Vec4 Vec4::Inverted() const
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		//return _mm_mul_ps(mValue, _mm_set_ps1(-1.0f)); <-- extra cycle
 		return _mm_xor_ps(mValue, _mm_set_ps1(-0.0f)); //<-- 1 cycle (bitwise)
 #else
@@ -666,7 +666,7 @@ namespace vx
 
 	inline VX_INLINE Vec4& Vec4::Invert()
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		mValue = _mm_xor_ps(mValue, _mm_set_ps1(-0.0f));
 #else
 		for (int i = 0; i < 4; ++i)
@@ -678,22 +678,22 @@ namespace vx
 
 	inline VX_INLINE Vec4 Vec4::Sqrt() const
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		return Vec4(_mm_sqrt_ps(mValue));
 #else
 		return Vec4(VxSqrt(mFloats[0]), VxSqrt(mFloats[1]), VxSqrt(mFloats[2]));
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 	}
 
 	inline VX_INLINE Vec4& Vec4::SqrtAssign()
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		mValue = _mm_sqrt_ps(mValue);
 #else
 		mFloats[0] = VxSqrt(mFloats[0]);
 		mFloats[1] = VxSqrt(mFloats[1]);
 		mFloats[2] = VxSqrt(mFloats[2]);
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 
 		return *this;
 	}
@@ -702,14 +702,14 @@ namespace vx
 	template<int X, int Y, int Z, int W>
 	inline VX_INLINE void vx::Vec4::FlipSignAssign()
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		mValue = _mm_xor_ps(mValue, simd::SignMask<X, Y, Z, W>());
 #else
 		mFloats[0] = mFloats[0] * X;
 		mFloats[1] = mFloats[1] * Y;
 		mFloats[2] = mFloats[2] * Z;
 		mFloats[3] = mFloats[3] * W;
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 	}
 
 	template<int X, int Y, int Z, int W>
@@ -724,7 +724,7 @@ namespace vx
 	template<Axis Swizzle_X, Axis Swizzle_Y, Axis Swizzle_Z, Axis Swizzle_W>
 	inline VX_INLINE [[nodiscard]] Vec4 Vec4::Swizzle() const
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		return _mm_shuffle_ps(mValue, mValue, _MM_SHUFFLE(static_cast<int>(Swizzle_W),
 			static_cast<int>(Swizzle_Z),
 			static_cast<int>(Swizzle_Y),
@@ -734,7 +734,7 @@ namespace vx
 			mFloats[static_cast<int>(Swizzle_Y)],
 			mFloats[static_cast<int>(Swizzle_Z)],
 			mFloats[static_cast<int>(Swizzle_W)]);
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 	}
 
 
@@ -745,7 +745,7 @@ namespace vx
 
 	inline VX_INLINE Vec3 Vec4::XYZ() const
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		return _mm_shuffle_ps(mValue, mValue, _MM_SHUFFLE(2, 2, 1, 0));
 #else
 		return Vec3(mFloats[0], mFloats[1], mFloats[2]);
@@ -754,7 +754,7 @@ namespace vx
 
 	inline VX_INLINE Vec4 Vec4::XYZZ() const
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		return _mm_shuffle_ps(mValue, mValue, _MM_SHUFFLE(2, 2, 1, 0));
 #else
 		return Vec4(mFloats[0], mFloats[1], mFloats[2], mFloats[2]);
@@ -777,7 +777,7 @@ namespace vx
 
 	inline VX_INLINE Vec4 Vec4::Broadcast(float scalar)
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		return _mm_set_ps1(scalar);
 #else
 		return Vec4(scalar, scalar, scalar, scalar);
@@ -786,7 +786,7 @@ namespace vx
 
 	inline VX_INLINE Vec4 Vec4::SplatX() const
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		return _mm_shuffle_ps(mValue, mValue, _MM_SHUFFLE(0, 0, 0, 0));
 #else
 		return Vec4(mFloats[0], mFloats[0], mFloats[0], mFloats[0]);
@@ -795,7 +795,7 @@ namespace vx
 
 	inline VX_INLINE Vec4 Vec4::SplatY() const
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		return _mm_shuffle_ps(mValue, mValue, _MM_SHUFFLE(1, 1, 1, 1));
 #else
 		return Vec4(mFloats[1], mFloats[1], mFloats[1], mFloats[1]);
@@ -804,7 +804,7 @@ namespace vx
 
 	inline VX_INLINE Vec4 Vec4::SplatZ() const
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		return _mm_shuffle_ps(mValue, mValue, _MM_SHUFFLE(2, 2, 2, 2));
 #else
 		return Vec4(mFloats[2], mFloats[2], mFloats[2], mFloats[2]);
@@ -813,7 +813,7 @@ namespace vx
 
 	inline VX_INLINE Vec4 Vec4::SplatW() const
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		return _mm_shuffle_ps(mValue, mValue, _MM_SHUFFLE(3, 3, 3, 3));
 #else
 		return Vec4(mFloats[3], mFloats[3], mFloats[3], mFloats[3]);
@@ -822,7 +822,7 @@ namespace vx
 
 	inline VX_INLINE Vec4 Vec4::LoadAligned(const float* v)
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		return _mm_load_ps(v);
 #else
 		return Vec4(v[0], v[1], v[2], v[3]);
@@ -832,7 +832,7 @@ namespace vx
 
 	inline VX_INLINE Vec4 Vec4::Load(const float* v)
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		return _mm_loadu_ps(v);
 #else
 		return Vec4(v[0], v[1], v[2], v[3]);
@@ -842,7 +842,7 @@ namespace vx
 
 	inline void Vec4::Add3(const Vec3& v3)
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		mValue = _mm_add_ps(mValue, v3.Value());
 #else
 		mFloats[0] + rhs.mFloats[0];
@@ -853,7 +853,7 @@ namespace vx
 	}
 	inline void Vec4::Multiply3(const Vec3& v3)
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		mValue = _mm_mul_ps(mValue, v3.Value());
 #else
 		mFloats[0] * rhs.mFloats[0];

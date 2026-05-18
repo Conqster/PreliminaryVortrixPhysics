@@ -1,6 +1,6 @@
 #pragma once
 
-#define VX_USE_SSE
+#define VX_SIMD_SSE
 
 #if defined (_MSC_VER)
 #define VX_INLINE __forceinline
@@ -9,7 +9,7 @@
 #endif // defined (_MSVC_VER)
 
 #include <iostream>
-#if defined(VX_USE_SSE)
+#if defined(VX_SIMD_SSE)
 #include <xmmintrin.h>
 
 #endif // defined(USE_SIMD_SSE)

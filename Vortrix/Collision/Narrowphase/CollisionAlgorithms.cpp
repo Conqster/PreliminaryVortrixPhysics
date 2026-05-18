@@ -22,15 +22,15 @@ namespace vx::Narrowphase {
 		return std::tuple(shape_a, shape_b);
 	}
 
-	VX_INLINE void SwapContactOrientation(ContactManifold& in_out_m)
-	{
-		in_out_m.normal = -in_out_m.normal;
-		for (int i = 0; i < in_out_m.numManifoldPoints; ++i)
-		{
-			auto& mp = in_out_m.points[i];
-			std::swap(mp.pointA, mp.pointB);
-		}
-	}
+	//VX_INLINE void SwapContactOrientation(ContactManifold& in_out_m)
+	//{
+	//	in_out_m.normal = -in_out_m.normal;
+	//	for (int i = 0; i < in_out_m.PointsCount(); ++i)
+	//	{
+	//		auto& mp = in_out_m.points[i];
+	//		std::swap(mp.pointA, mp.pointB);
+	//	}
+	//}
 
 	VX_INLINE void SwapContactManifoldPoints(ManifoldPoint* in_out_m, int count)
 	{
@@ -70,13 +70,11 @@ namespace vx::Narrowphase {
 	
 
 		o_manifold.normal = nor;
-		o_manifold.numManifoldPoints = 1;
 
-		o_manifold.points[0] = {
-			in_posA + nor * ra,
-			sum_radius - dist, //dummy penetration remove later
-			in_posB - nor * rb
-		};
+		o_manifold.AddPoint(Vec3::FMAdd(nor, Vec3(ra), in_posA),
+			Vec3::NegateFMAdd(nor, Vec3(rb), in_posB),
+			//Vec3::FusedMultiplyAdd(-nor, Vec3(rb), in_posB),
+			sum_radius - dist); //dummy penetration remove later
 		return true;
 	}
 
@@ -111,12 +109,11 @@ namespace vx::Narrowphase {
 		float penetration = radius - dist;
 
 		o_manifold.normal = world_nor;
-		o_manifold.numManifoldPoints = 1;
-		o_manifold.points[0] = {
+		o_manifold.AddPoint(
 			sphere_pos + world_nor * radius,
-			penetration,
-			world_pt_on_plane
-		};
+			world_pt_on_plane,
+			penetration
+		);
 		return true;
 	}
 
@@ -159,12 +156,11 @@ namespace vx::Narrowphase {
 		//sum_radius - dist, //dummy penetration remove later
 
 		o_manifold.normal = nor;
-		o_manifold.numManifoldPoints = 1;
-		o_manifold.points[0] = {
+		o_manifold.AddPoint(
 			pt_on_seg + nor * capsule_r, //point on capsule
-			sum_radius - dist, //dummy penetration remove later
 			C - nor * sphere_r, //point on sphere
-		};
+			sum_radius - dist //dummy penetration remove later
+		);
 		return true;
 	}
 
@@ -232,12 +228,12 @@ namespace vx::Narrowphase {
 
 
 		o_manifold.normal = n;
-		o_manifold.numManifoldPoints = 1;
-		o_manifold.points[0] = {
+		o_manifold.AddPoint(
 			pA + n * ra,
-			sum_radius - dist, //dummy
-			pB - n * rb
-		};
+			pB - n * rb,
+			sum_radius - dist //dummy
+		);
+
 		return true;
 	}
 
@@ -274,40 +270,33 @@ namespace vx::Narrowphase {
 		/// capsule as ref A -> B (capsule -> plane)
 		Vec3 nor = plane_transform.Multiply3x3(-plane_n).Normalised();
 		o_manifold.normal = nor;
-		auto& manifold_pts = o_manifold.points;
-		int pts_found = 0;
 
 		if (da <= r)
 		{
 			Vec3 local_pt_on_plane = local_a - plane_n * da;
-			manifold_pts[pts_found++] =
-			{
+			o_manifold.AddPoint(
 				a + nor * r, //pt on capsule
-				r - da, //dummy
-				plane_transform.Transform(local_pt_on_plane) //pt on plane
-			};
+				plane_transform.Transform(local_pt_on_plane), //pt on plane
+				r - da //dummy
+			);
 		}
 		if (db <= r)
 		{
 			Vec3 local_pt_on_plane = local_b - plane_n * db;
-			manifold_pts[pts_found++] =
-			{
+			o_manifold.AddPoint(
 				b + nor * r, //pt on capsule
-				r - db, //dummy
-				plane_transform.Transform(local_pt_on_plane) //pt on plane
-			};
+				plane_transform.Transform(local_pt_on_plane), //pt on plane
+				r - db //dummy
+			);
 		}
-		o_manifold.numManifoldPoints = pts_found;
 
 
 		/// TO-DO: this is just a hack; this is a serious bug 
 		/// we should have an overlap and generate no points
 		///		 
-		if (pts_found <= 0) return false;
-		VX_ASSERT_WARN(pts_found != 0, "About to generate a manifold with zero points");
-
-		SortContactManifold_Deepest(manifold_pts.data(), pts_found);
-		return pts_found;
+		if (o_manifold.PointCount() <= 0) return false;
+		SortContactManifold_Deepest(o_manifold.PointsPtr(), o_manifold.PointCount());
+		return true;
 	}
 
 
@@ -406,15 +395,11 @@ namespace vx::Narrowphase {
 
 
 		o_manifold.normal = n;
-		o_manifold.numManifoldPoints = 1;
-		o_manifold.points[0] =
-		{
+		o_manifold.AddPoint(
 			closest_pt_world, //on box
-			penetration, //dummy
-			closest_pt_world - n * penetration //on sphere surface 
-		};
-
-
+			closest_pt_world - n * penetration, //on sphere surface 
+			penetration //dummy
+		);
 		return true;
 	}
 
@@ -492,9 +477,9 @@ namespace vx::Narrowphase {
 			return true;
 		}
 
-		auto& pts = o_manifold.points;
-		ReduceContactManifoldTo4_Geometric(manifold_pts, pts_found, &o_manifold.points[0]);
-		o_manifold.numManifoldPoints = 4;
+		ReduceContactManifoldTo4_Geometric(manifold_pts, pts_found, o_manifold.PointsPtr());
+		o_manifold.SetPointCount(4);
+
 
 		return true;
 	}
@@ -758,8 +743,9 @@ namespace vx::Narrowphase {
 			}
 			else
 			{
-				ReduceContactManifoldTo4_Geometric(manifold_pts, pts_found, o_manifold.points.data());
-				o_manifold.numManifoldPoints = 4;
+				//ReduceContactManifoldTo4_Geometric(manifold_pts, pts_found, o_manifold.points.data());
+				ReduceContactManifoldTo4_Geometric(manifold_pts, pts_found, o_manifold.PointsPtr());
+				o_manifold.SetPointCount(4);
 			}
 
 #if VX_DEBUG_CONTACT_GENERATION
@@ -812,12 +798,15 @@ namespace vx::Narrowphase {
 
 
 			o_manifold.normal = n;
-			auto& manifold_pt = o_manifold.points[o_manifold.numManifoldPoints++];
 
-			manifold_pt.pointA = closest0;
-			//cp.peneration = (closest1 - closest0).Dot(n);// min_overlap;
-			manifold_pt.peneration = min_overlap;
-			manifold_pt.pointB = closest1;
+			//auto& manifold_pt = o_manifold.points[o_manifold.numManifoldPoints++];
+
+			//manifold_pt.pointA = closest0;
+			////cp.peneration = (closest1 - closest0).Dot(n);// min_overlap;
+			//manifold_pt.peneration = min_overlap;
+			//manifold_pt.pointB = closest1;
+
+			o_manifold.AddPoint(closest0, closest1, min_overlap);
 
 
 #if VX_DEBUG_CONTACT_GENERATION
@@ -904,14 +893,20 @@ namespace vx::Narrowphase {
 			Vec3 p_caps_ws = p_box_ws - n_ws * r;
 
 			//later have a helper function .AddPoint(pA, penetration, pB)
-			o_manifold.points[0] = {
-				p_box_ws, 
-				penetration.MinComponent(),
-				p_box_ws - n_ws * penetration
-			};
+			//o_manifold.points[0] = {
+			//	p_box_ws, 
+			//	penetration.MinComponent(),
+			//	p_box_ws - n_ws * penetration
+			//};
 
 			o_manifold.normal = n_ws;
-			o_manifold.numManifoldPoints = 1;
+			//o_manifold.numManifoldPoints = 1;
+
+			o_manifold.AddPoint(
+				p_box_ws,
+				p_box_ws - n_ws * penetration,
+				penetration.MinComponent()
+			);
 			return true;
 		}
 
@@ -930,13 +925,12 @@ namespace vx::Narrowphase {
 		Vec3 p_cap_ws = (in_orientationA.Rotate(seg_closest) + in_posA) - n_ws * r;
 
 
-		int pt_count = 0;
-		o_manifold.points[pt_count++] =
-		{
-			p_box_ws, 
-			penetration,
-			p_box_ws - n_ws * penetration
-		};
+		o_manifold.AddPoint(
+			p_box_ws,
+			p_box_ws - n_ws * penetration,
+			penetration
+		);
+
 
 		Vec3 closest_on_seg_A = Geometry::ClosestPtPointSegment(A, A, B, t);
 		Vec3 closest_on_seg_B = Geometry::ClosestPtPointSegment(B, A, B, t);
@@ -962,21 +956,27 @@ namespace vx::Narrowphase {
 			Vec3 pB = in_orientationA.Rotate(c) + in_posA;;
 			Vec3 pA = pB - nW * penetration;
 
-			o_manifold.points[pt_count++] ={
-				pB,
-				penetration,
-				pA
-			};
+			//o_manifold.points[pt_count++] ={
+			//	pB,
+			//	penetration,
+			//	pA
+			//};
 
+			o_manifold.AddPoint(
+				pB,
+				pA,
+				penetration
+			);
 		}
 
-		o_manifold.numManifoldPoints = pt_count;
+		//o_manifold.numManifoldPoints = pt_count;
 
 	
 		o_manifold.normal = n_ws;
-		o_manifold.numManifoldPoints = pt_count;
-		if(pt_count > 1)
-			SortContactManifold_Deepest(o_manifold.points.data(), pt_count);
+		//o_manifold.numManifoldPoints = pt_count;
+		if(o_manifold.PointCount() > 1)
+			//SortContactManifold_Deepest(o_manifold.points.data(), pt_count);
+			SortContactManifold_Deepest(o_manifold.PointsPtr(), o_manifold.PointCount());
 		return true;
 
 		

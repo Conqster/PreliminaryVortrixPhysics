@@ -78,7 +78,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(VX_DIR ${CMAKE_SOURCE_DIR})
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMakeModules")
 
-option(USE_SSE "Enable SSE" ON)
+option(USE_SSE "Enable SSE Optimisation" ON)
+option(USE_AVX2 "Enable AVX2 & FMA Optimisation" ON) #only use for fmadd... at the moment
 #later
 #option(BUILD_TESTS "build unit tests" ON)
 #option(BUILD_PLAYGROUND "build playground" ON)
@@ -172,6 +173,13 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 	$<$<CONFIG:ReleaseASan>:VX_BUILD_STR="REL_ASAN">
 )
 	
+#Traget instruction extension
+if(MSVC)
+	if(USE_AVX2)
+		message(STATUS "[${PROJECT_NAME}] Compiling with AVX2 hardware optimisations")
+		target_compile_options(${PROJECT_NAME} PRIVATE "/arch:AVX2")
+	endif()
+endif()
 	
 ## flags options
 # VX_DISABLE_FORCE_INLINE

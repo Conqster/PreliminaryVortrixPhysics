@@ -244,7 +244,7 @@ namespace vx
 
 		VX_INLINE void Store(Float3& o_float3) const
 		{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 			//x,y (lower 64 bit)
 			_mm_storel_pi(reinterpret_cast<__m64*>(& o_float3.x), mValue);
 			//store z
@@ -257,7 +257,7 @@ namespace vx
 			o_float3.x = mFloats[0];
 			o_float3.y = mFloats[1];
 			o_float3.z = mFloats[2];
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 		}
 
 		VX_INLINE Float3 ToFloat3() const
@@ -271,11 +271,11 @@ namespace vx
 		/// fast float3 to vec3 unsafe but leaves whatever the next memory is
 		VX_INLINE static Vec3 LoadFloat3Raw(const Float3& v)
 		{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 			return _mm_loadu_ps(&v.x);
 #else
 			return Vec3(v[0], v[1], v[2]);
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 		}
 
 
@@ -310,6 +310,38 @@ namespace vx
 		{
 			__m128 cmp = _mm_cmpge_ps(v0.mValue, v1.mValue);
 			return (_mm_movemask_ps(cmp) & 0x7) == 0x7;
+		}
+
+
+		///a * b + c
+		VX_INLINE static Vec3 FMAdd(const Vec3& a, const Vec3& b, const Vec3& c)
+		{
+#ifdef VX_SIMD_FMA
+			return _mm_fmadd_ps(a.mValue, b.mValue, c.mValue);
+#else
+			return (a * b) + c;
+#endif // VX_SIMD_FMA
+		}
+
+
+		///-(a * b) + c
+		VX_INLINE static Vec3 NegateFMAdd(const Vec3& a, const Vec3& b, const Vec3& c)
+		{
+#ifdef VX_SIMD_FMA
+			return _mm_fnmadd_ps(a.mValue, b.mValue, c.mValue);
+#else
+			return -(a * b) + c;
+#endif // VX_SIMD_FMA
+		}
+
+		///a * b - c
+		VX_INLINE static Vec3 FMSub(const Vec3& a, const Vec3& b, const Vec3& c)
+		{
+#ifdef VX_SIMD_FMA
+			return _mm_fmsub_ps(a.mValue, b.mValue, c.mValue);
+#else
+			return (a * b) - c;
+#endif // VX_SIMD_FMA
 		}
 
 

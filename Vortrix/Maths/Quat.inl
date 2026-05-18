@@ -54,12 +54,12 @@ namespace vx
 			return;
 		}
 
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		mValue /= len; //<- sse path div
 #else
 		len = 1.0f / len; //<- scalar inv 
 		mValue *= len;	//<- scalar mul
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 	}
 
 	inline VX_INLINE Quat Quat::Normalised() const
@@ -281,7 +281,7 @@ namespace vx
 		////| [   xz + wy		  yz - wx      1 - (xx - yy)]|
 		VX_ASSERT(IsUnitQuat(), "Quaternion is not unit");
 
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 
 		__m128 q = mValue.Value();
 
@@ -372,7 +372,7 @@ namespace vx
 		out_x = Vec3(scale.X() * (1.0f - (yy + zz)), scale.X() * (xy + zw), scale.X() * (xz - yw));
 		out_y = Vec3(scale.Y() * (xy - zw), scale.Y() * ((1.0f - zz) - xx), scale.Y() * (yz + xw));
 		out_z = Vec3(scale.Z() * (xz + yw), scale.Z() * (yz - xw), scale.Z() * ((1.0f - xx) - yy));
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 	}
 
 	inline VX_INLINE Mat44 Quat::GetRotationMat44()
@@ -389,7 +389,7 @@ namespace vx
 		////| [   xz + wy		  yz - wx      1 - (xx - yy)]|
 		VX_ASSERT(IsUnitQuat(), "Quaternion is not unit");
 
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 
 
 		__m128 q = mValue.Value();
@@ -480,7 +480,7 @@ namespace vx
 		return Mat44(Vec4(1.0f - (yy + zz), xy + zw, xz - yw, 0.0f),
 			Vec4(xy - zw, (1.0f - zz) - xx, yz + xw, 0.0f),
 			Vec4(xz + yw, yz - xw, (1.0f - xx) - yy, 0.0f));
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 	}
 
 	inline VX_INLINE Quat Quat::operator*(const Quat& rhs) const
@@ -492,7 +492,7 @@ namespace vx
 
 	inline VX_INLINE Quat Quat::operator*=(const Quat& rhs)
 	{
-#ifdef VX_USE_SSE
+#ifdef VX_SIMD_SSE
 		__m128 q1 = mValue.Value();
 		__m128 q2 = rhs.mValue.Value();
 
@@ -553,7 +553,7 @@ namespace vx
 		);
 
 		return *this;
-#endif // VX_USE_SSE
+#endif // VX_SIMD_SSE
 	}
 
 }

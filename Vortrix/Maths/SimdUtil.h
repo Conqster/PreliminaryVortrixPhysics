@@ -112,4 +112,5 @@ namespace vx::simd
 			static_cast<int>(Swizzle_Y),
 			static_cast<int>(Swizzle_X)));
 	}
+
 } //namespace vx::simd

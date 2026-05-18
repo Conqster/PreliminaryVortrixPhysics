@@ -39,6 +39,29 @@
 /// _M_X64 -> 64-bit x86 -- MSVC
 /// _M_AMD64
 
+//CPU arch detection 
+#if defined(_M_X64) || defined(__x86_64__) || defined(_M_AMD64)
+	#define VX_ARCH_X64 
+#elif defined(_M_IX86) || defined(__i386__) || defined(__i386)
+	#define VX_ARCH_X86
+#endif // defined(_M_X64) || defined(__x86_64__) || defined(_M_AMD64)
+
+#if defined(VX_ARCH_X64) || defined(VX_ARCH_X86)
+
+	#if !defined(VX_SIMD_SSE)
+		#define VX_SIMD_SSE
+	#endif // !defined(VX_SSE)
+
+	#if defined(__FMA__)
+		#define VX_FMA
+	#elif defined(_m_FMA)
+		#define VX_FMA
+	#elif defined(__AVX2__)
+		#define VX_SIMD_FMA
+	#endif // defined(__FMA__)
+
+#endif // defined(VX_ARCH_X64) || defined(VX_ARCH_X86)
+
 
 
 #if defined(VX_DISABLE_FORCE_INLINE)

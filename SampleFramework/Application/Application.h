@@ -123,6 +123,12 @@ private:
 	ScenarioCatergory mScenarioCatergoies;
 	Scenario* mCurrScenario = nullptr;
 
+	float mRunningScenarioDuration = 5.0f;
+	float mCurrentScenarioDuration = 0.0f;
+	std::vector<Scenario*> mPendingRunScenarios;
+	void RunAllScenarioWindow();
+	void SaveCurrentScenarionWindow();
+
 	vx::RenderSettings mPhysicsRenderSettings{};
 	SpawnObjectCanon mTestCanon{};
 

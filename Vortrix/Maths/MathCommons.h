@@ -6,7 +6,7 @@
 
 #define VPHX_USE_GLM 0
 
-#define VX_USE_SSE
+#define VX_SIMD_SSE
 #define VX_MAT_FULL_MULTIPLY 0
 
 #define VX_VEC_ALIGNMENT sizeof(float) * 4

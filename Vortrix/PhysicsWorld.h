@@ -116,7 +116,7 @@ namespace vx
 
 		static void CreateSimpleWorld(PhysicsWorld* io_world);
 
-		static void GenerateWorldDefaultConfig(float& o_max_bodies, float& o_max_body_pairs, float& o_max_contact_constraint);
+		static void GenerateWorldDefaultConfig(int& o_max_bodies, int& o_max_body_pairs, int& o_max_contact_constraint);
 		void Init(float max_bodies, float max_body_pairs, float max_contact_constraint);
 
 		void CreateBody(const BodySettings& body_setting);

@@ -236,7 +236,7 @@ namespace vx {
 		manifold.normal.Store(constraint.normal);
 
 		constraint.numContacts = 0;
-		uint32 num_pts = VxMin(manifold.numManifoldPoints, kMaxPoints);
+		uint32 num_pts = VxMin(manifold.mPointCount, kMaxPoints);
 
 		///bodies inverse transforms 
 		Mat44 transform0 = body0.ComputeWorldTransform();
@@ -261,7 +261,7 @@ namespace vx {
 		//transfer points 
 		for (int i = 0; i < num_pts; ++i)
 		{
-			const ManifoldPoint& mp = manifold.points[i];
+			const ManifoldPoint& mp = manifold.Points()[i];
 
 
 			//add new constraint point

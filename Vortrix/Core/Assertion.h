@@ -111,9 +111,10 @@ inline void VxSetAssertFailedFunctionHandler(VxAssertFailedFunction handler) {}
 //			return __VA_ARGS__; \
 //	 } } while (0)
 
-#define VX_ASSERT_RET_IMPL(expr, msg, ...) \
-			return __VA_ARGS__ \
+//#define VX_ASSERT_RET_IMPL(expr, msg, ...) \
+//			return __VA_ARGS__ \
 
+#define VX_ASSERT_RET_IMPL(expr, msg, ...) \
 
 #define VX_ASSERT_WARN_RET_WITH_MSG(expr, ret_val, msg) VX_ASSERT_RET_IMPL(expr, msg, ret_val)
 #define VX_ASSERT_WARN_RET_NO_MSG(expr, ret_val) VX_ASSERT_RET_IMPL(expr, nullptr, ret_val)

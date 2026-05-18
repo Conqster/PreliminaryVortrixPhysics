@@ -141,6 +141,75 @@ Application* CreateApplication(const ApplicationSpecification& app_spec)
 using namespace InputSystem;
 using namespace vx;
 
+
+
+
+void Application::RunAllScenarioWindow()
+{
+	SaveCurrentScenarionWindow();
+	if (ImGui::Begin("Run All Scenarios"))
+	{
+		ImGui::SliderFloat("Run scenario duration", &mRunningScenarioDuration, 0.1f, 10.0f);
+		ImGui::Text("Current: %f", mCurrentScenarioDuration);
+		static int triggered_count = 0;
+		int ran = vx::VxMax(int(triggered_count-mPendingRunScenarios.size()), 0);
+		ImGui::Text("Running: %d of %d", ran, triggered_count);
+		ImGui::Text("Pending Count: %d", int(mPendingRunScenarios.size()));
+		//bool run_all = false;
+		if (ImGui::Button("Run All"))
+		{
+			//loop through scenarios
+			std::vector<ScenarioCatergory*> _catergories;
+			_catergories.push_back(&mScenarioCatergoies);
+			while (!_catergories.empty())
+			{
+				ScenarioCatergory* c = _catergories.front();
+				for (auto& _c : c->catergories)
+					_catergories.push_back(&_c);
+
+				for (auto& s : c->scenarios)
+					mPendingRunScenarios.push_back(s.get());
+
+				//swap to back then pop
+				std::swap(_catergories.front(), _catergories.back());
+				_catergories.pop_back();
+			}
+
+			mCurrentScenarioDuration = mRunningScenarioDuration + 0.1f;
+			triggered_count = mPendingRunScenarios.size();
+		}
+
+	}
+	ImGui::End();
+}
+
+void Application::SaveCurrentScenarionWindow()
+{
+
+	if (ImGui::Begin("Save Scenario"))
+	{
+		int _max_bodies, _max_body_pairs, _max_constact_constraints;
+		PhysicsWorld::GenerateWorldDefaultConfig(_max_bodies, _max_body_pairs, _max_constact_constraints);
+
+		int avg_max_body_pair = 8, avg_contact_per_body = 4;
+		static bool use_def_phy_config = true;
+		ImGui::Checkbox("Use Default Physics Config", &use_def_phy_config);
+		ImGui::DragInt("Max Bodies", &_max_bodies);
+		ImGui::DragInt("Avr Max Body Pair", &avg_max_body_pair);
+		ImGui::DragInt("Avr Contact Per Body", &avg_contact_per_body);
+		static char scenario_name[64] = "New Scenario v1";
+		ImGui::InputText("Name", &scenario_name[0], sizeof(char) * 64);
+
+		if (ImGui::Button("Print name"))
+		{
+			vx::StackString<64> _name;
+			_name << scenario_name;
+			VX_LOG_INFO("Name test: ", _name);
+		}
+	}
+	ImGui::End();
+}
+
 Application::Application(const ApplicationSpecification& app_spec)
 {
 	mLastFrameTime = glfwGetTime();
@@ -312,10 +381,33 @@ void Application::Run()
 		}
 		(mPhysicsWorld) ? mPhysicsWorld->UpdateSystem() : void(); //<-- just for house keeping when sim is paused
 
+
+		//quick 
+		if (!mPendingRunScenarios.empty())
+		{
+			if (mCurrentScenarioDuration > mRunningScenarioDuration)
+			{
+				mCurrScenario = mPendingRunScenarios.front();
+				mPhysicsDebugState.triggerReset = true;
+				mCurrentScenarioDuration = 0.0f;
+				////swap to back then pop
+				//if (mPendingRunScenarios.size() == 1)
+				//{
+				//	//mFrameDeltaTime;
+				//	mCurrentScenarioDuration += 0.001f;
+				//}
+				std::swap(mPendingRunScenarios.front(), mPendingRunScenarios.back());
+				mPendingRunScenarios.pop_back();
+			}
+			else
+				mCurrentScenarioDuration += mFrameDeltaTime;
+		}
+
+
 		/// Physics Reset
 		if (mPhysicsDebugState.triggerReset)
 			ResetWorld(mPhysicsDebugState.triggerReset);
-		if(mPhysicsDebugState.triggerParticleReset)
+		if (mPhysicsDebugState.triggerParticleReset)
 			ResetParticleWorld(mPhysicsDebugState.triggerParticleReset);
 
 
@@ -365,7 +457,7 @@ void Application::ResetWorld(bool& reset_flag)
 
 	mPhysicsWorld = new PhysicsWorld(phy_wld_setting);
 
-	float _max_bodies, _max_body_pairs, _max_constact_constraints;
+	int _max_bodies, _max_body_pairs, _max_constact_constraints;
 	PhysicsWorld::GenerateWorldDefaultConfig(_max_bodies, _max_body_pairs, _max_constact_constraints);
 	mPhysicsWorld->Init(_max_bodies, _max_body_pairs, _max_constact_constraints);
 
@@ -1050,6 +1142,11 @@ void Application::OnDrawImGuiOverlays()
 		ImGui::End();
 	}
 
+
+	////////////////////////////////////////////
+	////////////////////quick test//////////////
+	////////////////////////////////////////////
+	RunAllScenarioWindow();
 
 	
 	if (open_phy_debug)

@@ -26,9 +26,6 @@ int main(int argc, char** argv)
 	);
 
 
-	VX_LOG_INFO(VX_BUILD_STR);
-	VX_ASSERT_WARN(false, "Test warning assertion");
-
 	ApplicationSpecification app_spec;
 	app_spec.name = "Vortrix Physics";
 	app_spec.disableBindlessSupport = false;
