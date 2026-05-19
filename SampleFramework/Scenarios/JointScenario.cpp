@@ -9,11 +9,49 @@
 
 #include "external/imgui/imgui.h"
 
-vx::BodySettings dyn_bodies_settings = vx::BodySettings::DefaultDynamicConstruct();
+void RopeSetting(vx::DistanceConstraint& constraint)
+{
+	constraint.mMinDistance = 2.0f;
+	constraint.mMaxDistance = 6.0f;
+	constraint.mSpring.tunningMode = vx::ESpringTuningMode::StiffnessSoftness;
+	constraint.mSpring.stiffness = 0.0f;
+}
+
+void SuspensionShockSettingCriticalDamping(vx::DistanceConstraint& constraint)
+{
+	///constraint.mMinDistance = -constraint.mRestLength;
+	//constraint.mMaxDistance = constraint.mRestLength;
+	constraint.mSpring.tunningMode = vx::ESpringTuningMode::FrequencyDamping;
+	constraint.mSpring.frequency = 2.0f;
+	constraint.mSpring.dampingRatio = 0.1f;
+}
+void HardBarSetting(vx::DistanceConstraint& constraint)
+{
+	//SuspensionShockSettingCriticalDamping(constraint);
+	//return;
+	//constraint.mMinDistance = -constraint.mRestLength;
+	constraint.mMaxDistance = 2.5f;// constraint.mRestLength * 2.0f;
+	constraint.mMinDistance = 2.5f;// constraint.mRestLength * 2.0f;
+	constraint.mSpring.tunningMode = vx::ESpringTuningMode::StiffnessSoftness;
+	constraint.mSpring.stiffness = 0.0f;
+	constraint.mSpring.damping = 0.0f;
+}
+
+
+void SuspensionShockSetting(vx::DistanceConstraint& constraint)
+{
+	//constraint.mMinDistance = -constraint.mRestLength;
+	//constraint.mMaxDistance = constraint.mRestLength;
+	constraint.mSpring.tunningMode = vx::ESpringTuningMode::FrequencyDamping;
+	constraint.mSpring.frequency = 2.0f;
+	constraint.mSpring.dampingRatio = 2.0f;
+}
+
 
 void JointScenario::Init(vx::PhysicsWorld* i_world)
 {
 
+	vx::BodySettings dyn_bodies_settings = vx::BodySettings::DefaultDynamicConstruct();
 	mPhysicsWorld = i_world;
 	VX_ASSERT(mPhysicsWorld, "Physics World is null");
 
@@ -38,6 +76,10 @@ void JointScenario::Init(vx::PhysicsWorld* i_world)
 	mJoint.mDampingRatio = 0.3f;
 	mJoint.mStiffness = 2500.0f;
 
+	//hard bar 
+	HardBarSetting(mJoint);
+
+
 	mPhysicsWorld->mTestJoint = &mJoint;
 
 	vx::CapsuleShape* unit_capsule = new vx::CapsuleShape(0.5f, 0.5f);
@@ -50,7 +92,9 @@ void JointScenario::Init(vx::PhysicsWorld* i_world)
 	auto& new_joint = mNotInPipelineJoints.back();
 	new_joint.mBodyA = &mPhysicsWorld->GetBodies()[1];
 	new_joint.mBodyB = &mPhysicsWorld->GetBodies()[2];
-
+	//lets test placing the achor to the side of the capsule, instead of the origin
+	new_joint.mLocalAnchorB = Vec3(0.0f, 1.0f, 0.0f);
+	HardBarSetting(new_joint);
 
 	dyn_bodies_settings.position = vx::Vec3(-2.0f, 5.5f, 0.0f);
 	dyn_bodies_settings.debug_name = "box";
@@ -59,8 +103,10 @@ void JointScenario::Init(vx::PhysicsWorld* i_world)
 
 	mNotInPipelineJoints.push_back(mJoint);
 	auto& new_joint2 = mNotInPipelineJoints.back();
+	new_joint2.mLocalAnchorA = Vec3(0.0f, -1.0f, 0.0f); //quick offset
 	new_joint2.mBodyA = &mPhysicsWorld->GetBodies()[2];
 	new_joint2.mBodyB = &mPhysicsWorld->GetBodies()[3];
+	HardBarSetting(new_joint2);
 
 	/// Ground plane
 	CreateGroundPlane(100.0f);
@@ -80,24 +126,72 @@ void JointScenario::PostPhysicsStep(float dt)
 	}
 }
 
+
+//Constraint window
+void ConstaintPanel(DistanceConstraint& constraint)
+{
+	if(constraint.mBodyA && constraint.mBodyB)
+		ImGui::Text("Body A ID: %d \nBody B ID: %d", constraint.mBodyA->GetID(), constraint.mBodyB->GetID());
+
+	ImGui::DragFloat3("Local Anchor A", &constraint.mLocalAnchorA[0]);
+	ImGui::DragFloat3("Local Anchor B", &constraint.mLocalAnchorB[0]);
+	
+	ImGui::DragFloat("Min Distance", &constraint.mMinDistance);
+	ImGui::DragFloat("Max Distance", &constraint.mMaxDistance);
+
+	ImGui::Text("Accumulated Lambda: %d", constraint.mAccumulatedLambda);
+	
+	ImGui::SeparatorText("Spring Setting");
+	auto& spring = constraint.mSpring;
+
+	EditorImGui::Combo("Tuning Mode", spring.tunningMode, "Stiffness Softness\0""Frequency Damping\0""\0");
+	if (spring.tunningMode == ESpringTuningMode::StiffnessSoftness)
+	{
+		ImGui::DragFloat("Stiffness [N/m]", &spring.stiffness);
+		ImGui::DragFloat("Damping [Ns/m]", &spring.damping);
+	}
+	else
+	{
+		ImGui::DragFloat("Frequency [Hz]", &spring.frequency);
+		ImGui::SliderFloat("Damping Ratio", &spring.dampingRatio, 0.0f, 1.0f);
+	}
+	ImGui::SliderFloat("Softness", &spring.softness, 0.0f, 1.0f);
+}
+
+
 void JointScenario::OnUI()
 {
 	Scenario::OnUI();
 
+
 	if (ImGui::Begin("Joint Window"))
 	{
-		ImGui::SliderFloat("Joint Rest length", &mJoint.mRestLength, 0.0f, 10.0f);
-		ImGui::SliderFloat("Joint Damping Ratio", &mJoint.mDampingRatio, 0.0f, 1.0f);
-		ImGui::DragFloat("Joint Stiffness", &mJoint.mStiffness);
+		static bool use_new = true;
+
+		if (use_new)
+			ConstaintPanel(mJoint);
+		else
+		{
+			ImGui::SliderFloat("Joint Rest length", &mJoint.mRestLength, 0.0f, 10.0f);
+			ImGui::SliderFloat("Joint Damping Ratio", &mJoint.mDampingRatio, 0.0f, 1.0f);
+			ImGui::DragFloat("Joint Stiffness", &mJoint.mStiffness);
+		}
 
 		int _idx = 1;
 		for (auto& joint : mNotInPipelineJoints)
 		{
+			ImGui::Separator();
+			ImGui::Spacing();
 			ImGui::PushID(&joint);
 			ImGui::Text("joint %d", _idx++);
-			ImGui::SliderFloat("Joint Rest length", &joint.mRestLength, 0.0f, 10.0f);
-			ImGui::SliderFloat("Joint Damping Ratio", &joint.mDampingRatio, 0.0f, 1.0f);
-			ImGui::DragFloat("Joint Stiffness", &joint.mStiffness);
+			if (use_new)
+				ConstaintPanel(joint);
+			else
+			{
+				ImGui::SliderFloat("Joint Rest length", &joint.mRestLength, 0.0f, 10.0f);
+				ImGui::SliderFloat("Joint Damping Ratio", &joint.mDampingRatio, 0.0f, 1.0f);
+				ImGui::DragFloat("Joint Stiffness", &joint.mStiffness);
+			}
 			ImGui::PopID();
 		}
 	}
