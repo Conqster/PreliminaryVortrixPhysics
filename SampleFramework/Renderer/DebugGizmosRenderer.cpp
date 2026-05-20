@@ -317,6 +317,65 @@ void DebugGizmosRenderer::DrawAABB(const vx::AABB& aabb, const vx::Colour& col, 
 	DrawAABB(aabb.mMin, aabb.mMax, col, wireframe);
 }
 
+template<size_t Sector, size_t Stack>
+void DebugGizmosRenderer::DrawSphere(const vx::Vec3& center, float radius, vx::Colour col)
+{
+	constexpr size_t sector_count = Sector;
+	constexpr size_t stack_count = Stack;
+
+	///adapted Songho.ca sphere: https://www.songho.ca/opengl/gl_sphere.html
+	constexpr float sector_step = vx::kVxTau / float(sector_count);
+	constexpr float stack_step = vx::kVxPi / float(stack_count);
+
+	float sector_angle, stack_angle;
+
+	std::array<vx::Vec3, (sector_count + 1) * (stack_count + 1)> vertices;
+	size_t vert_idx = 0;
+
+	for (size_t i = 0; i <= stack_count; ++i)
+	{
+		stack_angle = vx::kVxPi / 2 - i * stack_step;        // starting from pi/2 to -pi/2
+		float xy = radius * vx::VxCos(stack_angle);             // r * cos(u)
+		float z = radius * vx::VxSin(stack_angle);              // r * sin(u)
+
+		// add (sectorCount+1) vertices per stack
+		// first and last vertices have same position and normal, but different tex coords
+		for (size_t j = 0; j <= sector_count; ++j)
+		{
+			sector_angle = j * sector_step;           // starting from 0 to 2pi
+
+			// vertex position (x, y, z)
+			float x = xy * vx::VxCos(sector_angle);             // r * cos(u) * cos(v)
+			float y = xy * vx::VxSin(sector_angle);             // r * cos(u) * sin(v)
+
+			vertices[vert_idx++] = center + vx::Vec3(x, y, z);
+		}
+	}
+
+
+
+	for (int i = 0; i < stack_count; ++i)
+	{
+		int k1 = i * (sector_count + 1);     // beginning of current stack
+		int k2 = k1 + sector_count + 1;      // beginning of next stack
+
+		for (int j = 0; j < sector_count; ++j, ++k1, ++k2)
+		{
+			vx::Vec3 v0 = vertices[k1];
+			vx::Vec3 v1 = vertices[k1 + 1];
+			vx::Vec3 v2 = vertices[k2 + 1];
+			vx::Vec3 v3 = vertices[k2];
+			
+			DrawSolidTriangle(v0, v2, v1, col);
+			DrawSolidTriangle(v0, v3, v2, col);
+		}
+	}
+}
+
+template void DebugGizmosRenderer::DrawSphere<8, 6>(const Vec3&, float, vx::Colour);
+template void DebugGizmosRenderer::DrawSphere<16, 12>(const Vec3&, float, vx::Colour);
+template void DebugGizmosRenderer::DrawSphere<4, 4>(const Vec3&, float, vx::Colour);
+
 //void DebugGizmosRenderer::DrawAABB(const vx::AABB& aabb, const vx::Colour& col, bool wireframe)
 //{
 //}

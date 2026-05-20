@@ -48,7 +48,7 @@ namespace vx {
 	};
 
 
-	struct Linear1DRow 
+	struct Linear1DRow
 	{
 		BodyID bodyA;	/// later change to SolverBody only caches required data 
 		BodyID bodyB;	/// like position, velocities before write back, and constraint stores actual BodyID
@@ -68,16 +68,67 @@ namespace vx {
 		float maxLambda;
 	};
 
+
+	//struct SolverRow
+	//{
+	//	virtual void SolveVelocity() = 0;;
+	//};
+
+	///for (const uint32* idx = idxBegin; idx < idxEnd; ++idx)
+	//{
+		//BaseRow* r = mRows[*idx];
+		//r->SolveVelocityConstraint(inDeltaTime);
+//	}
+
+	enum class EConstraintType
+	{
+		Axis,
+	};
+	struct Stream
+	{
+		const void* data;
+		//Func SolverFunc;
+		EConstraintType type;;
+	};
+
+	class ConsrtaitSolver
+	{
+	public:
+		template<EConstraintType Type>
+		static void SolveVelocity()
+		{
+			if constexpr (Type == EConstraintType::Axis)
+			{
+				//Solve Linear Row
+			}
+			if constexpr (Type == EConstraintType::Point) / etc
+		}
+	};
+
+	//void Solver()
+	//{
+	//	Stream* curr;
+	//	//void* solver_row_data = &mRow[curr->data]
+	//	//	ConsrtaitSolver::SolveVelocity<curr->type>(solver_row_data);
+
+
+	//}
+
+
 	class SolverBuilder
 	{
-	public: 
+	public:
 		void AddLinearRow(Linear1DRow);
 	};
+
 
 	class Constraint
 	{
 	public:
 		virtual bool PrepSolver(SolverBuilder*) = 0;
+		/// essentailly used for commiting back accumulated lambda
+		/// based on constraints policy
+		virtual void CommitSolverState(const Linear1DRow& row) = 0;
 	};
 
 	//class DistanceConstraint : public Constraint
@@ -112,19 +163,26 @@ namespace vx {
 		FrequencyDamping
 	};
 
-	struct SpringProperties 
+	struct SpringSettings
 	{
 		ESpringTuningMode tunningMode = ESpringTuningMode::StiffnessSoftness;
-		float stiffness = 0.0f; /// [N/m] hookes constant 0, hard 
+
+		union /// A[stiffness]/B[freq]
+		{
+			float stiffness = 0.0f; /// [N/m] hookes constant 0, hard 
+			float frequency;// = 0.0f;  ///[Hz]
+		};
+
+		/// A[stiffness
 		float damping = 0.0f; /// [Ns/m] damping coeeff
 
-		float frequency = 0.0f;  ///[Hz]
+		/// B[freq]
 		float dampingRatio = 1.0f; ///1.0f critical damping, 0.0f infinte bounces 
 
 
 		float softness = 0.0f;
 
-		bool FrequencyDampingTuning() const 
+		bool FrequencyDampingTuning() const
 		{
 			return tunningMode == ESpringTuningMode::FrequencyDamping
 				&& frequency > 0.0f;
@@ -164,7 +222,7 @@ namespace vx {
 		float mMinDistance;
 		float mMaxDistance;
 
-		SpringProperties mSpring;
+		SpringSettings mSpring;
 
 		void Solve(float dt)
 		{
@@ -323,7 +381,7 @@ namespace vx {
 
 
 			float inv_eff_mass = 0.0f;
-			if(bodyA_nonstatic)
+			if (bodyA_nonstatic)
 			{
 				Vec3 rAXn = rA.Cross(nor);
 				Vec3 invIrAXn = mBodyA->ComputeInvInteriaWorld().Multiply3x3(rAXn);
@@ -334,14 +392,14 @@ namespace vx {
 				inv_eff_mass += mBodyA->GetInverseMass() + invIrAXn.Dot(rAXn);
 			}
 
-			if(bodyB_nonstatic)
+			if (bodyB_nonstatic)
 			{
 				Vec3 rBXn = rB.Cross(nor);
 				Vec3 invIrBXn = mBodyB->ComputeInvInteriaWorld().Multiply3x3(rBXn);
 
 				rBXn.Store(row.angularB);
 				invIrBXn.Store(row.invIAngularB);
-			
+
 				inv_eff_mass += mBodyB->GetInverseMass() + invIrBXn.Dot(rBXn);
 			}
 
@@ -357,7 +415,7 @@ namespace vx {
 			///effective mass
 			float dtk = dt * mStiffness;
 			float gamma = 1 / (dt * (mDampingRatio + dtk));
-			row.effectiveMass = (1/inv_eff_mass) + gamma;
+			row.effectiveMass = (1 / inv_eff_mass) + gamma;
 
 			/// bias
 			float beta = dtk / (mDampingRatio + dtk);
@@ -430,11 +488,11 @@ namespace vx {
 
 
 			//then later in constraint solver 
-			for (int i = 0; i < 10; ++i)
+			for (int i = 0; i < 20; ++i)
 			{
 				//Vec3 lin_velA = bodyA.GetLinearVelocity();
 				//Vec3 lin_velB = bodyB.GetLinearVelocity();
-				
+
 				//jacobian 
 				float jv;
 				if (dyn_a && dyn_b) ///if constexpr (
@@ -558,7 +616,7 @@ namespace vx {
 
 
 			//then later in constraint solver 
-			for(int i =0;i<10; ++i)
+			for (int i = 0; i < 10; ++i)
 			{
 				Vec3 lin_vel0 = bodyA.GetLinearVelocity();
 				Vec3 lin_vel1 = bodyB.GetLinearVelocity();
@@ -654,8 +712,8 @@ namespace vx {
 
 			//effective mass along axis 
 			// massA x massB / massA + mass B
-			const float mA = 1.0f/bodyA.GetInverseMass();
-			const float mB = 1.0f/bodyB.GetInverseMass();
+			const float mA = 1.0f / bodyA.GetInverseMass();
+			const float mB = 1.0f / bodyB.GetInverseMass();
 			const float mass_eff = (mA * mB) / (mA + mB);
 			//critical dampling 
 			const float crit_damping = 4.0f * VxSqrt(mStiffness * mass_eff);
@@ -672,7 +730,7 @@ namespace vx {
 
 			if (bodyA.IsDynamic())
 				bodyA.AddForce(-force);
-			
+
 			if (bodyB.IsDynamic())
 				bodyB.AddForce(force);
 		}
@@ -699,7 +757,7 @@ namespace vx {
 				Vec3 nor = (rBw - rAw).Normalised();
 				//Vec3 nor = (mBodyB->GetPosition() - mBodyA->GetPosition()).Normalised();
 
-			
+
 				debug_renderer->DrawLine(rAw, rBw, Colour(0.3f, 0.3f, 0.3f));
 
 				debug_renderer->DrawLine(rAw, (rAw + (nor * static_cast<float>(mRestLength * ratio))), Colour(1.0f, 1.0f, 0.0f));
@@ -732,7 +790,7 @@ namespace vx {
 
 				Vec3 nor = (curr_dist > kEpsilon) ? disp / curr_dist : Vec3::Up();
 
-				Colour line_col = Colour(0.4f);
+				Colour line_col = Colour(0.3f);
 				if (mMinDistance != mMaxDistance)
 				{
 					if (curr_dist >= mMaxDistance)
@@ -740,16 +798,19 @@ namespace vx {
 					else if (curr_dist <= mMinDistance)
 						line_col = Colour(0.3f, 0.6f, 1.0f);
 				}
-				else
-					line_col = Colour(0.0f, 1.0f, 0.0f);
+				//else
+					//line_col = Colour(0.0f, 1.0f, 0.0f);
 
 				debug_renderer->DrawLine(rAw, rBw, line_col);
+
+				debug_renderer->DrawSphere<4, 4>(rAw, 0.085f, Colour(1.0f, 0.2f, 0.2f));
+				debug_renderer->DrawSphere<4, 4>(rBw, 0.085f, Colour(0.2f, 1.0f, 0.6f));
 
 				//boundaries
 				if (mMinDistance == mMaxDistance)
 				{
-					debug_renderer->DrawLine(rAw, (rAw + (nor * static_cast<float>(mRestLength * ratio))), Colour(1.0f, 1.0f, 0.0f));
-					debug_renderer->DrawLine(rBw, (rBw + (-nor * static_cast<float>(mRestLength * (1 - ratio)))), Colour(0.0f, 1.0f, 0.0f));
+					debug_renderer->DrawLine(rAw, (rAw + (nor * static_cast<float>(mMaxDistance * ratio))), Colour(1.0f, 1.0f, 0.0f));
+					debug_renderer->DrawLine(rBw, (rBw + (-nor * static_cast<float>(mMaxDistance * (1 - ratio)))), Colour(0.0f, 1.0f, 0.0f));
 				}
 				else
 				{
@@ -759,23 +820,38 @@ namespace vx {
 					Vec3 max_limit_ptA = rAw + (nor * (mMaxDistance * ratio));
 					Vec3 max_limit_ptB = rBw - (nor * (mMaxDistance * (1.0f - ratio)));
 
-					//later support pt 
-					AABB aabb(0.125);
-					aabb.Translate(min_limit_ptA);
-					debug_renderer->DrawAABB(aabb, Colour(0.3f, 0.6f, 1.0f), false);
-					aabb.Reset();
-					aabb = AABB(0.125);
-					aabb.Translate(min_limit_ptB);
-					debug_renderer->DrawAABB(aabb, Colour(0.3f, 0.6f, 1.0f), false);
 
-					aabb.Reset();
-					aabb = AABB(0.125);
-					aabb.Translate(max_limit_ptA);
-					debug_renderer->DrawAABB(aabb, Colour(1.0f, 1.0f, 0.0f), false);
-					aabb.Reset();
-					aabb = AABB(0.125);
-					aabb.Translate(max_limit_ptB);
-					debug_renderer->DrawAABB(aabb, Colour(1.0f, 1.0f, 0.0f), false);
+					constexpr bool k_draw_box = true;
+
+					if constexpr(k_draw_box)
+					{
+						bool wire_frame = true;
+						////later support pt 
+						AABB aabb(0.125);
+						aabb.Translate(min_limit_ptA);
+						debug_renderer->DrawAABB(aabb, Colour(0.3f, 0.6f, 1.0f), wire_frame);
+						aabb.Reset();
+						aabb = AABB(0.125);
+						aabb.Translate(min_limit_ptB);
+						debug_renderer->DrawAABB(aabb, Colour(0.3f, 0.6f, 1.0f), wire_frame);
+
+						aabb.Reset();
+						aabb = AABB(0.125);
+						aabb.Translate(max_limit_ptA);
+						debug_renderer->DrawAABB(aabb, Colour(1.0f, 1.0f, 0.0f), wire_frame);
+						aabb.Reset();
+						aabb = AABB(0.125);
+						aabb.Translate(max_limit_ptB);
+						debug_renderer->DrawAABB(aabb, Colour(1.0f, 1.0f, 0.0f), wire_frame);
+					}
+					else
+					{
+						debug_renderer->DrawSphere(min_limit_ptA, 0.125, Colour(0.3f, 0.6f, 1.0f));
+						debug_renderer->DrawSphere(min_limit_ptB, 0.125, Colour(0.3f, 0.6f, 1.0f));
+
+						debug_renderer->DrawSphere(max_limit_ptA, 0.125, Colour(1.0f, 1.0f, 0.0f));
+						debug_renderer->DrawSphere(max_limit_ptB, 0.125, Colour(1.0f, 1.0f, 0.0f));
+					}
 				}
 			}
 		}

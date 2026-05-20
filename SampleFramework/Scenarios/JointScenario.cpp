@@ -12,9 +12,11 @@
 void RopeSetting(vx::DistanceConstraint& constraint)
 {
 	constraint.mMinDistance = 2.0f;
-	constraint.mMaxDistance = 6.0f;
-	constraint.mSpring.tunningMode = vx::ESpringTuningMode::StiffnessSoftness;
-	constraint.mSpring.stiffness = 0.0f;
+	constraint.mMaxDistance = 4.0f;//6.0f;
+	//constraint.mSpring.tunningMode = vx::ESpringTuningMode::StiffnessSoftness;
+	constraint.mSpring.tunningMode = vx::ESpringTuningMode::FrequencyDamping;
+	//constraint.mSpring.stiffness = 0.0f;
+	constraint.mSpring.frequency = vx::DegToRad(270.0f);
 }
 
 void SuspensionShockSettingCriticalDamping(vx::DistanceConstraint& constraint)
@@ -22,13 +24,26 @@ void SuspensionShockSettingCriticalDamping(vx::DistanceConstraint& constraint)
 	///constraint.mMinDistance = -constraint.mRestLength;
 	//constraint.mMaxDistance = constraint.mRestLength;
 	constraint.mSpring.tunningMode = vx::ESpringTuningMode::FrequencyDamping;
-	constraint.mSpring.frequency = 2.0f;
+	constraint.mSpring.frequency = vx::DegToRad(360.0f);
 	constraint.mSpring.dampingRatio = 0.1f;
 }
+
+void SuspensionShockSetting(vx::DistanceConstraint& constraint)
+{
+	//constraint.mMinDistance = -constraint.mRestLength;
+	//constraint.mMaxDistance = constraint.mRestLength;
+	constraint.mSpring.tunningMode = vx::ESpringTuningMode::FrequencyDamping;
+	constraint.mSpring.frequency = vx::DegToRad(270.0f);
+	constraint.mSpring.dampingRatio = 2.0f;
+}
+
+
 void HardBarSetting(vx::DistanceConstraint& constraint)
 {
-	//SuspensionShockSettingCriticalDamping(constraint);
+	RopeSetting(constraint);
 	//return;
+	//SuspensionShockSetting(constraint);
+	return;
 	//constraint.mMinDistance = -constraint.mRestLength;
 	constraint.mMaxDistance = 2.5f;// constraint.mRestLength * 2.0f;
 	constraint.mMinDistance = 2.5f;// constraint.mRestLength * 2.0f;
@@ -38,14 +53,6 @@ void HardBarSetting(vx::DistanceConstraint& constraint)
 }
 
 
-void SuspensionShockSetting(vx::DistanceConstraint& constraint)
-{
-	//constraint.mMinDistance = -constraint.mRestLength;
-	//constraint.mMaxDistance = constraint.mRestLength;
-	constraint.mSpring.tunningMode = vx::ESpringTuningMode::FrequencyDamping;
-	constraint.mSpring.frequency = 2.0f;
-	constraint.mSpring.dampingRatio = 2.0f;
-}
 
 
 void JointScenario::Init(vx::PhysicsWorld* i_world)
@@ -75,6 +82,8 @@ void JointScenario::Init(vx::PhysicsWorld* i_world)
 	mJoint.mRestLength = 2.5f;
 	mJoint.mDampingRatio = 0.3f;
 	mJoint.mStiffness = 2500.0f;
+	mJoint.mLocalAnchorA = vx::Vec3(0.0f, 0.5f, 0.0f);
+	mJoint.mLocalAnchorB = vx::Vec3(0.0f, 0.5f, 0.0f);
 
 	//hard bar 
 	HardBarSetting(mJoint);
@@ -93,6 +102,7 @@ void JointScenario::Init(vx::PhysicsWorld* i_world)
 	new_joint.mBodyA = &mPhysicsWorld->GetBodies()[1];
 	new_joint.mBodyB = &mPhysicsWorld->GetBodies()[2];
 	//lets test placing the achor to the side of the capsule, instead of the origin
+	new_joint.mLocalAnchorA = Vec3(0.0f, -0.5f, 0.0f);
 	new_joint.mLocalAnchorB = Vec3(0.0f, 1.0f, 0.0f);
 	HardBarSetting(new_joint);
 
@@ -104,6 +114,7 @@ void JointScenario::Init(vx::PhysicsWorld* i_world)
 	mNotInPipelineJoints.push_back(mJoint);
 	auto& new_joint2 = mNotInPipelineJoints.back();
 	new_joint2.mLocalAnchorA = Vec3(0.0f, -1.0f, 0.0f); //quick offset
+	new_joint2.mLocalAnchorB = Vec3(0.5f); //quick offset
 	new_joint2.mBodyA = &mPhysicsWorld->GetBodies()[2];
 	new_joint2.mBodyB = &mPhysicsWorld->GetBodies()[3];
 	HardBarSetting(new_joint2);
@@ -133,11 +144,11 @@ void ConstaintPanel(DistanceConstraint& constraint)
 	if(constraint.mBodyA && constraint.mBodyB)
 		ImGui::Text("Body A ID: %d \nBody B ID: %d", constraint.mBodyA->GetID(), constraint.mBodyB->GetID());
 
-	ImGui::DragFloat3("Local Anchor A", &constraint.mLocalAnchorA[0]);
-	ImGui::DragFloat3("Local Anchor B", &constraint.mLocalAnchorB[0]);
+	ImGui::DragFloat3("Local Anchor A", &constraint.mLocalAnchorA[0], 0.01f);
+	ImGui::DragFloat3("Local Anchor B", &constraint.mLocalAnchorB[0], 0.01f);
 	
-	ImGui::DragFloat("Min Distance", &constraint.mMinDistance);
-	ImGui::DragFloat("Max Distance", &constraint.mMaxDistance);
+	ImGui::DragFloat("Min Distance", &constraint.mMinDistance, 0.1f);
+	ImGui::DragFloat("Max Distance", &constraint.mMaxDistance, 0.1f);
 
 	ImGui::Text("Accumulated Lambda: %d", constraint.mAccumulatedLambda);
 	
@@ -152,7 +163,8 @@ void ConstaintPanel(DistanceConstraint& constraint)
 	}
 	else
 	{
-		ImGui::DragFloat("Frequency [Hz]", &spring.frequency);
+		//ImGui::DragFloat("Frequency [Hz]", &spring.frequency);
+		ImGui::SliderAngle("Frequency [Hz:Rad/sec]", &spring.frequency, 0.0f);
 		ImGui::SliderFloat("Damping Ratio", &spring.dampingRatio, 0.0f, 1.0f);
 	}
 	ImGui::SliderFloat("Softness", &spring.softness, 0.0f, 1.0f);

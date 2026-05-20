@@ -138,6 +138,8 @@ public:
 	void DrawAABB(const vx::Vec3& min, const vx::Vec3& max, const vx::Colour& col, bool wireframe = true);
 	void DrawAABB(const vx::AABB& aabb, const vx::Colour& col, bool wireframe = true);
 
+	template<size_t Sector = 8, size_t Stack = 6>
+	void DrawSphere(const vx::Vec3& center, float radius, vx::Colour col);
 	//void DrawAABB(const vx::AABB& aabb, const vx::Colour& col, bool wireframe = false);
 
 	/// axis aligned cross 
@@ -455,3 +457,6 @@ public:
 
 	bool Flush(IRenderTarget* render_target);
 };
+
+
+extern template void DebugGizmosRenderer::DrawSphere<8, 6>(const Vec3&, float, vx::Colour);
