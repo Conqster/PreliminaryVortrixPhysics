@@ -112,6 +112,10 @@ namespace vx
 
 			delete mBroadphase;
 			delete mNarrowphaseQuery;
+
+
+			delete mConstraintCoordinator;
+			delete mConstraintSolver;
 		}
 
 		static void CreateSimpleWorld(PhysicsWorld* io_world);
@@ -134,6 +138,9 @@ namespace vx
 		void OnDebugDraw(DebugGizmosRenderer* debug_renderer);
 
 		class DistanceConstraint* mTestJoint = nullptr;
+
+		class ConstraintCoordinator* mConstraintCoordinator = nullptr;
+		class ConstraintSolver* mConstraintSolver = nullptr;
 
 		void QuickDebugDrawInertia(DebugGizmosRenderer* debug_renderer);
 

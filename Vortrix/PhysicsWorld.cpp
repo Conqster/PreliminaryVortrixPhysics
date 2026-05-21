@@ -32,6 +32,7 @@
 #include "SimulationContexts.h"
 
 #include "Dynamics/Joint.h"
+#include "Dynamics/ConstraintCoordinator.h"
 
 namespace vx
 {
@@ -226,6 +227,10 @@ namespace vx
 		mContactConstraintSolver.Init(max_contact_constraint);
 		mContactConstraintSolver.SetPhysicsContext(&mContext);
 
+
+		mConstraintCoordinator = new ConstraintCoordinator;
+		mConstraintSolver = new ConstraintSolver;
+
 		/// experiment
 		mWorldQuery.Init(mBroadphase);
 		//mExperimentRay = RayCast(Vec3(10.0f, 7.0f, 0.0f), Vec3(-10.0f, 0.0f, 0.0f) * 0.5f);
@@ -344,9 +349,12 @@ namespace vx
 			mContactConstraintSolver.SolvePositionConstraint(mSettings.solver);
 
 
-		if (mTestJoint)
-			mTestJoint->Solve(dt);
+		//if (mTestJoint)
+		//	mTestJoint->Solve(dt);
 
+
+		mConstraintCoordinator->PrepConstraintSolving(*mConstraintSolver, dt);
+		mConstraintSolver->SolverAll(mContext);
 
 		//Body& body = mBodyManager.GetBodies()[0];
 		//body.SetPosition(Vec3(9.515f, 7.108f, 0.099f));
@@ -567,6 +575,9 @@ namespace vx
 
 		if (mTestJoint)
 			mTestJoint->DebugGizmos(debug_renderer);
+
+		if (mConstraintCoordinator)
+			mConstraintCoordinator->DebugGizmos(debug_renderer);
 
 		//debug_renderer->DrawLine(mExperimentRay.origin, mExperimentRay.End(), Colour::sGreen);
 

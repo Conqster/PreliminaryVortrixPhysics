@@ -17,6 +17,6 @@ public:
 	void OnUI() override;
 
 private: 
-	DistanceConstraint mJoint;
-	std::vector<DistanceConstraint> mNotInPipelineJoints;
+	//DistanceConstraint mJoint;
+	//std::vector<DistanceConstraint> mNotInPipelineJoints;
 };
