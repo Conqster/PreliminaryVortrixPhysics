@@ -1,7 +1,10 @@
 #pragma once
 #include "Scenario.h"
 
-#include "Dynamics/Joint.h"
+
+namespace vx {
+	class DistanceConstraint;
+} //namespace vx
 
 class JointScenario : public Scenario
 {
@@ -17,6 +20,8 @@ public:
 	void OnUI() override;
 
 private: 
-	//DistanceConstraint mJoint;
+	vx::DistanceConstraint* mTrackCapsuleSphereRope;
 	//std::vector<DistanceConstraint> mNotInPipelineJoints;
+
+	void CreateLattice();
 };

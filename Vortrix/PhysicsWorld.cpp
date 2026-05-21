@@ -227,9 +227,9 @@ namespace vx
 		mContactConstraintSolver.Init(max_contact_constraint);
 		mContactConstraintSolver.SetPhysicsContext(&mContext);
 
-
 		mConstraintCoordinator = new ConstraintCoordinator;
 		mConstraintSolver = new ConstraintSolver;
+		mConstraintSolver->Init(mBodyManager);
 
 		/// experiment
 		mWorldQuery.Init(mBroadphase);
@@ -318,13 +318,29 @@ namespace vx
 		mContactConstraintSolver.PreFrameSetup(mSettings); //for per frame transient allcation for now
 
 		//mContactConstraintSolver.WarmStart();
+		
+		//mConstraintSolver->HackClear();
+		//mConstraintCoordinator->PrepConstraintSolving(*mConstraintSolver, mContext);
+		//mConstraintSolver->SolverAll(mContext, mSettings.solver.velocityIterations);
+
 
 		CollisionContext collision_ctx{ mSettings.collision, mHackDebugRenderer, mSettings.drawSettings.drawContactConstraintSolverTBNs, mFrameIdx };
 		//Narrowphase: collision detection & contact generations
 		mNarrowphaseQuery->ProcessPairs(mBroadphasePairs, mStepManifolds, mContactConstraintSolver, collision_ctx);
-
 		if (mSettings.solver.enable)
 			mContactConstraintSolver.SolveVelocityConstraint(mSettings.solver);
+
+		mConstraintSolver->HackClear();
+		mConstraintCoordinator->PrepConstraintSolving(*mConstraintSolver, mContext);
+		mConstraintSolver->SolverAll(mContext, mSettings.solver.velocityIterations);
+
+
+
+		//for (auto& c : mConstraintCoordinator->GetConstraints())
+		//{
+		//	DistanceConstraint* _c = static_cast<DistanceConstraint*>(c);
+		//	_c->QuickSolve(dt);
+		//}
 
 
 		UpdateBodiesActivationState(dt);
@@ -353,67 +369,9 @@ namespace vx
 		//	mTestJoint->Solve(dt);
 
 
-		mConstraintCoordinator->PrepConstraintSolving(*mConstraintSolver, dt);
-		mConstraintSolver->SolverAll(mContext);
-
-		//Body& body = mBodyManager.GetBodies()[0];
-		//body.SetPosition(Vec3(9.515f, 7.108f, 0.099f));
-
-		//AABB aabb = body.ComputeAABBWorld();
-		//Vec3 b_min = aabb.mMin;
-		//Vec3 b_max = aabb.mMax;
-
-		//float t_min;
-		////bool hit = Geometry::RayAABB(local_origin, local_inv_dir, b_min, b_max, t_min, old_hit.fraction);
-		//Vec3 _intersect;
-		//bool hit = Geometry::RayAABB(mExperimentRay.origin, mExperimentRay.displacement, b_min, b_max, t_min, _intersect);
-		//if (hit && t_min >= 0)
-		//{
-		//	if (t_min < 5.0f)
-		//	{
-		//	RaycastHit hit;
-		//		hit.body = body.GetID();
-		//		hit.fraction = t_min;
-		//		hit._min = b_min;
-		//		hit._max = b_max;
-		//		hit._intersect = _intersect;
-
-		//	Mat44 M;
-		//	M.SetTranslation(mExperimentRay.origin +
-		//		(mExperimentRay.displacement * hit.fraction));
-		//	M.SetAxisX(Vec3::Right());
-		//	M.SetAxisY(Vec3::Up());
-		//	M.SetAxisZ(Vec3::Forward());
-		//	mHackDebugRenderer->DrawBasis(M, 0.02f, 0.5f, false);
-
-		//	mHackDebugRenderer->DrawAABB(hit._min, hit._max, Colour::sMagenta);
-
-		//	M.SetTranslation(hit._intersect);
-		//	mHackDebugRenderer->DrawBasis(M, 0.02f, 0.5f, false);
-		//	}
-		//}
-
-		//ClosestRaycastHitProcessor processor;
-		//if (mWorldQuery.CastRay(mExperimentRay, processor))
-		//{
-		//	if(mHackDebugRenderer)
-		//	{
-		//		Mat44 M;
-		//		RaycastHit hit = processor.Hit();
-		//		
-		//		Vec3 point = mExperimentRay.origin + (mExperimentRay.displacement * hit.fraction);
-		//		M.SetTranslation(point);
-		//		M.SetAxisX(Vec3::Right());
-		//		M.SetAxisY(Vec3::Up());
-		//		M.SetAxisZ(Vec3::Forward());
-		//		mHackDebugRenderer->DrawBasis(M, 0.02f, 0.5f, false);
-
-		//		mHackDebugRenderer->DrawArrowCone(point, point + hit.normal * 2, 0.05, 0.1, 0.05, 3, vx::Colour::sCyan);
-		//	}
-		//}
 
 
-		//mContactConstraintSolver.WarmStart();
+
 		PhysicsWorld::mFrameIdx++;
 	}
 

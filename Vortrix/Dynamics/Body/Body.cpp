@@ -140,7 +140,7 @@ namespace vx
 		DampVelocities(dt);
 
    		VX_ASSERT(!mLinearVelocity.IsNaN(), "Linear velocituy is nan");
-		VX_ASSERT(!mAngularVelocity.IsNaN(), "Linear velocituy is nan");
+		VX_ASSERT(!mAngularVelocity.IsNaN(), "Angular velocituy is nan");
 
 		mPosition += mLinearVelocity * dt;
 

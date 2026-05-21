@@ -6,13 +6,13 @@ namespace vx {
 
 	struct Linear1DRow;
 	class ConstraintSolver;
-
+	struct PhysicsStepContext;
 
 	class Constraint
 	{
 	public:
 		//virtual bool PrepSolver(SolverBuilder*) = 0;
-		virtual bool PrepSolver(ConstraintSolver*, float dt) = 0;
+		virtual bool PrepSolver(ConstraintSolver*, const PhysicsStepContext&) = 0;
 		/// essentailly used for commiting back accumulated lambda
 		/// based on constraints policy
 		virtual void CommitSolverState(const Linear1DRow& row) = 0;

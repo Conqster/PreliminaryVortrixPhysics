@@ -311,7 +311,7 @@ Application::Application(const ApplicationSpecification& app_spec)
 	mScenarioCatergoies.catergories.push_back(std::move(stacking_scenarios));
 
 
-	//mCurrScenario = mScenarioCatergoies.scenarios.at(1).get();
+	mCurrScenario = mScenarioCatergoies.scenarios.at(2).get();
 }
 
 Application::~Application()

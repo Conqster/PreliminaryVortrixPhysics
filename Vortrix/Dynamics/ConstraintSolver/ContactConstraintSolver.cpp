@@ -740,7 +740,7 @@ namespace vx {
 					VX_ASSERT(!lin_vel0.IsNaN(), "lin_vel0 is nan");
 					VX_ASSERT(!ang_vel0.IsNaN(), "ang_vel0 is nan");
 					VX_ASSERT(!lin_vel1.IsNaN(), "lin_vel1 is nan");
-					VX_ASSERT(!ang_vel0.IsNaN(), "ang_vel1 is nan");
+					VX_ASSERT(!ang_vel1.IsNaN(), "ang_vel1 is nan");
 
 					////set velocities; prevent multiple bodies value value changes
 					/// and heavy torque level & world moment inetria internal to bodies ApplyImpluse

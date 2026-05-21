@@ -26,10 +26,9 @@ namespace vx {
 			float frequency;// = 0.0f;  ///[Hz]
 		};
 
-		/// A[stiffness
-		float damping = 0.0f; /// [Ns/m] damping coeeff
-
 		/// B[freq]
+		/// [0, +inf) 
+		/// >1.0 over damping .....
 		float dampingRatio = 1.0f; ///1.0f critical damping, 0.0f infinte bounces 
 
 
@@ -69,14 +68,142 @@ namespace vx {
 
 		SpringSettings mSpring;
 
-		virtual bool PrepSolver(ConstraintSolver* solver, float dt) override;
+		virtual bool PrepSolver(ConstraintSolver* solver, const PhysicsStepContext& ctx) override;
 		/// essentailly used for commiting back accumulated lambda
 		/// based on constraints policy
 		virtual void CommitSolverState(const Linear1DRow& row) override
 		{
-
+			mAccumulatedLambda = row.lambda;
 		}
 
+
+		//Quick 
+		void QuickSolve(float dt)
+		{
+			if (!mBodyA || !mBodyB)
+				return;
+
+
+			//Linear1DRow solver_row = SetupDistanceJacobian(dt);
+			Linear1DRow solver_row = BuildDistanceJacobian(dt);
+
+			if (solver_row.effectiveMass <= 0.0f)
+				return;
+
+			Body& bodyA = *mBodyA; //context.BodyManager().GetBody(solver_row.bodyA)
+			Body& bodyB = *mBodyB;
+
+			bool dyn_a = bodyA.IsDynamic();
+			bool dyn_b = bodyB.IsDynamic();
+
+			//if (bodyA.IsStatic() && bodyB.IsStatic())
+			//	return;
+
+
+			///this is the work of solver body and not direct for Body
+			Vec3 lin_velA = bodyA.GetLinearVelocity();
+			Vec3 lin_velB = bodyB.GetLinearVelocity();
+			Vec3 ang_velA = bodyA.GetAngularVelocity();
+			Vec3 ang_velB = bodyB.GetAngularVelocity();
+			float inv_massA = bodyA.GetInverseMass();
+			float inv_massB = bodyB.GetInverseMass();
+
+			///i.e 
+			//struct SolverBody
+			//{
+			//	Vec3 linearVel;
+			//	Vec3 angularVel;
+			//	float invMass;
+			//	EMotionType motionType = EMotionType::Dynamic;
+			//};
+
+			///// solver pair or just Linear1DRow etc have id/pointer to their pair
+			///// could have a constraint with more than 2 bodies etc
+			//struct SolverPair
+			//{
+			//	SolverBody bodyA;
+			//	SolverBody bodyB;
+			//};
+
+
+			//load data
+			Vec3 rAXn = Vec3::LoadFloat3Raw(solver_row.angularA);
+			Vec3 invIrAXn = Vec3::LoadFloat3Raw(solver_row.invIAngularA);
+
+			Vec3 rBXn = Vec3::LoadFloat3Raw(solver_row.angularB);
+			Vec3 invIrBXn = Vec3::LoadFloat3Raw(solver_row.invIAngularB);
+
+
+			//then later in constraint solver 
+			for (int i = 0; i < 20; ++i)
+			{
+				//Vec3 lin_velA = bodyA.GetLinearVelocity();
+				//Vec3 lin_velB = bodyB.GetLinearVelocity();
+
+				//jacobian 
+				float jv;
+				if (dyn_a && dyn_b) ///if constexpr (
+					jv = (lin_velA - lin_velB).Dot(solver_row.axis);
+				else if (dyn_a)
+					jv = lin_velA.Dot(solver_row.axis);
+				else if (dyn_b)
+					jv = (-lin_velB).Dot(solver_row.axis);
+				else
+				{
+					VX_LOG_ERROR("Static vs static this should not be possible");
+					jv = 0.0f;
+				}
+
+				if (dyn_a)
+					jv += rAXn.Dot(ang_velA);
+				if (dyn_b)
+					jv -= rBXn.Dot(ang_velB);
+
+				///maybe later, has its almost the same code
+				//if constexpr(ESolverRow::AngularPart)
+				//{
+				//	if (dyn_a)
+				//		jv += r0XAxis.Dot(ang_vel0);
+				//	if (dyn_b)
+				//		jv -= r1XAxis.Dot(ang_vel1);
+				//}
+
+				/// -K^-1(Jv + b)
+				/// -K^-1((1-e)Jv)
+				/// nor_axis_contraint.effectiveMass = 1/inv effective mass
+				//float lambda = (nor_axis_contraint.bias - jn) * nor_axis_contraint.effectiveMass;
+
+				//float actual_bias = 
+				float lambda = (jv - solver_row.bias) * solver_row.effectiveMass;
+
+				float old_lambda = solver_row.lambda;
+				//ensure non negative
+				//bilateral constraint
+				solver_row.lambda += lambda;
+				solver_row.lambda = VxClamp(old_lambda + lambda, solver_row.minLambda, solver_row.maxLambda);
+				//updated jn
+				float impluse = solver_row.lambda - old_lambda;
+
+				//store changes
+				if (dyn_a)
+				{
+					lin_velA -= impluse * inv_massA * solver_row.axis;
+					ang_velA -= impluse * invIrAXn;
+				}
+				if (dyn_b)
+				{
+					lin_velB += impluse * inv_massB * solver_row.axis;
+					ang_velB += impluse * invIrBXn;
+				}
+
+			}
+			//write back to body 
+			bodyA.SetLinearVelocity(lin_velA);
+			bodyA.SetAngularVelocity(ang_velA);
+
+			bodyB.SetLinearVelocity(lin_velB);
+			bodyB.SetAngularVelocity(ang_velB);
+		}
 
 
 		void DrawConstraintBounds(DebugGizmosRenderer* debug_renderer, const Vec3& rAw, const Vec3& rBw) const
@@ -190,14 +317,9 @@ namespace vx {
 
 		private: 
 
-			Linear1DRow SetupDistanceJacobian2(float dt)
+			Linear1DRow BuildDistanceJacobian(float dt)
 			{
-
-
 				Linear1DRow row;
-
-				row.bodyA = mBodyA->GetID();
-				row.bodyB = mBodyB->GetID();
 
 				//lets take into consideration that 
 				// that the achor point is not COM
@@ -274,19 +396,22 @@ namespace vx {
 				/// damping
 				float c = 0.0f;
 
+				float mass = (inv_eff_mass > 0.0f) ? 1.0f / inv_eff_mass : 0.0f;
+
 				if (mSpring.FrequencyDampingTuning())
 				{
 					float omega = 2.0f * kVxPi * mSpring.frequency;
-					k = omega * omega;
-					c = 2.0f * mSpring.dampingRatio * omega;
+					k = mass * VxSqr(omega);
+					c = 2.0f * mass * mSpring.dampingRatio * omega;
 				}
 				else if (mSpring.StiffnessSoftnessTuning())
 				{
 					k = mSpring.stiffness;
-					c = mSpring.damping;
+					c = 2.0f * mSpring.dampingRatio * VxSqrt(k * mass);
 				}
 
-				float beta = 0.2f; //hard constraint
+				//might want to authour this externally 
+				float beta = 0.3f; //hard constraint
 				float gamma = 0.0f;
 				if (k > 0.0f)
 				{
@@ -299,7 +424,7 @@ namespace vx {
 				row.bias = beta * error / dt;
 
 				///later when figure out, caching implmentation for warm start etc
-				row.lambda = 0.0f;
+				row.lambda = mAccumulatedLambda;
 
 				return row;
 			}

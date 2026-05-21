@@ -1,5 +1,5 @@
 #pragma once
-#include "Body/BodyID.h"
+#include "SolverBodyIndex.h"
 #include "Maths/Vec3.h"
 #include "Maths/Float3.h"
 
@@ -7,8 +7,9 @@ namespace vx {
 
 	struct Linear1DRow
 	{
-		BodyID bodyA;	/// later change to SolverBody only caches required data 
-		BodyID bodyB;	/// like position, velocities before write back, and constraint stores actual BodyID
+		SolverBodyIndex bodyAidx;	/// later change to SolverBody only caches required data 
+		SolverBodyIndex bodyBidx;	/// like position, velocities before write back, and constraint stores actual BodyID
+
 		Vec3 axis;
 
 		/// rAXn = rA.Cross(nor);
@@ -23,7 +24,7 @@ namespace vx {
 
 		float effectiveMass;
 		float bias;
-		float lambda;
+		float lambda = 0.0f;
 
 		float minLambda;
 		float maxLambda;
