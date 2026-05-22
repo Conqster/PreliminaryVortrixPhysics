@@ -334,7 +334,7 @@ namespace vx {
 			struct ConstraintAxis //ConstraintRow
 			{
 				Float3 axis;
-				float effectiveMass = 0.0f; //inv_mass + point_inv_mass(due rotation)
+				float effMass = 0.0f; //inv_mass + point_inv_mass(due rotation)
 				float totalLamda = 0.0f;//lagrange multiplier / total accumulated impluse along axis
 
 				Float3 r0XAxis{ 0.0f }; //relative point0 Cross axis 

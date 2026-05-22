@@ -13,16 +13,16 @@ namespace vx {
 		Vec3 axis;
 
 		/// rAXn = rA.Cross(nor);
-		Float3 angularA;	/// rAXn = rA.Cross(nor);
+		Float3 rAXn;	/// rAXn = rA.Cross(nor);
 		///invIrAXn = mBodyA->ComputeInvInteriaWorld().Multiply3x3(rAXn);
-		Float3 invIAngularA;	///invIrAXn = mBodyA->ComputeInvInteriaWorld().Multiply3x3(rAXn);
+		Float3 invIrAXn;	///invIrAXn = mBodyA->ComputeInvInteriaWorld().Multiply3x3(rAXn);
 
 		/// rAXn = rA.Cross(nor);
-		Float3 angularB;	/// rAXn = rA.Cross(nor);
+		Float3 rBXn;	/// rAXn = rA.Cross(nor);
 		///invIrAXn = mBodyA->ComputeInvInteriaWorld().Multiply3x3(rAXn
-		Float3 invIAngularB;	///invIrAXn = mBodyA->ComputeInvInteriaWorld().Multiply3x3(rAXn);
+		Float3 invIrBXn;	///invIrAXn = mBodyA->ComputeInvInteriaWorld().Multiply3x3(rAXn);
 
-		float effectiveMass;
+		float effMass;
 		float bias;
 		float lambda = 0.0f;
 

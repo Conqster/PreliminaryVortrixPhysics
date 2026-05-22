@@ -15,8 +15,6 @@ namespace vx {
 		uint32 Value() const { return mIndex; }
 		bool IsValid() const { return mIndex != kInvalidIndex; }
 
-		bool IsStatic() const { return mIndex == kInvalidIndex; }
-
 		VX_INLINE bool operator < (const SolverBodyIndex& rhs) { return mIndex < rhs.mIndex; }
 		VX_INLINE bool operator > (const SolverBodyIndex& rhs) { return mIndex > rhs.mIndex; }
 

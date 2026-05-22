@@ -20,7 +20,7 @@ void RopeSetting(vx::DistanceConstraint& constraint)
 	//constraint.mSpring.stiffness = 0.0f;
 	constraint.mSpring.frequency = vx::DegToRad(270.0f);
 
-	constraint.mSpring.dampingRatio = 2.0f;
+	constraint.mSpring.dampingRatio = 0.4f;
 
 
 	//constraint.mSpring.tunningMode = vx::ESpringTuningMode::StiffnessSoftness;
@@ -193,6 +193,36 @@ void JointScenario::Init(vx::PhysicsWorld* i_world)
 	c5.mBodyB = body_d;
 	//c5.mLocalAnchorA = vx::Vec3(0.5f, 0.5f, 0.0f);
 	//c5.mLocalAnchorB = vx::Vec3(-0.5f, -0.5f, 0.0f);
+
+	//achor to the static 
+	vx::BodySettings static_bodies_settings = vx::BodySettings::DefaultStaticConstruct();
+	static_bodies_settings.position = vx::Vec3(0.0f, 12.5f, 0.0f);
+	static_bodies_settings.debug_name = "box";
+	static_bodies_settings.shape = unit_box;
+	static_bodies_settings.intialVelocity = vx::Vec3(1.0f);
+	uint32 static_body_idx = mPhysicsWorld->GetBodies().size();
+	mPhysicsWorld->CreateBody(static_bodies_settings);
+	constraint = vx::DistanceConstraint();
+	RopeSetting(constraint);
+	constraint.mMinDistance = 0.75f;
+	constraint.mMaxDistance = 1.5f;
+	constraint.mBodyA = &mPhysicsWorld->GetBodies()[static_body_idx];
+	constraint.mLocalAnchorA = Vec3(0.0f, -0.5f, 0.0f);
+
+	dyn_bodies_settings.position = vx::Vec3(0.0f, 12.5f, 0.0f);
+	dyn_bodies_settings.shape = new vx::CapsuleShape(0.5f, 0.5f);;
+	mPhysicsWorld->CreateBody(dyn_bodies_settings);
+
+	constraint.mBodyB = &mPhysicsWorld->GetBodies().back();// body_d;
+	constraint.mLocalAnchorB = Vec3(0.0f, 1.0f, 0.0f);
+	phys_constraint_coord->AddConstraintT(constraint);
+
+	//quickk reverse, B already set
+	constraint.mLocalAnchorB = Vec3(0.0f, -1.0f, 0.0f);
+	constraint.mBodyA = body_d;
+	constraint.mLocalAnchorA = Vec3(0.0f, 0.5f, 0.0f);
+	phys_constraint_coord->AddConstraintT(constraint);
+
 
 	CreateLattice();
 

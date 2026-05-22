@@ -87,7 +87,7 @@ namespace vx {
 			//Linear1DRow solver_row = SetupDistanceJacobian(dt);
 			Linear1DRow solver_row = BuildDistanceJacobian(dt);
 
-			if (solver_row.effectiveMass <= 0.0f)
+			if (solver_row.effMass <= 0.0f)
 				return;
 
 			Body& bodyA = *mBodyA; //context.BodyManager().GetBody(solver_row.bodyA)
@@ -127,11 +127,11 @@ namespace vx {
 
 
 			//load data
-			Vec3 rAXn = Vec3::LoadFloat3Raw(solver_row.angularA);
-			Vec3 invIrAXn = Vec3::LoadFloat3Raw(solver_row.invIAngularA);
+			Vec3 rAXn = Vec3::LoadFloat3Raw(solver_row.rAXn);
+			Vec3 invIrAXn = Vec3::LoadFloat3Raw(solver_row.invIrAXn);
 
-			Vec3 rBXn = Vec3::LoadFloat3Raw(solver_row.angularB);
-			Vec3 invIrBXn = Vec3::LoadFloat3Raw(solver_row.invIAngularB);
+			Vec3 rBXn = Vec3::LoadFloat3Raw(solver_row.rBXn);
+			Vec3 invIrBXn = Vec3::LoadFloat3Raw(solver_row.invIrBXn);
 
 
 			//then later in constraint solver 
@@ -174,7 +174,7 @@ namespace vx {
 				//float lambda = (nor_axis_contraint.bias - jn) * nor_axis_contraint.effectiveMass;
 
 				//float actual_bias = 
-				float lambda = (jv - solver_row.bias) * solver_row.effectiveMass;
+				float lambda = (jv - solver_row.bias) * solver_row.effMass;
 
 				float old_lambda = solver_row.lambda;
 				//ensure non negative
@@ -344,8 +344,8 @@ namespace vx {
 					Vec3 rAXn = rA.Cross(nor);
 					Vec3 invIrAXn = mBodyA->ComputeInvInteriaWorld().Multiply3x3(rAXn);
 
-					rAXn.Store(row.angularA);
-					invIrAXn.Store(row.invIAngularA);
+					rAXn.Store(row.rAXn);
+					invIrAXn.Store(row.invIrAXn);
 
 					inv_eff_mass += mBodyA->GetInverseMass() + invIrAXn.Dot(rAXn);
 				}
@@ -355,8 +355,8 @@ namespace vx {
 					Vec3 rBXn = rB.Cross(nor);
 					Vec3 invIrBXn = mBodyB->ComputeInvInteriaWorld().Multiply3x3(rBXn);
 
-					rBXn.Store(row.angularB);
-					invIrBXn.Store(row.invIAngularB);
+					rBXn.Store(row.rBXn);
+					invIrBXn.Store(row.invIrBXn);
 
 					inv_eff_mass += mBodyB->GetInverseMass() + invIrBXn.Dot(rBXn);
 				}
@@ -386,7 +386,7 @@ namespace vx {
 				}
 				else
 				{
-					row.effectiveMass = 0.0f;
+					row.effMass = 0.0f;
 					return row;
 				}
 
@@ -420,7 +420,7 @@ namespace vx {
 				}
 
 				gamma += mSpring.softness;
-				row.effectiveMass = 1.0f / (inv_eff_mass + gamma);
+				row.effMass = 1.0f / (inv_eff_mass + gamma);
 				row.bias = beta * error / dt;
 
 				///later when figure out, caching implmentation for warm start etc

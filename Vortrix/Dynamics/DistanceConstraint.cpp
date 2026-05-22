@@ -5,6 +5,9 @@ bool vx::DistanceConstraint::PrepSolver(ConstraintSolver* solver, const PhysicsS
 {
 	Linear1DRow row = BuildDistanceJacobian(ctx.stepDeltaTime);
 
+	if (row.effMass == 0.0f)
+		return false;
+
 	row.bodyAidx = solver->GetOrCreateSolverBody(mBodyA->GetID(), ctx);
 	row.bodyBidx = solver->GetOrCreateSolverBody(mBodyB->GetID(), ctx);
 

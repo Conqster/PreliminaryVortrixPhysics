@@ -75,7 +75,7 @@ namespace vx {
 				inv_effective_mass += inv_Ir1_n.Dot(r1_X_n);
 			}
 			if (inv_effective_mass > 0)
-				this->normal.effectiveMass = 1.0f / inv_effective_mass;
+				this->normal.effMass = 1.0f / inv_effective_mass;
 			this->normal.totalLamda = 0.0f;
 			normal.Store(this->normal.axis);
 
@@ -152,7 +152,7 @@ namespace vx {
 				}
 
 				if(inv_effective_mass > 0)
-					constaint_axis.effectiveMass = 1.0f / inv_effective_mass;
+					constaint_axis.effMass = 1.0f / inv_effective_mass;
 				constaint_axis.totalLamda = 0.0f;
 
 				/// surface does not have velocity
@@ -654,7 +654,7 @@ namespace vx {
 						/// -K^-1((1-e)Jv)
 						/// nor_axis_contraint.effectiveMass = 1/inv effective mass
 						//float lambda = (nor_axis_contraint.bias - jn) * nor_axis_contraint.effectiveMass;
-						float lambda = (jn - nor_axis_contraint.bias) * nor_axis_contraint.effectiveMass;
+						float lambda = (jn - nor_axis_contraint.bias) * nor_axis_contraint.effMass;
 
 						float old_lambda = nor_axis_contraint.totalLamda;
 						//ensure non negative
@@ -713,7 +713,7 @@ namespace vx {
 							//float lambda = contact_info.friction * 0.5f * axis_contraint.effectiveMass * jv;
 
 							//ignore surface relative velocity
-							float lambda = jv * axis_contraint.effectiveMass;
+							float lambda = jv * axis_contraint.effMass;
 
 							float old_lambda = axis_contraint.totalLamda;
 							//ensure non negative
