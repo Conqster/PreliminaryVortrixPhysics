@@ -111,11 +111,11 @@ namespace vx
 		float frictionThreshold = 0.02f;
 		//6 - 10
 		//2 - 4
-		int positionIterations = 2; //2
+		int positionIterations = 3; //2
 		//position correction
 		//allow bodies to sink into each other
 		float positionCorrectionSlop = 0.02f;// 0.01f;
-		float baumgarte = 0.1f;// 0.2f;
+		float baumgarte = 0.2f;// 0.2f;
 		Vec2 positionCorrectionGlobalLimits = Vec2(0.01, 2.0f);
 		float positionCorrectionBodyLimitScale = 0.8f;
 

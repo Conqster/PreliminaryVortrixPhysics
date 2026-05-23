@@ -1,15 +1,9 @@
 #pragma once
 
+#include "EConstraintFlags.h"
+
 class DebugGizmosRenderer;
 namespace vx {
-
-
-	enum class ESolvePosition
-	{
-		None,
-		Projection
-	};
-
 
 	struct Linear1DRow;
 	class ConstraintSolver;
@@ -39,7 +33,9 @@ namespace vx {
 		/// then Constraint could be added to list/graph for Geomteric/Position 
 		/// correction, i.e reducing the number of constraint loop is most are not 
 		/// hard/rigid constraint
-		ESolvePosition mResolvePosition = ESolvePosition::Projection;
+		EConstraintFlags mFlags = EConstraintFlags::SolveVelocity | EConstraintFlags::SolvePosition;
+
+		virtual bool RequiresPositionCorrection() = 0;
 	};
 
 } //namespace vx

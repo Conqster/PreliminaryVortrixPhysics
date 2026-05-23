@@ -91,6 +91,7 @@ namespace vx {
 		/// while thread1 works on next few cache line bodies etc 
 		std::vector <SolverBody> mBodies;
 		std::vector<SolverBodyIndex> mBodyToSolverBody;
+		std::vector<Constraint*> mConstraintPositionSolveQueue;
 
 	public:
 
@@ -99,6 +100,7 @@ namespace vx {
 			uint32 max_bodies = body_manager.MaxBodies();
 			mBodies.reserve(max_bodies);
 			mBodyToSolverBody.resize(max_bodies);
+			mConstraintPositionSolveQueue.reserve(100);
 		}
 
 		///in order to trck is bodies is already participamt with another constraint 
@@ -210,6 +212,9 @@ namespace vx {
 		Linear1DRow* GetLinearRowPtr() { return mLinear1DRows.data(); }
 		size_t LinearRowCount() const { return mLinear1DRows.size(); }
 
+		Constraint** GetConstraintResolvePositionQueuePtr() { return mConstraintPositionSolveQueue.data(); }
+		size_t ConstraintResolvePositionQueueCount() const { return mConstraintPositionSolveQueue.size(); }
+
 		void HackClear()
 		{
 			mLinear1DRows.clear();
@@ -217,11 +222,17 @@ namespace vx {
 			//quick hack, no caching pipeline and to prevent bugs 
 			mBodies.clear();
 			std::fill(mBodyToSolverBody.begin(), mBodyToSolverBody.end(), SolverBodyIndex{});
+			mConstraintPositionSolveQueue.clear();
 		}
 
 		void AddLinearRow(const Linear1DRow& row)
 		{
 			mLinear1DRows.push_back(row);
+		}
+
+		void AppendPositionCorrectionQueue(Constraint* constraint)
+		{
+			mConstraintPositionSolveQueue.push_back(constraint);
 		}
 		
 		static void SolverVelocityLinear1DRow(Linear1DRow& row, SolverBody* bodies)
@@ -241,6 +252,8 @@ namespace vx {
 			float compliance = row.gamma * row.lambda + row.bias;
 
 			float lambda = (jv - compliance) * row.effMass;
+			//float lambda = -(jv + compliance) * row.effMass;
+
 			float _lambda = VxClamp(row.lambda + lambda, row.minLambda, row.maxLambda);
 			float impluse = _lambda - row.lambda;
 			row.lambda = _lambda;
@@ -264,6 +277,15 @@ namespace vx {
 			//for (Linear1DRow** r = rows, **r_end = rows + count; r < r_end; ++r)
 			for (Linear1DRow* r = rows, *r_end = rows + count; r < r_end; ++r)
 				SolverVelocityLinear1DRow(*r, bodies);
+		}
+
+
+		static void SolveConstraintsPosition(Constraint** constraints, size_t count, float dt, float baumgarte)
+		{
+			VX_PROFILE_FUNCTION();
+
+			for (Constraint** c = constraints, **c_end = constraints + count; c < c_end; ++c)
+				(*c)->SolvePositionConstraint(dt, baumgarte);
 		}
 
 		static VX_INLINE void WarmStart(Linear1DRow& row, SolverBody& body0, SolverBody& body1)

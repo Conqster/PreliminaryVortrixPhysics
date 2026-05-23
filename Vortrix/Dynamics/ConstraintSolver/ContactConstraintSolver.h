@@ -10,7 +10,7 @@
 
 #include "CombineFrictionRestitution.h"
 
-#define CONTACT_USE_SOLVERBODY 1
+#define CONTACT_USE_SOLVERBODY 0
 
 #if CONTACT_USE_SOLVERBODY
 #include "Dynamics/SolverBodyIndex.h"

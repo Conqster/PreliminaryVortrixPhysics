@@ -19,7 +19,9 @@ namespace vx {
 		/// and <1.0 is under damping, 0.0f is not infinite bouncing
 		/// has system applies explicit velocity damping, "Velocity body intergration"
 		/// [0, +inf)
-		float mDampingRatio = 1.0f; ///1.0f critical damping, 0.0f infinte bounces 
+		float mDampingRatio = 1.0f;
+
+		VX_INLINE bool Active() const { return mFrequency != 0.0f; }
 
 
 		/// <summary>
@@ -36,15 +38,15 @@ namespace vx {
 			float& o_eff_mass, float& o_bias, float& o_gamma) const
 		{
 
-			/// DEfault hard constraint (Baumgarte)
+			/// DEfault hard constraint
 			float gamma = 0.0f;
-			float beta = 0.3f;
+			float beta = 0.0f; //this is not used in position correction
 
 			/// Soft constraint 
 			/// gamma = 1.0f / (h(hk+c)
 			/// beta = hk/(hk+c)
 			/// h = dt, k = stiffness, and c = damping
-			if (mFrequency > 0.0f && inv_eff_mass)
+			if (mFrequency > 0.0f && inv_eff_mass > 0.0f)
 			{
 				float eff_mass = 1.0f / inv_eff_mass;
 

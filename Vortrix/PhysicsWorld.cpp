@@ -414,6 +414,16 @@ namespace vx
 
 		if (mSettings.solver.enable)
 		{
+			float baumgarte = mSettings.solver.baumgarte;
+			Constraint** solve_constraint_position = mConstraintSolver->GetConstraintResolvePositionQueuePtr();
+			uint32 num_position_constraint = mConstraintSolver->ConstraintResolvePositionQueueCount();
+			for (int i = 0; i < mSettings.solver.positionIterations; ++i)
+			{
+				ConstraintSolver::SolveConstraintsPosition(solve_constraint_position, num_position_constraint, dt, baumgarte);
+				//for (auto& c : mConstraintCoordinator->GetConstraints())
+				//	c->SolvePositionConstraint(dt, baumgarte);
+			}
+
 #if !CONTACT_USE_SOLVERBODY
 			mContactConstraintSolver.SolvePositionConstraint(mSettings.solver);
 #else

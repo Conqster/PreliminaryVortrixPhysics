@@ -119,11 +119,13 @@ void Scenario::MouseCastRay()
 
 		mDebugGizmos->DrawAACross(point, GetBasisAxisColourArray().data(), 3, 0.2f);
 
-		vx::Body body = mPhysicsWorld->GetBodyManager().GetBody(hit.body);
+		vx::Body& body = mPhysicsWorld->GetBodyManager().GetBody(hit.body);
 		mDebugGizmos->DrawAABB(body.GetAABBWorld(), vx::Colour::sDeepTeal);
 
 		if (!mBody.IsValid() && mMouseEvent != EClickEvent::None)
 		{
+			if (body.IsSleeping())
+				body.WakeUp(-ray_cast.direction * 5.0f);
 			mBody = hit.body;
 			//transform point to body local
 			mPointBodyFrame = Mat44::TransformInverse(

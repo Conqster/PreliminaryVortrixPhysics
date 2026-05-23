@@ -221,7 +221,7 @@ namespace vx
 	
 		void WakeUp()
 		{
-			mAwake = true;
+			mAwake = (mMotionType != EMotionType::Static) ? true : false;
 			mSleepTimer = 0.0f;
 		}
 		void WakeUp(const Vec3& jolt)

@@ -17,21 +17,21 @@ void RopeSetting(vx::DistanceConstraint& constraint)
 	constraint.mMinDistance = 1.25f;
 	constraint.mMaxDistance = 2.5f;//6.0f;
 
-	constraint.mSpring.mFrequency = vx::DegToRad(180.0f);
+	constraint.SetSpringFrequency(vx::DegToRad(180.0f));
 
-	constraint.mSpring.mDampingRatio = 0.0f;
+	constraint.SetSpringDampingRatio(0.0f);
 }
 
 void SuspensionShockSettingCriticalDamping(vx::DistanceConstraint& constraint)
 {
-	constraint.mSpring.mFrequency = vx::DegToRad(360.0f);
-	constraint.mSpring.mDampingRatio = 0.1f;
+	constraint.SetSpringFrequency(vx::DegToRad(360.0f));
+	constraint.SetSpringDampingRatio(0.1f);
 }
 
 void SuspensionShockSetting(vx::DistanceConstraint& constraint)
 {
-	constraint.mSpring.mFrequency = vx::DegToRad(270.0f);
-	constraint.mSpring.mDampingRatio = 2.0f;
+	constraint.SetSpringFrequency(vx::DegToRad(270.0f));
+	constraint.SetSpringDampingRatio(2.0f);
 }
 
 
@@ -40,8 +40,8 @@ void HardBarSetting(vx::DistanceConstraint& constraint)
 
 	constraint.mMaxDistance = 2.5f;// constraint.mRestLength * 2.0f;
 	constraint.mMinDistance = 2.5f;// constraint.mRestLength * 2.0f;
-	constraint.mSpring.mDampingRatio = 0.0f;
-	constraint.mSpring.mFrequency = 0.0f;
+	constraint.SetSpringDampingRatio(0.0f);
+	constraint.SetSpringFrequency(0.0f);
 }
 
 
@@ -264,10 +264,15 @@ void ConstaintPanel(DistanceConstraint& constraint)
 	ImGui::Text("Accumulated Lambda: %f", constraint.mAccumulatedLambda);
 	
 	ImGui::SeparatorText("Spring Setting");
-	auto& spring = constraint.mSpring;
 
-	ImGui::SliderAngle("mFrequency [Hz:Rad/sec]", &spring.mFrequency, 0.0f);
-	ImGui::DragFloat("Damping Ratio", &spring.mDampingRatio, 0.01f);
+	float v = constraint.GetSpringFrequency();
+	if (ImGui::SliderAngle("mFrequency [Hz:Rad/sec]", &v, 0.0f))
+		constraint.SetSpringFrequency(v);
+
+	v = constraint.GetSpringDampingRatio();
+	if (ImGui::DragFloat("Damping Ratio", &v, 0.01f))
+		constraint.SetSpringDampingRatio(v);
+
 	//ImGui::SliderFloat("Softness", &spring.softness, 0.0f, 1.0f);
 }
 
@@ -388,9 +393,9 @@ void JointScenario::CreateLattice()
 
 	//SuspensionShockSetting(constraint);
 	HardBarSetting(constraint);
-	constraint.mMaxDistance = 3.5f;// constraint.mRestLength * 2.0f;
 	constraint.mMinDistance = 3.5f;// constraint.mRestLength * 2.0f;
-	constraint.mSpring.mDampingRatio = 0.0f;
+	constraint.mMaxDistance = 3.5f;// constraint.mRestLength * 2.0f;
+	constraint.SetSpringDampingRatio(0.0f);
 
 	vx::DistanceConstraint& c0 = *phys_constraint_coord->AddConstraintT(constraint);
 	vx::DistanceConstraint& c1 = *phys_constraint_coord->AddConstraintT(constraint);
