@@ -23,6 +23,7 @@ namespace vx {
 		Float3 invIrBXn;	///invIrAXn = mBodyA->ComputeInvInteriaWorld().Multiply3x3(rAXn);
 
 		float effMass;
+		float gamma;
 		float bias;
 		float lambda = 0.0f;
 

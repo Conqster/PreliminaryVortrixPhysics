@@ -10,6 +10,16 @@
 
 #include "CombineFrictionRestitution.h"
 
+#define CONTACT_USE_SOLVERBODY 1
+
+#if CONTACT_USE_SOLVERBODY
+#include "Dynamics/SolverBodyIndex.h"
+#include "Dynamics/Body/BodyManager.h"
+#endif // CONTACT_USE_SOLVERBODY
+
+
+
+
 class DebugGizmosRenderer;
 namespace vx {
 
@@ -164,6 +174,10 @@ namespace vx {
 		void SetupContactConstraint(const ContactManifold& manifold, const struct CollisionContext& ctx);
 		void WarmStart();
 
+
+#if CONTACT_USE_SOLVERBODY
+
+#else
 		void SolveVelocityConstraint(const struct SolverSettings& settings)
 		{
 			VX_PROFILE_FUNCTION();
@@ -185,6 +199,7 @@ namespace vx {
 				}
 			}
 		}
+#endif // CONTACT_USE_SOLVERBODY
 
 		void SetFrictionCombineMode(ECombineMode mode) { mCombinedFrictionMode = mode; }
 		void SetRestitutionCombineMode(ECombineMode mode) { mCombinedRestitutionMode = mode; }
@@ -366,8 +381,14 @@ namespace vx {
 
 		struct ContactConstraint
 		{
+#if CONTACT_USE_SOLVERBODY
+			SolverBodyIndex body0;
+			SolverBodyIndex body1;
+#else
 			Body* body0 = nullptr;
 			Body* body1 = nullptr;
+#endif // CONTACT_USE_SOLVERBODY
+
 
 			Float3 normal{0.0f};
 
@@ -452,8 +473,15 @@ namespace vx {
 		}
 #pragma endregion
 
-		void PositionalCorrection(ContactConstraint& constraint, float baumgarte, float slop, float min_limit, float max_limit, float limit_scale);
+		
+#if CONTACT_USE_SOLVERBODY
+	public:
+		void SolveVelocityConstraint(struct SolverBody* bodies);
+		void SolvePositionCorrections(SolverBody* bodies, BodyManager& body_manager, float baumgarte, float slop, float min_limit, float max_limit, float limit_scale);
+#else
 		void SolverContactManifold(const SolverSettings& phy_settings);
+		void PositionalCorrection(ContactConstraint& constraint, float baumgarte, float slop, float min_limit, float max_limit, float limit_scale);
+#endif // CONTACT_USE_SOLVERBODY
 	};
 	
 }

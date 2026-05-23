@@ -6,6 +6,9 @@
 
 #include "SimulationContexts.h"
 
+#include "Dynamics/ConstraintCoordinator.h"
+
+
 namespace vx {
 
 
@@ -215,10 +218,17 @@ namespace vx {
 		VX_ASSERT_WARN(manifold.a->IsDynamic(), "Contact Manifold body A is Static, while B is Dynamic");
 
 
+#if CONTACT_USE_SOLVERBODY
+		VX_ASSERT_WARN_VOID(ctx.constraintSolver, "trying to setup constact constraint from manifold, but solver/builder not available");
+		
 
+		constraint.body0 = ctx.constraintSolver->GetOrCreateSolverBody(*manifold.a);
+		constraint.body1 = ctx.constraintSolver->GetOrCreateSolverBody(*manifold.b);
 
+#else
 		constraint.body0 = manifold.a;
 		constraint.body1 = manifold.b;
+#endif // CONTACT_USE_SOLVERBODY
 
 
 		Body& body0 = *manifold.a;
@@ -307,6 +317,7 @@ namespace vx {
 	{
 		VX_ASSERT(false, "Out of service!!!!"); //need house keep last frame cache frame etc
 
+#if !CONTACT_USE_SOLVERBODY
 		//for a warm start up use info from last frame 
 		for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
 		{
@@ -348,11 +359,15 @@ namespace vx {
 					bodyB->ApplyImpulse(impluse * constraint_info.invMass1, Vec3::LoadFloat3Raw(pt.cacheLocalPoint->localPoint1));
 			}
 		}
+#endif // !CONTACT_USE_SOLVERBODY
 	}
 
 
 	void ContactConstraintSolver::DebugDraw(DebugGizmosRenderer* debug_renderer, const DrawSettings& settings) const
 	{
+
+#if !CONTACT_USE_SOLVERBODY
+
 
 		/// Keep in mind for manifold debug
 		/// the manifold points are store in world space 
@@ -453,7 +468,12 @@ namespace vx {
 		{
 			draw_contact_manifold(mConstraints[contact_idx]);
 		}
+#endif // !CONTACT_USE_SOLVERBODY
 	}
+
+
+#if CONTACT_USE_SOLVERBODY
+#else
 
 	void ContactConstraintSolver::PositionalCorrection(ContactConstraint& constraint, float baumgarte, float slop, float min_limit, float max_limit, float limit_scale)
 	{
@@ -544,8 +564,316 @@ namespace vx {
 			}
 		}
 	}
+#endif // CONTACT_USE_SOLVERBODY
 
 
+#if CONTACT_USE_SOLVERBODY
+	void ContactConstraintSolver::SolveVelocityConstraint(SolverBody* bodies)
+	{
+
+		//curr_manifold_idx = -1;
+		//for (auto& contact_info : manifolds)
+		for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
+		{
+			auto& constraint_info = mConstraints[contact_idx];//constraint info
+
+
+			if (!constraint_info.body0.IsValid() || !constraint_info.body1.IsValid() || constraint_info.numContacts < 0)
+			{
+				VX_ASSERT_WARN(constraint_info.body0.IsValid(), "Body 0 is invalid");
+				VX_ASSERT_WARN(constraint_info.body1.IsValid(), "Body 1 is invalid");
+				VX_ASSERT_WARN(constraint_info.numContacts > 0, "No contact points");
+				continue;
+			}
+
+
+			SolverBody& sbA = bodies[constraint_info.body0.Value()];
+			SolverBody& sbB = bodies[constraint_info.body1.Value()];
+
+			bool dyn_a = (sbA.invMass > 0);
+			bool dyn_b = (sbB.invMass > 0);
+
+			Vec3 n = Vec3::LoadFloat3Raw(constraint_info.normal);
+			n.Normalise();
+			//contact basis
+			Vec3 tangents[2];
+
+			//////Get velocities 
+			Vec3 lin_vel0 = Vec3(0.0f);
+			Vec3 ang_vel0 = Vec3(0.0f);
+
+			if (dyn_a)
+			{
+				lin_vel0 = sbA.v;
+				ang_vel0 = sbA.w;
+			}
+
+			Vec3 lin_vel1 = Vec3(0.0f);
+			Vec3 ang_vel1 = Vec3(0.0f);
+
+			if (dyn_b)
+			{
+				lin_vel1 = sbB.v;
+				ang_vel1 = sbB.w;
+			}
+
+
+
+
+			//for (auto& pt : contact_info.points)
+			for (int i = 0; i < constraint_info.numContacts; ++i)
+			{
+				auto& pt = constraint_info.contactPoints[i];
+
+				tangents[0] = Vec3::LoadFloat3Raw(pt.lateralTangent[0].axis);
+				tangents[1] = Vec3::LoadFloat3Raw(pt.lateralTangent[1].axis);
+
+
+				///check closeness 
+				//VX_ASSERT_WARN(n.IsApprox(Vec3::LoadFloat3Raw(pt.normal.axis)), "normal is bad");
+				//VX_ASSERT_WARN(tangents[0].IsApprox(Vec3::LoadFloat3Raw(pt.tangent[0].axis)), "tangent0 is bad");
+				//VX_ASSERT_WARN(tangents[1].IsApprox(Vec3::LoadFloat3Raw(pt.tangent[1].axis)), "tangent1 is bad");
+
+				///this could be solve in simd parallel n, t0, t1
+				///
+				//////////////////////////
+				//// Solve normal/penetration axis
+				//////////////////////////
+				ContactConstraintPoint::ConstraintAxis& nor_axis_contraint = pt.normal;
+				// 
+				{
+					/// curreny relative velocity (J * v) 
+					float jn;
+					if (dyn_a && dyn_b)
+						jn = (lin_vel0 - lin_vel1).Dot(n);
+					else if (dyn_a)
+						jn = lin_vel0.Dot(n);
+					else if (dyn_b)
+						jn = (-lin_vel1).Dot(n);
+					else
+					{
+						VX_LOG_ERROR("Static vs static this should not be possible");
+						jn = 0.0f;
+					}
+					//simplify 
+					if (dyn_a)
+						jn += Vec3::LoadFloat3Raw(nor_axis_contraint.r0XAxis).Dot(ang_vel0);
+					if (dyn_b)
+						jn -= Vec3::LoadFloat3Raw(nor_axis_contraint.r1XAxis).Dot(ang_vel1);
+
+					/// -K^-1(Jv + b)
+					/// -K^-1((1-e)Jv)
+					/// nor_axis_contraint.effectiveMass = 1/inv effective mass
+					//float lambda = (nor_axis_contraint.bias - jn) * nor_axis_contraint.effectiveMass;
+					float lambda = (jn - nor_axis_contraint.bias) * nor_axis_contraint.effMass;
+
+					float old_lambda = nor_axis_contraint.totalLamda;
+					//ensure non negative
+					nor_axis_contraint.totalLamda = VxMax(old_lambda + lambda, 0.0f);
+					//updated jn
+					float impluse = nor_axis_contraint.totalLamda - old_lambda;
+
+					//store changes
+					if (dyn_a)
+					{
+						lin_vel0 -= impluse * constraint_info.invMass0 * n;
+						ang_vel0 -= impluse * Vec3::LoadFloat3Raw(nor_axis_contraint.invIr0XAxis);
+					}
+					if (dyn_b)
+					{
+						lin_vel1 += impluse * constraint_info.invMass1 * n;
+						ang_vel1 += impluse * Vec3::LoadFloat3Raw(nor_axis_contraint.invIr1XAxis);
+					}
+
+				}
+
+
+				////////////////////////////
+				////// Solve tangential axis
+				////////////////////////////
+				if (constraint_info.friction > 0.0f)
+				{
+					float max_friction = constraint_info.friction * nor_axis_contraint.totalLamda;
+
+					for (int i = 0; i < 2; ++i)
+					{
+						ContactConstraintPoint::ConstraintAxis& axis_contraint = pt.lateralTangent[i];
+						const Vec3& axis = Vec3::LoadFloat3Raw(axis_contraint.axis);// = tangents[i];
+
+						float jv;
+						if (dyn_a && dyn_b)
+							jv = (lin_vel0 - lin_vel1).Dot(axis);
+						else if (dyn_a)
+							jv = lin_vel0.Dot(axis);
+						else if (dyn_b)
+							jv = (-lin_vel1).Dot(axis);
+						else
+						{
+							VX_LOG_ERROR("Static vs static this should not be possible");
+							jv = 0.0f;
+						}
+
+
+						//simplify 
+						if (dyn_a)
+							jv += Vec3::LoadFloat3Raw(axis_contraint.r0XAxis).Dot(ang_vel0);
+						if (dyn_b)
+							jv -= Vec3::LoadFloat3Raw(axis_contraint.r1XAxis).Dot(ang_vel1);
+
+						//float lambda = contact_info.friction * axis_contraint.effectiveMass * jv;
+						//float lambda = contact_info.friction * 0.5f * axis_contraint.effectiveMass * jv;
+
+						//ignore surface relative velocity
+						float lambda = jv * axis_contraint.effMass;
+
+						float old_lambda = axis_contraint.totalLamda;
+						//ensure non negative
+						axis_contraint.totalLamda = VxClamp(old_lambda + lambda, -max_friction, max_friction);
+						//updated jn
+						float impluse = axis_contraint.totalLamda - old_lambda;
+
+						//store changes
+						if (dyn_a)
+						{
+							lin_vel0 -= impluse * constraint_info.invMass0 * axis;
+							ang_vel0 -= impluse * Vec3::LoadFloat3Raw(axis_contraint.invIr0XAxis);
+						}
+						if (dyn_b)
+						{
+							lin_vel1 += impluse * constraint_info.invMass1 * axis;
+							ang_vel1 += impluse * Vec3::LoadFloat3Raw(axis_contraint.invIr1XAxis);
+						}
+					}
+				}
+
+
+
+				VX_ASSERT(!lin_vel0.IsNaN(), "lin_vel0 is nan");
+				VX_ASSERT(!ang_vel0.IsNaN(), "ang_vel0 is nan");
+				VX_ASSERT(!lin_vel1.IsNaN(), "lin_vel1 is nan");
+				VX_ASSERT(!ang_vel1.IsNaN(), "ang_vel1 is nan");
+
+				////set velocities; prevent multiple bodies value value changes
+				/// and heavy torque level & world moment inetria internal to bodies ApplyImpluse
+				if (dyn_a)
+				{
+					sbA.v = lin_vel0;
+					sbA.w = ang_vel0;
+				}
+
+				if (dyn_b)
+				{
+					sbB.v = lin_vel1;
+					sbB.w = ang_vel1;
+				}
+			}
+		}
+	}
+	void ContactConstraintSolver::SolvePositionCorrections(SolverBody* bodies, BodyManager& body_manager, float baumgarte, float slop, float min_limit, float max_limit, float limit_scale)
+	{
+		for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
+		{
+
+			ContactConstraint& constraint = mConstraints[contact_idx];
+
+			if (!constraint.body0.Value() && !constraint.body1.Value())
+			{
+				VX_LOG_WARN("either bodies needs to be valid");
+				continue;
+			}
+
+			SolverBody& sbA = bodies[constraint.body0.Value()];
+			SolverBody& sbB = bodies[constraint.body1.Value()];
+
+
+			Body* a = &body_manager.GetBody(sbA.bodyID);
+			Body* b = &body_manager.GetBody(sbB.bodyID);
+
+
+			bool dyn_a = a->IsDynamic();
+			bool dyn_b = b->IsDynamic();
+
+			//VX_ASSERT_WARN_VOID(dyn_a || dyn_b, "not possible one of the bodies need to be non static");
+
+			Vec3 n = Vec3::LoadFloat3Raw(constraint.normal);
+
+			float correction_limit = 0.01;
+			{
+				float limitA = dyn_a ?
+					a->GetShape()->GetHalfExtents().MinComponent() * limit_scale : kMaxf;
+				float limitB = dyn_b ?
+					b->GetShape()->GetHalfExtents().MinComponent() * limit_scale : kMaxf;
+
+				correction_limit = VxMin(limitA, limitB);
+
+				correction_limit = VxClamp(correction_limit, min_limit, max_limit);
+			}
+
+			Mat44 transform0 = a->ComputeWorldTransform();
+			Mat44 transform1 = b->ComputeWorldTransform();
+
+			//effective mass 
+			float total_inv_mass = constraint.invMass0 + constraint.invMass1;
+
+			for (int i = 0; i < constraint.numContacts; ++i)
+			{
+				auto& contact_point = constraint.contactPoints[i];
+
+				///New contact point in world as bodies position might have been corrected
+				const Vec3 p0 = transform0.Transform(Vec3::LoadFloat3Raw(contact_point.cacheLocalPoint->localPoint0));
+				const Vec3 p1 = transform1.Transform(Vec3::LoadFloat3Raw(contact_point.cacheLocalPoint->localPoint1));
+
+				float seperation = (p1 - p0).Dot(n);
+				///seperation constant
+				/// dist along normal + slop 
+				/// to avoid jittering between bodies
+				//float C = VxMax(seperation + slop, -kEpsilon);
+				float C = seperation + slop;
+
+				if (C < 0.0f)
+				{
+					float inv_effective_mass = total_inv_mass;
+					Vec3 p = (p0 + p1) * 0.5f;
+					/// point relative to bodies
+					Vec3 r0 = p - a->GetPosition();
+					Vec3 r1 = p - b->GetPosition();
+
+					Vec3 inv_Ir0_Xn, inv_Ir1_Xn;
+					if (dyn_a)
+					{
+						Vec3 r0_X_n = r0.Cross(n);
+						inv_Ir0_Xn = a->ComputeInvInteriaWorld().Multiply3x3(r0_X_n);
+						inv_effective_mass += r0_X_n.Dot(inv_Ir0_Xn);
+					}
+					if (dyn_b)
+					{
+						Vec3 r1_X_n = r1.Cross(n);
+						inv_Ir1_Xn = b->ComputeInvInteriaWorld().Multiply3x3(r1_X_n);
+						inv_effective_mass += r1_X_n.Dot(inv_Ir1_Xn);
+					}
+
+					if (inv_effective_mass < 1e-9f)
+						continue;
+
+					C = VxMax(C, -correction_limit);
+					float lambda = -(baumgarte * C) / inv_effective_mass;
+					Vec3 lambda_vector = lambda * n;
+
+					if (dyn_a)
+					{
+						a->ApplyLinearDisplacement(-lambda_vector * a->GetInverseMass());
+						a->ApplyAngularDisplacement(-lambda * inv_Ir0_Xn);
+					}
+					if (dyn_b)
+					{
+						b->ApplyLinearDisplacement(lambda_vector * b->GetInverseMass());
+						b->ApplyAngularDisplacement(lambda * inv_Ir1_Xn);
+					}
+				}
+			}
+		}
+	}
+#else
 
 
 	void ContactConstraintSolver::SolverContactManifold(const SolverSettings& phy_settings)
@@ -779,4 +1107,7 @@ namespace vx {
 			}
 		}
 	}
-}
+#endif // CONTACT_USE_SOLVERBODY
+
+
+} //namespace vx

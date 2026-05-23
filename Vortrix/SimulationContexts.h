@@ -9,5 +9,8 @@ namespace vx {
 		DebugGizmosRenderer* debugRenderer = nullptr;
 		bool drawContactTBNs = false;
 		uint32 physicsFrameIdx = 0;
+
+		//might become island builder/coordinator
+		class ConstraintSolver* constraintSolver = nullptr;
 	};
 }

@@ -1,8 +1,10 @@
 #include "DistanceConstraint.h"
 #include "PhysicsWorldSettings.h"
+#include "Core/Profiler.h"
 
 bool vx::DistanceConstraint::PrepSolver(ConstraintSolver* solver, const PhysicsStepContext& ctx)
 {
+	VX_PROFILE_FUNCTION();
 	Linear1DRow row = BuildDistanceJacobian(ctx.stepDeltaTime);
 
 	if (row.effMass == 0.0f)
@@ -10,6 +12,9 @@ bool vx::DistanceConstraint::PrepSolver(ConstraintSolver* solver, const PhysicsS
 
 	row.bodyAidx = solver->GetOrCreateSolverBody(mBodyA->GetID(), ctx);
 	row.bodyBidx = solver->GetOrCreateSolverBody(mBodyB->GetID(), ctx);
+
+	//if (mResolvePosition == ESolvePosition::Projection)
+	//	solver->AppendPositionCorrection(this);// Queue
 
 	row.user = this;
 

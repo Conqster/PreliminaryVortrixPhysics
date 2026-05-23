@@ -7,6 +7,10 @@
 #include "PhysicsWorldSettings.h"
 #include "Body/BodyManager.h"
 
+#include "Core/Profiler.h"
+
+#include "SolverBodyIndex.h"
+
 class DebugGizmosRenderer;
 
 namespace vx {
@@ -38,6 +42,7 @@ namespace vx {
 
 		void PrepConstraintSolving(ConstraintSolver& solver, const PhysicsStepContext& ctx)
 		{
+			VX_PROFILE_FUNCTION();
 			for (auto& c : mConstraints)
 				c->PrepSolver(&solver, ctx);
 		}
@@ -144,6 +149,40 @@ namespace vx {
 			return solver_idx;
 		}
 
+		SolverBodyIndex GetOrCreateSolverBody(const Body& body)
+		{
+			SolverBodyIndex& solver_idx = mBodyToSolverBody[body.GetID().Value()];
+
+			//if (solver_idx.Value() >= 0)
+			if (solver_idx.IsValid())
+				return solver_idx;
+
+
+			SolverBody solver_body;
+			solver_body.bodyID = body.GetID();
+
+			if (body.IsStatic())
+			{
+				solver_body.v = Vec3::Zero();
+				solver_body.w = Vec3::Zero();
+				solver_body.invMass = 0.0f;
+			}
+			else
+			{
+				solver_body.v = body.GetLinearVelocity();
+				solver_body.w = body.GetAngularVelocity();
+				solver_body.invMass = body.GetInverseMass();
+			}
+
+			uint32 new_idx = uint32(mBodies.size());
+			mBodies.push_back(solver_body);
+
+			solver_idx = SolverBodyIndex(new_idx);
+			//mBodyToSolverBody[physics_body_id.Value()] = new_idx;
+
+			return solver_idx;
+		}
+
 
 		static VX_INLINE void WriteBackBody(const SolverBody& local_body, Body& body)
 		{
@@ -152,6 +191,7 @@ namespace vx {
 		}
 		static void WriteBackBodies(const SolverBody* bodies, uint32 count, BodyManager& body_manager)
 		{
+			VX_PROFILE_FUNCTION();
 			for (const SolverBody* sb = bodies, *sb_end = bodies + count; sb < sb_end; ++sb)
 			{
 				if ((*sb).invMass == 0)
@@ -165,6 +205,10 @@ namespace vx {
 			return mBodies[local_idx.Value()];
 		}
 
+		SolverBody* GetBodiesPtr() { return mBodies.data(); }
+		size_t GetBodiesCount() { return mBodies.size(); }
+		Linear1DRow* GetLinearRowPtr() { return mLinear1DRows.data(); }
+		size_t LinearRowCount() const { return mLinear1DRows.size(); }
 
 		void HackClear()
 		{
@@ -182,6 +226,7 @@ namespace vx {
 		
 		static void SolverVelocityLinear1DRow(Linear1DRow& row, SolverBody* bodies)
 		{
+			VX_PROFILE_FUNCTION();
 			SolverBody& sbA = bodies[row.bodyAidx.Value()];
 			SolverBody& sbB = bodies[row.bodyBidx.Value()];
 
@@ -190,8 +235,12 @@ namespace vx {
 				Vec3::LoadFloat3Raw(row.rAXn).Dot(sbA.w) -
 				Vec3::LoadFloat3Raw(row.rBXn).Dot(sbB.w);
 
+			///according to jolt's total bias inclind supplied bias 
+			/// jv + (beta/h)*C + (gamma * lamba)
+			/// jv + bias + gamma * lamda
+			float compliance = row.gamma * row.lambda + row.bias;
 
-			float lambda = (jv - row.bias) * row.effMass;
+			float lambda = (jv - compliance) * row.effMass;
 			float _lambda = VxClamp(row.lambda + lambda, row.minLambda, row.maxLambda);
 			float impluse = _lambda - row.lambda;
 			row.lambda = _lambda;
@@ -211,6 +260,7 @@ namespace vx {
 		/// static for future multothreading
 		static void SolverVelocityLinear1DRows(Linear1DRow* rows, size_t begin_offset, size_t count, SolverBody* bodies)
 		{
+			VX_PROFILE_FUNCTION();
 			//for (Linear1DRow** r = rows, **r_end = rows + count; r < r_end; ++r)
 			for (Linear1DRow* r = rows, *r_end = rows + count; r < r_end; ++r)
 				SolverVelocityLinear1DRow(*r, bodies);
@@ -235,6 +285,7 @@ namespace vx {
 
 		static void WarmStart(Linear1DRow* rows, size_t begin_offset, size_t count, SolverBody* bodies)
 		{
+			VX_PROFILE_FUNCTION();
 			for (Linear1DRow* r = rows, *r_end = rows + count; r < r_end; ++r)
 			{
 				Linear1DRow& row = (*r);
@@ -245,17 +296,28 @@ namespace vx {
 			}
 		}
 
+		void CommitStateConstraint()
+		{
+			VX_PROFILE_FUNCTION();
+			for (const auto& r : mLinear1DRows)
+				if (r.user)
+					r.user->CommitSolverState(r);
+		}
+
 
 		void SolverAll(const PhysicsStepContext& ctx, uint32 iterations)
 		{
+			VX_PROFILE_FUNCTION();
 			ConstraintSolver::WarmStart(mLinear1DRows.data(), 0, mLinear1DRows.size(), mBodies.data());
 
 			for (int i = 0; i < iterations; ++i)
 				ConstraintSolver::SolverVelocityLinear1DRows(mLinear1DRows.data(), 0, mLinear1DRows.size(), mBodies.data());
-
-			for (const auto& r : mLinear1DRows)
-				if (r.user)
-					r.user->CommitSolverState(r);
+			{
+				VX_PROFILE_SCOPE("ConstraintSolver Solve all commit state");
+				for (const auto& r : mLinear1DRows)
+					if (r.user)
+						r.user->CommitSolverState(r);
+			}
 
 			ConstraintSolver::WriteBackBodies(mBodies.data(), mBodies.size(), *ctx.bodyManager);
 		}

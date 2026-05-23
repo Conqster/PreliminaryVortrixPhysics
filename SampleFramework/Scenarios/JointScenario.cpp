@@ -16,34 +16,22 @@ void RopeSetting(vx::DistanceConstraint& constraint)
 {
 	constraint.mMinDistance = 1.25f;
 	constraint.mMaxDistance = 2.5f;//6.0f;
-	constraint.mSpring.tunningMode = vx::ESpringTuningMode::FrequencyDamping;
-	//constraint.mSpring.stiffness = 0.0f;
-	constraint.mSpring.frequency = vx::DegToRad(270.0f);
 
-	constraint.mSpring.dampingRatio = 0.4f;
+	constraint.mSpring.mFrequency = vx::DegToRad(180.0f);
 
-
-	//constraint.mSpring.tunningMode = vx::ESpringTuningMode::StiffnessSoftness;
-	//constraint.mSpring.stiffness = 10000.0f;
-	//constraint.mSpring.softness = 0.0f;// 1e-5f;
+	constraint.mSpring.mDampingRatio = 0.0f;
 }
 
 void SuspensionShockSettingCriticalDamping(vx::DistanceConstraint& constraint)
 {
-	///constraint.mMinDistance = -constraint.mRestLength;
-	//constraint.mMaxDistance = constraint.mRestLength;
-	constraint.mSpring.tunningMode = vx::ESpringTuningMode::FrequencyDamping;
-	constraint.mSpring.frequency = vx::DegToRad(360.0f);
-	constraint.mSpring.dampingRatio = 0.1f;
+	constraint.mSpring.mFrequency = vx::DegToRad(360.0f);
+	constraint.mSpring.mDampingRatio = 0.1f;
 }
 
 void SuspensionShockSetting(vx::DistanceConstraint& constraint)
 {
-	//constraint.mMinDistance = -constraint.mRestLength;
-	//constraint.mMaxDistance = constraint.mRestLength;
-	constraint.mSpring.tunningMode = vx::ESpringTuningMode::FrequencyDamping;
-	constraint.mSpring.frequency = vx::DegToRad(270.0f);
-	constraint.mSpring.dampingRatio = 2.0f;
+	constraint.mSpring.mFrequency = vx::DegToRad(270.0f);
+	constraint.mSpring.mDampingRatio = 2.0f;
 }
 
 
@@ -52,10 +40,8 @@ void HardBarSetting(vx::DistanceConstraint& constraint)
 
 	constraint.mMaxDistance = 2.5f;// constraint.mRestLength * 2.0f;
 	constraint.mMinDistance = 2.5f;// constraint.mRestLength * 2.0f;
-	constraint.mSpring.tunningMode = vx::ESpringTuningMode::StiffnessSoftness;
-	//constraint.mSpring.tunningMode = vx::ESpringTuningMode::FrequencyDamping;
-	constraint.mSpring.stiffness = 0.0f;
-	constraint.mSpring.dampingRatio = 0.0f;
+	constraint.mSpring.mDampingRatio = 0.0f;
+	constraint.mSpring.mFrequency = 0.0f;
 }
 
 
@@ -280,13 +266,9 @@ void ConstaintPanel(DistanceConstraint& constraint)
 	ImGui::SeparatorText("Spring Setting");
 	auto& spring = constraint.mSpring;
 
-	EditorImGui::Combo("Tuning Mode", spring.tunningMode, "Stiffness Softness\0""Frequency Damping\0""\0");
-	if (spring.tunningMode == ESpringTuningMode::StiffnessSoftness)
-		ImGui::DragFloat("Stiffness [N/m]", &spring.stiffness);
-	else
-		ImGui::SliderAngle("Frequency [Hz:Rad/sec]", &spring.frequency, 0.0f);
-	ImGui::DragFloat("Damping Ratio", &spring.dampingRatio, 0.01f);
-	ImGui::SliderFloat("Softness", &spring.softness, 0.0f, 1.0f);
+	ImGui::SliderAngle("mFrequency [Hz:Rad/sec]", &spring.mFrequency, 0.0f);
+	ImGui::DragFloat("Damping Ratio", &spring.mDampingRatio, 0.01f);
+	//ImGui::SliderFloat("Softness", &spring.softness, 0.0f, 1.0f);
 }
 
 
@@ -306,7 +288,7 @@ void JointScenario::OnUI()
 		//else
 		//{
 		//	ImGui::SliderFloat("Joint Rest length", &mJoint.mRestLength, 0.0f, 10.0f);
-		//	ImGui::SliderFloat("Joint Damping Ratio", &mJoint.mDampingRatio, 0.0f, 1.0f);
+		//	ImGui::SliderFloat("Joint Damping Ratio", &mJoint.mmDampingRatio, 0.0f, 1.0f);
 		//	ImGui::DragFloat("Joint Stiffness", &mJoint.mStiffness);
 		//}
 
@@ -323,7 +305,7 @@ void JointScenario::OnUI()
 			else
 			{
 				//ImGui::SliderFloat("Joint Rest length", &joint.mRestLength, 0.0f, 10.0f);
-				//ImGui::SliderFloat("Joint Damping Ratio", &joint.mDampingRatio, 0.0f, 1.0f);
+				//ImGui::SliderFloat("Joint Damping Ratio", &joint.mmDampingRatio, 0.0f, 1.0f);
 				//ImGui::DragFloat("Joint Stiffness", &joint.mStiffness);
 			}
 			ImGui::PopID();
@@ -408,9 +390,7 @@ void JointScenario::CreateLattice()
 	HardBarSetting(constraint);
 	constraint.mMaxDistance = 3.5f;// constraint.mRestLength * 2.0f;
 	constraint.mMinDistance = 3.5f;// constraint.mRestLength * 2.0f;
-	constraint.mSpring.tunningMode = vx::ESpringTuningMode::StiffnessSoftness;
-	constraint.mSpring.stiffness = 0.0f;
-	constraint.mSpring.dampingRatio = 0.0f;
+	constraint.mSpring.mDampingRatio = 0.0f;
 
 	vx::DistanceConstraint& c0 = *phys_constraint_coord->AddConstraintT(constraint);
 	vx::DistanceConstraint& c1 = *phys_constraint_coord->AddConstraintT(constraint);

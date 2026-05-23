@@ -31,7 +31,6 @@
 
 #include "SimulationContexts.h"
 
-#include "Dynamics/Joint.h"
 #include "Dynamics/ConstraintCoordinator.h"
 
 namespace vx
@@ -324,23 +323,75 @@ namespace vx
 		//mConstraintSolver->SolverAll(mContext, mSettings.solver.velocityIterations);
 
 
-		CollisionContext collision_ctx{ mSettings.collision, mHackDebugRenderer, mSettings.drawSettings.drawContactConstraintSolverTBNs, mFrameIdx };
+		/// for now need to invalidate previous frame local bodies 
+		/// so the bodies could be update for use by narrowphase handshake 
+		/// with contact constraint, fix later 
+		mConstraintSolver->HackClear();
+		CollisionContext collision_ctx
+		{ 
+			mSettings.collision, mHackDebugRenderer, 
+			mSettings.drawSettings.drawContactConstraintSolverTBNs, 
+			mFrameIdx, mConstraintSolver 
+		};
 		//Narrowphase: collision detection & contact generations
 		mNarrowphaseQuery->ProcessPairs(mBroadphasePairs, mStepManifolds, mContactConstraintSolver, collision_ctx);
+
+
 		if (mSettings.solver.enable)
+		{
+
+
+#if CONTACT_USE_SOLVERBODY
+			/// contact constraint should be done
+			/// time to prep joint constraints 
+			mConstraintCoordinator->PrepConstraintSolving(*mConstraintSolver, mContext);
+
+			Linear1DRow* constraint_solver_rows = mConstraintSolver->GetLinearRowPtr();
+			uint32 constraint_solver_row_count = mConstraintSolver->LinearRowCount();
+			SolverBody* solver_bodies = mConstraintSolver->GetBodiesPtr();
+			
+			/// perform warm starts 
+			ConstraintSolver::WarmStart(constraint_solver_rows, 0, constraint_solver_row_count, solver_bodies);
+
+			for (int i = 0; i < mSettings.solver.velocityIterations; ++i)
+			{
+				mContactConstraintSolver.SolveVelocityConstraint(solver_bodies);
+				ConstraintSolver::SolverVelocityLinear1DRows(constraint_solver_rows, 0, constraint_solver_row_count, solver_bodies);
+			}
+
+			//commit solver state to constraint
+			mConstraintSolver->CommitStateConstraint();
+
+			//write back bodies 
+			ConstraintSolver::WriteBackBodies(solver_bodies, mConstraintSolver->GetBodiesCount(), mBodyManager);
+
+#else
 			mContactConstraintSolver.SolveVelocityConstraint(mSettings.solver);
+			
+			/// contact constraint should be done
+			/// time to prep joint constraints 
+			mConstraintCoordinator->PrepConstraintSolving(*mConstraintSolver, mContext);
+			mConstraintSolver->SolverAll(mContext, mSettings.solver.velocityIterations);
 
-		mConstraintSolver->HackClear();
-		mConstraintCoordinator->PrepConstraintSolving(*mConstraintSolver, mContext);
-		mConstraintSolver->SolverAll(mContext, mSettings.solver.velocityIterations);
+			///test constraint solving isolating, central solver with solver bodi4es
+			//{
+			//	VX_PROFILE_SCOPE("Hack Solve Joint Constraints");
+
+			//	for(int i = 0; i < mSettings.solver.velocityIterations; ++i)
+			//	{
+			//		for (auto& c : mConstraintCoordinator->GetConstraints())
+			//		{
+			//			DistanceConstraint* _c = static_cast<DistanceConstraint*>(c);
+			//			_c->QuickSolve(dt);
+			//		}
+			//	}
+			//}
+#endif // CONTACT_USE_SOLVERBODY
+		}
 
 
 
-		//for (auto& c : mConstraintCoordinator->GetConstraints())
-		//{
-		//	DistanceConstraint* _c = static_cast<DistanceConstraint*>(c);
-		//	_c->QuickSolve(dt);
-		//}
+
 
 
 		UpdateBodiesActivationState(dt);
@@ -362,7 +413,20 @@ namespace vx
 		}
 
 		if (mSettings.solver.enable)
+		{
+#if !CONTACT_USE_SOLVERBODY
 			mContactConstraintSolver.SolvePositionConstraint(mSettings.solver);
+#else
+			for (int i = 0; i < mSettings.solver.positionIterations; ++i)
+			{
+				mContactConstraintSolver.SolvePositionCorrections(
+					mConstraintSolver->GetBodiesPtr(), mBodyManager,
+					mSettings.solver.baumgarte, mSettings.solver.positionCorrectionSlop,
+					mSettings.solver.positionCorrectionGlobalLimits[0], mSettings.solver.positionCorrectionGlobalLimits[1],
+					mSettings.solver.positionCorrectionBodyLimitScale);
+			}
+#endif // !CONTACT_USE_SOLVERBODY
+		}
 
 
 		//if (mTestJoint)
