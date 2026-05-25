@@ -48,10 +48,10 @@ namespace vx {
 		}
 
 
-		void DebugGizmos(DebugGizmosRenderer* debug_renderer)
+		void DebugGizmos(DebugGizmosRenderer* debug_renderer, const NonContactConstraintDrawSettings& draw_settings)
 		{
 			for (auto& c : mConstraints)
-				c->DebugGizmos(debug_renderer);
+				c->DebugGizmos(debug_renderer, draw_settings);
 		}
 	private: 
 		//for now vector 
@@ -288,7 +288,7 @@ namespace vx {
 				(*c)->SolvePositionConstraint(dt, baumgarte);
 		}
 
-		static VX_INLINE void WarmStart(Linear1DRow& row, SolverBody& body0, SolverBody& body1)
+		static VX_INLINE void WarmStart(const Linear1DRow& row, SolverBody& body0, SolverBody& body1)
 		{
 			if (row.lambda == 0.0f)
 				return;

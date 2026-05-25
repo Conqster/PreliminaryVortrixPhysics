@@ -12,36 +12,33 @@
 #include "Dynamics/DistanceConstraint.h"
 #include "Dynamics/ConstraintCoordinator.h"
 
-void RopeSetting(vx::DistanceConstraint& constraint)
+void RopeSetting(vx::DistanceConstraintSettings& constraint_settings)
 {
-	constraint.mMinDistance = 1.25f;
-	constraint.mMaxDistance = 2.5f;//6.0f;
-
-	constraint.SetSpringFrequency(vx::DegToRad(180.0f));
-
-	constraint.SetSpringDampingRatio(0.0f);
+	constraint_settings.minDist = 1.25f;
+	constraint_settings.maxDist = 2.5f;
+	constraint_settings.frequency = vx::DegToRad(180.0f);
+	constraint_settings.dampingRatio = 0.0f;
 }
 
-void SuspensionShockSettingCriticalDamping(vx::DistanceConstraint& constraint)
+void SuspensionShockSettingCriticalDamping(vx::DistanceConstraintSettings& constraint_settings)
 {
-	constraint.SetSpringFrequency(vx::DegToRad(360.0f));
-	constraint.SetSpringDampingRatio(0.1f);
+	constraint_settings.frequency = vx::DegToRad(360.0f);
+	constraint_settings.dampingRatio = 0.1f;
 }
 
-void SuspensionShockSetting(vx::DistanceConstraint& constraint)
+void SuspensionShockSetting(vx::DistanceConstraintSettings& constraint_settings)
 {
-	constraint.SetSpringFrequency(vx::DegToRad(270.0f));
-	constraint.SetSpringDampingRatio(2.0f);
+	constraint_settings.frequency = vx::DegToRad(270.0f);
+	constraint_settings.dampingRatio = 2.0f;
 }
 
 
-void HardBarSetting(vx::DistanceConstraint& constraint)
+void HardBarSetting(vx::DistanceConstraintSettings& constraint_settings)
 {
-
-	constraint.mMaxDistance = 2.5f;// constraint.mRestLength * 2.0f;
-	constraint.mMinDistance = 2.5f;// constraint.mRestLength * 2.0f;
-	constraint.SetSpringDampingRatio(0.0f);
-	constraint.SetSpringFrequency(0.0f);
+	constraint_settings.minDist = 2.5f;
+	constraint_settings.maxDist = 2.5f;
+	constraint_settings.frequency = vx::DegToRad(0.0f);
+	constraint_settings.dampingRatio = 0.0f;
 }
 
 
@@ -68,14 +65,16 @@ void JointScenario::Init(vx::PhysicsWorld* i_world)
 	dyn_bodies_settings.shape = unit_box;
 	mPhysicsWorld->CreateBody(dyn_bodies_settings);
 
-	vx::DistanceConstraint joint;
-	joint.mBodyA = &mPhysicsWorld->GetBodies()[0];
-	joint.mBodyB = &mPhysicsWorld->GetBodies()[1];
-	joint.mLocalAnchorA = vx::Vec3(0.0f, 0.5f, 0.0f);
-	joint.mLocalAnchorB = vx::Vec3(0.0f, 0.5f, 0.0f);
-
+	vx::DistanceConstraintSettings rope_constraint_settings;
 	//hard bar 
-	RopeSetting(joint);
+	RopeSetting(rope_constraint_settings);
+
+	vx::DistanceConstraint joint = vx::DistanceConstraint(&mPhysicsWorld->GetBodies()[0], &mPhysicsWorld->GetBodies()[1], rope_constraint_settings);
+	joint.SetLocalAnchorA(vx::Vec3(0.0f, 0.5f, 0.0f));
+	joint.SetLocalAnchorB(vx::Vec3(0.0f, 0.5f, 0.0f));
+
+
+
 
 	//mNotInPipelineJoints.reserve(25);
 	auto& phys_constraint_coord = mPhysicsWorld->mConstraintCoordinator;
@@ -87,33 +86,31 @@ void JointScenario::Init(vx::PhysicsWorld* i_world)
 	dyn_bodies_settings.shape = unit_capsule;
 	mPhysicsWorld->CreateBody(dyn_bodies_settings);
 
-	//mNotInPipelineJoints.push_back(mJoint);
-	vx::DistanceConstraint* new_j = phys_constraint_coord->AddConstraintT(joint);
-	//auto& new_joint = mNotInPipelineJoints.back();
-	new_j->mBodyA = &mPhysicsWorld->GetBodies()[1];
-	new_j->mBodyB = &mPhysicsWorld->GetBodies()[2];
-	//lets test placing the achor to the side of the capsule, instead of the origin
-	new_j->mLocalAnchorA = Vec3(0.0f, -0.5f, 0.0f);
-	new_j->mLocalAnchorB = Vec3(0.0f, 1.0f, 0.0f);
-	RopeSetting(*new_j);
+
+	vx::DistanceConstraint* new_j = phys_constraint_coord->AddConstraintT(
+		vx::DistanceConstraint(&mPhysicsWorld->GetBodies()[1], 
+							   &mPhysicsWorld->GetBodies()[2], 
+								rope_constraint_settings));
+	new_j->SetLocalAnchorA(vx::Vec3(0.0f, -0.5f, 0.0f));
+	new_j->SetLocalAnchorB(vx::Vec3(0.0f, 1.0f, 0.0f));
+	
 
 	dyn_bodies_settings.position = vx::Vec3(-2.0f, 5.5f, 0.0f);
 	dyn_bodies_settings.debug_name = "box";
 	dyn_bodies_settings.shape = unit_box;
 	mPhysicsWorld->CreateBody(dyn_bodies_settings);
 
-	//mNotInPipelineJoints.push_back(mJoint);
-	//auto& new_joint2 = mNotInPipelineJoints.back();
-	auto& new_joint2 = *phys_constraint_coord->AddConstraintT(joint);
-	new_joint2.mLocalAnchorA = Vec3(0.0f, -1.0f, 0.0f); //quick offset
-	new_joint2.mLocalAnchorB = Vec3(0.5f); //quick offset
-	new_joint2.mBodyA = &mPhysicsWorld->GetBodies()[2];
-	new_joint2.mBodyB = &mPhysicsWorld->GetBodies()[3];
-	RopeSetting(new_joint2);
+
+	auto& new_joint2 = *phys_constraint_coord->AddConstraintT(
+		vx::DistanceConstraint(&mPhysicsWorld->GetBodies()[2], 
+							   &mPhysicsWorld->GetBodies()[3],
+								rope_constraint_settings));
+	new_joint2.SetLocalAnchorA(Vec3(0.0f, -1.0f, 0.0f)); //quick offset
+	new_joint2.SetLocalAnchorB(Vec3(0.5f)); //quick offset
 
 
-	vx::DistanceConstraint constraint;
-	HardBarSetting(constraint);
+	vx::DistanceConstraintSettings constraint_hardbar_settings;
+	HardBarSetting(constraint_hardbar_settings);
 
 	dyn_bodies_settings.position = vx::Vec3(0.0f, 3.5f, 0.0f);
 	dyn_bodies_settings.debug_name = "box";
@@ -131,54 +128,13 @@ void JointScenario::Init(vx::PhysicsWorld* i_world)
 	vx::Body* body_c = &mPhysicsWorld->GetBodies()[6];
 	vx::Body* body_d = &mPhysicsWorld->GetBodies()[7];
 
-	//vx::DistanceConstraint& c0 = mNotInPipelineJoints.emplace_back(constraint);
-	//vx::DistanceConstraint& c1 = mNotInPipelineJoints.emplace_back(constraint);
-	//vx::DistanceConstraint& c2 = mNotInPipelineJoints.emplace_back(constraint);
-	//vx::DistanceConstraint& c3 = mNotInPipelineJoints.emplace_back(constraint);
+	phys_constraint_coord->AddConstraintT(vx::DistanceConstraint(body_a, body_b,constraint_hardbar_settings));
+	phys_constraint_coord->AddConstraintT(vx::DistanceConstraint(body_b, body_c,constraint_hardbar_settings));
+	phys_constraint_coord->AddConstraintT(vx::DistanceConstraint(body_c, body_d,constraint_hardbar_settings));
+	phys_constraint_coord->AddConstraintT(vx::DistanceConstraint(body_d, body_a,constraint_hardbar_settings));
+	phys_constraint_coord->AddConstraintT(vx::DistanceConstraint(body_a, body_c,constraint_hardbar_settings));
+	phys_constraint_coord->AddConstraintT(vx::DistanceConstraint(body_b, body_d,constraint_hardbar_settings));
 
-	//vx::DistanceConstraint& c4 = mNotInPipelineJoints.emplace_back(constraint);
-	//vx::DistanceConstraint& c5 = mNotInPipelineJoints.emplace_back(constraint);
-
-
-	vx::DistanceConstraint& c0 = *phys_constraint_coord->AddConstraintT(constraint);
-	vx::DistanceConstraint& c1 = *phys_constraint_coord->AddConstraintT(constraint);
-	vx::DistanceConstraint& c2 = *phys_constraint_coord->AddConstraintT(constraint);
-	vx::DistanceConstraint& c3 = *phys_constraint_coord->AddConstraintT(constraint);
-
-	vx::DistanceConstraint& c4 = *phys_constraint_coord->AddConstraintT(constraint);
-	vx::DistanceConstraint& c5 = *phys_constraint_coord->AddConstraintT(constraint);
-
-	c0.mBodyA = body_a;
-	c0.mBodyB = body_b;
-	//c0.mLocalAnchorA = vx::Vec3(0.0f, -0.5f, 0.0f);
-	//c0.mLocalAnchorB = vx::Vec3(0.0f, 0.5f, 0.0f);
-
-	c1.mBodyA = body_b;
-	c1.mBodyB = body_c;
-	//c1.mLocalAnchorA = vx::Vec3(0.5f, 0.0f, 0.0f);
-	//c1.mLocalAnchorB = vx::Vec3(-0.5f, 0.0f, 0.0f);
-
-	c2.mBodyA = body_c;
-	c2.mBodyB = body_d;
-	//c2.mLocalAnchorA = vx::Vec3(0.0f, 0.5f, 0.0f);
-	//c2.mLocalAnchorB = vx::Vec3(0.0f, -0.5f, 0.0f);
-
-	c3.mBodyA = body_d;
-	c3.mBodyB = body_a;
-	//c3.mLocalAnchorA = vx::Vec3(-0.5f, 0.0f, 0.0f);
-	//c3.mLocalAnchorB = vx::Vec3(0.5f, 0.0f, 0.0f);
-
-
-	c4.mBodyA = body_a;
-	c4.mBodyB = body_c;
-	//c4.mLocalAnchorA = vx::Vec3(0.5f, -0.5f, 0.0f);
-	//c4.mLocalAnchorB = vx::Vec3(-0.5f, 0.5f, 0.0f);
-
-
-	c5.mBodyA = body_b;
-	c5.mBodyB = body_d;
-	//c5.mLocalAnchorA = vx::Vec3(0.5f, 0.5f, 0.0f);
-	//c5.mLocalAnchorB = vx::Vec3(-0.5f, -0.5f, 0.0f);
 
 	//achor to the static 
 	vx::BodySettings static_bodies_settings = vx::BodySettings::DefaultStaticConstruct();
@@ -188,26 +144,28 @@ void JointScenario::Init(vx::PhysicsWorld* i_world)
 	static_bodies_settings.intialVelocity = vx::Vec3(1.0f);
 	uint32 static_body_idx = mPhysicsWorld->GetBodies().size();
 	mPhysicsWorld->CreateBody(static_bodies_settings);
-	constraint = vx::DistanceConstraint();
-	RopeSetting(constraint);
-	constraint.mMinDistance = 0.75f;
-	constraint.mMaxDistance = 1.5f;
-	constraint.mBodyA = &mPhysicsWorld->GetBodies()[static_body_idx];
-	constraint.mLocalAnchorA = Vec3(0.0f, -0.5f, 0.0f);
+
+	RopeSetting(rope_constraint_settings);
 
 	dyn_bodies_settings.position = vx::Vec3(0.0f, 12.5f, 0.0f);
 	dyn_bodies_settings.shape = new vx::CapsuleShape(0.5f, 0.5f);;
 	mPhysicsWorld->CreateBody(dyn_bodies_settings);
+	auto& new_joint3 = *phys_constraint_coord->AddConstraintT(
+		vx::DistanceConstraint(&mPhysicsWorld->GetBodies()[static_body_idx],
+			&mPhysicsWorld->GetBodies().back(),
+			rope_constraint_settings));
 
-	constraint.mBodyB = &mPhysicsWorld->GetBodies().back();// body_d;
-	constraint.mLocalAnchorB = Vec3(0.0f, 1.0f, 0.0f);
-	phys_constraint_coord->AddConstraintT(constraint);
+	new_joint3.SetDistance(0.75f, 1.5f);
+	new_joint3.SetLocalAnchorA(Vec3(0.0f, -0.5f, 0.0f));
+	new_joint3.SetLocalAnchorB(Vec3(0.0f, 1.0f, 0.0f));
 
 	//quickk reverse, B already set
-	constraint.mLocalAnchorB = Vec3(0.0f, -1.0f, 0.0f);
-	constraint.mBodyA = body_d;
-	constraint.mLocalAnchorA = Vec3(0.0f, 0.5f, 0.0f);
-	phys_constraint_coord->AddConstraintT(constraint);
+	auto& new_joint4 = *phys_constraint_coord->AddConstraintT(
+		vx::DistanceConstraint(body_d,
+			&mPhysicsWorld->GetBodies().back(),
+			rope_constraint_settings));
+	new_joint4.SetLocalAnchorB(Vec3(0.0f, -1.0f, 0.0f));
+	new_joint4.SetLocalAnchorA(Vec3(0.0f, 0.5f, 0.0f));
 
 
 	CreateLattice();
@@ -218,50 +176,36 @@ void JointScenario::Init(vx::PhysicsWorld* i_world)
 
 void JointScenario::PostPhysicsStep(float dt)
 {
-	//for(auto& joint : mNotInPipelineJoints)
-	//	joint.Solve(dt);
-
-	//if (mTrackCapsuleSphereRope)
-	//{
-	//	vx::Body* _a = mTrackCapsuleSphereRope->mBodyA;
-	//	vx::Body* _b = mTrackCapsuleSphereRope->mBodyB;
-
-	//	if (_a && _b)
-	//	{
-	//		vx::Vec3 rA = mTrackCapsuleSphereRope->mLocalAnchorA;
-	//		vx::Vec3 rAw = _a->GetOrientation().Rotate(rA) + _a->GetPosition();
-	//		vx::Vec3 dir = (rAw - _b->GetPosition()).Normalised();
-	//		vx::Vec3 rB = dir * _b->GetShape()->GetHalfExtents();
-	//		mTrackCapsuleSphereRope->mLocalAnchorB = rB;
-
-	//		mTrackCapsuleSphereRope->DrawConstraintBounds(mDebugGizmos, rAw, rB + _b->GetPosition());
-	//	}
-
-	//}
-
 	Scenario::PostPhysicsStep(dt);
-
-	//if (mDebugGizmos)
-	//{
-	//	for (const auto& joint : mNotInPipelineJoints)
-	//		joint.DebugGizmos(mDebugGizmos);
-	//}
 }
 
 
 //Constraint window
-void ConstaintPanel(DistanceConstraint& constraint)
+void JointScenario::ConstaintPanel(vx::DistanceConstraint& constraint)
 {
-	if(constraint.mBodyA && constraint.mBodyB)
-		ImGui::Text("Body A ID: %d \nBody B ID: %d", constraint.mBodyA->GetID(), constraint.mBodyB->GetID());
+	const Body& bA = constraint.GetBodyA();
+	const Body& bB = constraint.GetBodyB();
 
-	ImGui::DragFloat3("Local Anchor A", &constraint.mLocalAnchorA[0], 0.01f);
-	ImGui::DragFloat3("Local Anchor B", &constraint.mLocalAnchorB[0], 0.01f);
+	const auto& body_manager = mPhysicsWorld->GetBodyManager();
+	ImGui::Text("Body A: [%s], id: %d \nBody B: [%s], id: %d", 
+		body_manager.GetBodyDebugName(bA), bA.GetID(),
+		body_manager.GetBodyDebugName(bB), bB.GetID() );
+
+	Vec3 _p = constraint.GetLocalAnchorA();
+	if (ImGui::DragFloat3("Local Anchor A", &_p[0], 0.01f))
+		constraint.SetLocalAnchorA(_p);
+	_p = constraint.GetLocalAnchorB();
+	ImGui::DragFloat3("Local Anchor B", &_p[0], 0.01f);
+		constraint.SetLocalAnchorB(_p);
 	
-	ImGui::DragFloat("Min Distance", &constraint.mMinDistance, 0.1f);
-	ImGui::DragFloat("Max Distance", &constraint.mMaxDistance, 0.1f);
+	float min_dist = constraint.GetMinDistance();
+	float max_dist = constraint.GetMaxDistance();
+	bool updated_dist = ImGui::DragFloat("Min Distance", &min_dist, 0.1f);
+	updated_dist |= ImGui::DragFloat("Max Distance", &max_dist, 0.1f);
+	if (updated_dist)
+		constraint.SetDistance(min_dist, max_dist);
 
-	ImGui::Text("Accumulated Lambda: %f", constraint.mAccumulatedLambda);
+	ImGui::Text("Accumulated Lambda: %f", constraint.GetAccumulatedLambda());
 	
 	ImGui::SeparatorText("Spring Setting");
 
@@ -336,6 +280,9 @@ void JointScenario::CreateLattice()
 	dyn_bodies_settings.shape = new vx::CapsuleShape(0.5f, 0.5f);//vx::BoxShape(0.5f);
 	mPhysicsWorld->CreateBody(dyn_bodies_settings);
 	mPhysicsWorld->CreateBody(dyn_bodies_settings);
+	dyn_bodies_settings.debug_name = "box";
+	dyn_bodies_settings.shape = new vx::BoxShape(0.5f);
+	mPhysicsWorld->CreateBody(dyn_bodies_settings);
 
 	dyn_bodies_settings.position = vx::Vec3(0.0f, 3.5f, depth);
 	dyn_bodies_settings.debug_name = "sphere"; //"box";
@@ -362,6 +309,7 @@ void JointScenario::CreateLattice()
 
 	vx::Body* capsule0 = &mPhysicsWorld->GetBodies()[first_body++];
 	vx::Body* capsule1 = &mPhysicsWorld->GetBodies()[first_body++];
+	vx::Body* box = &mPhysicsWorld->GetBodies()[first_body++];
 	vx::Body* body_a = &mPhysicsWorld->GetBodies()[first_body++];
 	vx::Body* body_b = &mPhysicsWorld->GetBodies()[first_body++];
 	vx::Body* body_c = &mPhysicsWorld->GetBodies()[first_body++];
@@ -371,171 +319,72 @@ void JointScenario::CreateLattice()
 	vx::Body* body_c1 = &mPhysicsWorld->GetBodies()[first_body++];
 	vx::Body* body_d1 = &mPhysicsWorld->GetBodies()[first_body++];
 
-	vx::DistanceConstraint constraint;
-	RopeSetting(constraint);
+	vx::DistanceConstraintSettings rope_constraint_settings;
+	RopeSetting(rope_constraint_settings);
 
-	constraint.mBodyA = capsule0;
-	constraint.mLocalAnchorA = vx::Vec3(0.0f, -1.0f, 0.0f);
-	constraint.mBodyB = capsule1;
-	phys_constraint_coord->AddConstraintT(constraint);
-	constraint.mMinDistance = 3.0f;
-	constraint.mMaxDistance = 6.0f;
-	constraint.mBodyA = capsule1;
-	constraint.mLocalAnchorA = vx::Vec3(0.0f, 1.0f, 0.0f);
-	constraint.mBodyB = body_a;
-	constraint.mLocalAnchorB = vx::Vec3(0.25f);
-	mTrackCapsuleSphereRope = phys_constraint_coord->AddConstraintT(constraint);
-	constraint.mLocalAnchorA = vx::Vec3(0.0f, -1.0f, 0.0f);
-	constraint.mBodyB = body_d;
-	phys_constraint_coord->AddConstraintT(constraint);
+	///rope from capsule to box 
+	rope_constraint_settings.localAnchorA = vx::Vec3(0.0f, -1.0f, 0.0f);
+	rope_constraint_settings.localAnchorB = vx::Vec3(0.0f, 0.5f, 0.0f);
+	phys_constraint_coord->AddConstraintT(vx::DistanceConstraint(capsule0, box, rope_constraint_settings));
+
+	//rope from box to mid capsule 
+	rope_constraint_settings.localAnchorA = vx::Vec3(0.0f, -0.5f, 0.0f);
+	phys_constraint_coord->AddConstraintT(vx::DistanceConstraint(box, capsule1, rope_constraint_settings));
+
+	rope_constraint_settings.minDist = 3.0f;
+	rope_constraint_settings.maxDist = 6.0f;
+	rope_constraint_settings.localAnchorA = vx::Vec3(0.0f, 1.0f, 0.0f);
+	rope_constraint_settings.localAnchorB = vx::Vec3(0.25f);
+	mTrackCapsuleSphereRope = phys_constraint_coord->AddConstraintT(vx::DistanceConstraint(capsule1, body_a, rope_constraint_settings));
 	
-	constraint = vx::DistanceConstraint();
+	rope_constraint_settings.localAnchorA = vx::Vec3(0.0f, -1.0f, 0.0f);
+	phys_constraint_coord->AddConstraintT(vx::DistanceConstraint(capsule1, body_d, rope_constraint_settings));
+	
+	rope_constraint_settings = vx::DistanceConstraintSettings();
 
-	//SuspensionShockSetting(constraint);
-	HardBarSetting(constraint);
-	constraint.mMinDistance = 3.5f;// constraint.mRestLength * 2.0f;
-	constraint.mMaxDistance = 3.5f;// constraint.mRestLength * 2.0f;
-	constraint.SetSpringDampingRatio(0.0f);
+	vx::DistanceConstraintSettings hardbar_constraint_settings;
+	HardBarSetting(hardbar_constraint_settings);
 
-	vx::DistanceConstraint& c0 = *phys_constraint_coord->AddConstraintT(constraint);
-	vx::DistanceConstraint& c1 = *phys_constraint_coord->AddConstraintT(constraint);
-	vx::DistanceConstraint& c2 = *phys_constraint_coord->AddConstraintT(constraint);
-	vx::DistanceConstraint& c3 = *phys_constraint_coord->AddConstraintT(constraint);
+	hardbar_constraint_settings.minDist = 3.5f;
+	hardbar_constraint_settings.maxDist = 3.5f;
+	hardbar_constraint_settings.dampingRatio = 0.0f;
 
-	vx::DistanceConstraint& c4 = *phys_constraint_coord->AddConstraintT(constraint);
-	vx::DistanceConstraint& c5 = *phys_constraint_coord->AddConstraintT(constraint);
+	phys_constraint_coord->AddConstraintT(vx::DistanceConstraint(body_a, body_b, hardbar_constraint_settings));
+	phys_constraint_coord->AddConstraintT(vx::DistanceConstraint(body_b, body_c, hardbar_constraint_settings));
+	phys_constraint_coord->AddConstraintT(vx::DistanceConstraint(body_c, body_d, hardbar_constraint_settings));
+	phys_constraint_coord->AddConstraintT(vx::DistanceConstraint(body_d, body_a, hardbar_constraint_settings));
 
-	vx::DistanceConstraint& c01 = *phys_constraint_coord->AddConstraintT(constraint);
-	vx::DistanceConstraint& c11 = *phys_constraint_coord->AddConstraintT(constraint);
-	vx::DistanceConstraint& c21 = *phys_constraint_coord->AddConstraintT(constraint);
-	vx::DistanceConstraint& c31 = *phys_constraint_coord->AddConstraintT(constraint);
-							  
-	vx::DistanceConstraint& c41 = *phys_constraint_coord->AddConstraintT(constraint);
-	vx::DistanceConstraint& c51 = *phys_constraint_coord->AddConstraintT(constraint);
+	phys_constraint_coord->AddConstraintT(vx::DistanceConstraint(body_a, body_c, hardbar_constraint_settings));
+	phys_constraint_coord->AddConstraintT(vx::DistanceConstraint(body_b, body_d, hardbar_constraint_settings));
 
-	c0.mBodyA = body_a;
-	c0.mBodyB = body_b;
-	//c0.mLocalAnchorA = vx::Vec3(0.0f, -0.5f, 0.0f);
-	//c0.mLocalAnchorB = vx::Vec3(0.0f, 0.5f, 0.0f);
-
-	c1.mBodyA = body_b;
-	c1.mBodyB = body_c;
-	//c1.mLocalAnchorA = vx::Vec3(0.5f, 0.0f, 0.0f);
-	//c1.mLocalAnchorB = vx::Vec3(-0.5f, 0.0f, 0.0f);
-
-	c2.mBodyA = body_c;
-	c2.mBodyB = body_d;
-	//c2.mLocalAnchorA = vx::Vec3(0.0f, 0.5f, 0.0f);
-	//c2.mLocalAnchorB = vx::Vec3(0.0f, -0.5f, 0.0f);
-
-	c3.mBodyA = body_d;
-	c3.mBodyB = body_a;
-	//c3.mLocalAnchorA = vx::Vec3(-0.5f, 0.0f, 0.0f);
-	//c3.mLocalAnchorB = vx::Vec3(0.5f, 0.0f, 0.0f);
-
-
-	c4.mBodyA = body_a;
-	c4.mBodyB = body_c;
-	//c4.mLocalAnchorA = vx::Vec3(0.5f, -0.5f, 0.0f);
-	//c4.mLocalAnchorB = vx::Vec3(-0.5f, 0.5f, 0.0f);
-
-
-	c5.mBodyA = body_b;
-	c5.mBodyB = body_d;
-	//c5.mLocalAnchorA = vx::Vec3(0.5f, 0.5f, 0.0f);
-	//c5.mLocalAnchorB = vx::Vec3(-0.5f, -0.5f, 0.0f);
+	phys_constraint_coord->AddConstraintT(vx::DistanceConstraint(body_a1, body_b1, hardbar_constraint_settings));
+	phys_constraint_coord->AddConstraintT(vx::DistanceConstraint(body_b1, body_c1, hardbar_constraint_settings));
+	phys_constraint_coord->AddConstraintT(vx::DistanceConstraint(body_c1, body_d1, hardbar_constraint_settings));
+	phys_constraint_coord->AddConstraintT(vx::DistanceConstraint(body_d1, body_a1, hardbar_constraint_settings));
+	
+	phys_constraint_coord->AddConstraintT(vx::DistanceConstraint(body_a1, body_c1, hardbar_constraint_settings));
+	phys_constraint_coord->AddConstraintT(vx::DistanceConstraint(body_b1, body_d1, hardbar_constraint_settings));
 
 
 
-
-	c01.mBodyA = body_a1;
-	c01.mBodyB = body_b1;
-	//c0.mLocalAnchorA = vx::Vec3(0.0f, -0.5f, 0.0f);
-	//c0.mLocalAnchorB = vx::Vec3(0.0f, 0.5f, 0.0f);
-
-	c11.mBodyA = body_b1;
-	c11.mBodyB = body_c1;
-	//c1.mLocalAnchorA = vx::Vec3(0.5f, 0.0f, 0.0f);
-	//c1.mLocalAnchorB = vx::Vec3(-0.5f, 0.0f, 0.0f);
-
-	c21.mBodyA = body_c1;
-	c21.mBodyB = body_d1;
-	//c2.mLocalAnchorA = vx::Vec3(0.0f, 0.5f, 0.0f);
-	//c2.mLocalAnchorB = vx::Vec3(0.0f, -0.5f, 0.0f);
-
-	c31.mBodyA = body_d1;
-	c31.mBodyB = body_a1;
-	//c3.mLocalAnchorA = vx::Vec3(-0.5f, 0.0f, 0.0f);
-	//c3.mLocalAnchorB = vx::Vec3(0.5f, 0.0f, 0.0f);
-
-
-	c41.mBodyA = body_a1;
-	c41.mBodyB = body_c1;
-	//c4.mLocalAnchorA = vx::Vec3(0.5f, -0.5f, 0.0f);
-	//c4.mLocalAnchorB = vx::Vec3(-0.5f, 0.5f, 0.0f);
-
-
-	c51.mBodyA = body_b1;
-	c51.mBodyB = body_d1;
-	//c5.mLocalAnchorA = vx::Vec3(0.5f, 0.5f, 0.0f);
-	//c5.mLocalAnchorB = vx::Vec3(-0.5f, -0.5f, 0.0f);
+	phys_constraint_coord->AddConstraintT(vx::DistanceConstraint(body_a, body_a1, hardbar_constraint_settings));
+	phys_constraint_coord->AddConstraintT(vx::DistanceConstraint(body_b, body_b1, hardbar_constraint_settings));
+	phys_constraint_coord->AddConstraintT(vx::DistanceConstraint(body_c, body_c1, hardbar_constraint_settings));
+	phys_constraint_coord->AddConstraintT(vx::DistanceConstraint(body_d, body_d1, hardbar_constraint_settings));
 
 
 
-	vx::DistanceConstraint& a_c_a1 = *phys_constraint_coord->AddConstraintT(constraint);
-	vx::DistanceConstraint& b_c_b1 = *phys_constraint_coord->AddConstraintT(constraint);
-	vx::DistanceConstraint& c_c_c1 = *phys_constraint_coord->AddConstraintT(constraint);
-	vx::DistanceConstraint& d_c_d1 = *phys_constraint_coord->AddConstraintT(constraint);
+	phys_constraint_coord->AddConstraintT(vx::DistanceConstraint(body_c, body_d1, hardbar_constraint_settings));
+	phys_constraint_coord->AddConstraintT(vx::DistanceConstraint(body_d, body_c1, hardbar_constraint_settings));
 
-	a_c_a1.mBodyA = body_a;
-	a_c_a1.mBodyB = body_a1;
-
-	b_c_b1.mBodyA = body_b;
-	b_c_b1.mBodyB = body_b1;
-
-	c_c_c1.mBodyA = body_c;
-	c_c_c1.mBodyB = body_c1;
-
-	d_c_d1.mBodyA = body_d;
-	d_c_d1.mBodyB = body_d1;
+	phys_constraint_coord->AddConstraintT(vx::DistanceConstraint(body_a, body_b1, hardbar_constraint_settings));
+	phys_constraint_coord->AddConstraintT(vx::DistanceConstraint(body_b, body_a1, hardbar_constraint_settings));
 
 
-	vx::DistanceConstraint& c_c_d1 = *phys_constraint_coord->AddConstraintT(constraint);
-	vx::DistanceConstraint& d_c_c1 = *phys_constraint_coord->AddConstraintT(constraint);
 
-	vx::DistanceConstraint& a_c_b1 = *phys_constraint_coord->AddConstraintT(constraint);
-	vx::DistanceConstraint& b_c_a1 = *phys_constraint_coord->AddConstraintT(constraint);
+	phys_constraint_coord->AddConstraintT(vx::DistanceConstraint(body_a, body_d1, hardbar_constraint_settings));
+	phys_constraint_coord->AddConstraintT(vx::DistanceConstraint(body_d, body_a1, hardbar_constraint_settings));
 
-
-	c_c_d1.mBodyA = body_c;
-	c_c_d1.mBodyB = body_d1;
-
-	d_c_c1.mBodyA = body_d;
-	d_c_c1.mBodyB = body_c1;
-
-	a_c_b1.mBodyA = body_a;
-	a_c_b1.mBodyB = body_b1;
-
-	b_c_a1.mBodyA = body_b;
-	b_c_a1.mBodyB = body_a1;
-
-
-	vx::DistanceConstraint& a_c_d1 = *phys_constraint_coord->AddConstraintT(constraint);
-	vx::DistanceConstraint& d_c_a1 = *phys_constraint_coord->AddConstraintT(constraint);
-
-	vx::DistanceConstraint& b_c_c1 = *phys_constraint_coord->AddConstraintT(constraint);
-	vx::DistanceConstraint& c_c_b1 = *phys_constraint_coord->AddConstraintT(constraint);
-
-
-	a_c_d1.mBodyA = body_a;
-	a_c_d1.mBodyB = body_d1;
-
-	d_c_a1.mBodyA = body_d;
-	d_c_a1.mBodyB = body_a1;
-
-	b_c_c1.mBodyA = body_b;
-	b_c_c1.mBodyB = body_c1;
-
-	c_c_b1.mBodyA = body_c;
-	c_c_b1.mBodyB = body_b1;
+	phys_constraint_coord->AddConstraintT(vx::DistanceConstraint(body_b, body_c1, hardbar_constraint_settings));
+	phys_constraint_coord->AddConstraintT(vx::DistanceConstraint(body_c, body_b1, hardbar_constraint_settings));
 }

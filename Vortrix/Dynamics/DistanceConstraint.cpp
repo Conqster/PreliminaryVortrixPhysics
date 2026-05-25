@@ -6,6 +6,18 @@
 
 namespace vx{
 
+	DistanceConstraint::DistanceConstraint(Body* bodyA, Body* bodyB, const DistanceConstraintSettings& settings) :
+		mBodyA(bodyA), mBodyB(bodyB), mLocalAnchorA(settings.localAnchorA),
+		mLocalAnchorB(settings.localAnchorB), mMinDistance(settings.minDist),
+		mMaxDistance(settings.maxDist),
+		mSpring({ settings.frequency, settings.dampingRatio })
+	{
+		
+		mFlags = EConstraintFlags::SolveVelocity;// | ~EConstraintFlags::SolvePosition;
+		
+		if(mSpring.mFrequency <= 0.0f)
+			mFlags |= EConstraintFlags::SolvePosition;
+	}
 	bool DistanceConstraint::PrepSolver(ConstraintSolver* solver, const PhysicsStepContext& ctx)
 	{
 		VX_PROFILE_FUNCTION();
@@ -140,6 +152,7 @@ namespace vx{
 		return row;
 	}
 
+
 	Rigid1DConstraint DistanceConstraint::BuildRigidConstraint()
 	{
 		Rigid1DConstraint rigid_constraint;
@@ -208,7 +221,7 @@ namespace vx{
 		}
 	}
 
-	void DistanceConstraint::DrawConstraintBounds(DebugGizmosRenderer* debug_renderer, const Vec3& rAw, const Vec3& rBw) const
+	void DistanceConstraint::DrawConstraintBounds(DebugGizmosRenderer* debug_renderer, const Vec3& rAw, const Vec3& rBw, Colour col) const
 	{
 		//achorbound a
 		AABB boundA = AABB(0.25);
@@ -218,10 +231,10 @@ namespace vx{
 		boundB.Translate(rBw);
 
 		boundA.Merge(boundB);
-		debug_renderer->DrawAABB(boundA, Colour::sMagenta);
+		debug_renderer->DrawAABB(boundA, col);
 	}
 
-	void DistanceConstraint::DebugGizmos(DebugGizmosRenderer* debug_renderer) const
+	void DistanceConstraint::DebugGizmos(DebugGizmosRenderer* debug_renderer, const NonContactConstraintDrawSettings& draw_settings) const
 	{
 		if (debug_renderer && mBodyA && mBodyB)
 		{
@@ -257,6 +270,18 @@ namespace vx{
 				//line_col = Colour(0.0f, 1.0f, 0.0f);
 
 			debug_renderer->DrawLine(rAw, rBw, line_col);
+
+			if (draw_settings.drawConstraintBounds)
+				DrawConstraintBounds(debug_renderer, rAw, rBw, Colour::sDeepTeal);
+
+			if (draw_settings.drawActiveBounds && Contains(EConstraintFlags::Active, mFlags))
+				DrawConstraintBounds(debug_renderer, rAw, rBw, Colour::sOrange);
+	
+			if (draw_settings.drawVelocitySolveBounds && Contains(EConstraintFlags::SolveVelocity, mFlags))
+				DrawConstraintBounds(debug_renderer, rAw, rBw, Colour::sTurquoise);
+			if (draw_settings.drawPositionSolveBounds && Contains(EConstraintFlags::SolvePosition, mFlags))
+				DrawConstraintBounds(debug_renderer, rAw, rBw, Colour::sCyan);
+
 
 			//if(Contains(EConstraintFlags::Active, mFlags))
 			////if(Contains(EConstraintFlags::SolvePosition, mFlags))

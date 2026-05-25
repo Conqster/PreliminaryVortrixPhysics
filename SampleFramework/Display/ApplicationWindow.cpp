@@ -353,8 +353,6 @@ void ApplicationWindow::OnWindowResizeCallback(GLFWwindow* window, int width, in
 
 	if (win->mWindowResizeListener)
 		win->mWindowResizeListener(width, height);
-
-	VX_LOG_INFO("New Window Display Screen width: ", width, ", height: ", height);
 }
 
 void ApplicationWindow::OnWindowPosCallback(GLFWwindow* window, int x, int y)
@@ -364,8 +362,6 @@ void ApplicationWindow::OnWindowPosCallback(GLFWwindow* window, int x, int y)
 		win->mWindowPos[0] = x;
 		win->mWindowPos[1] = y;
 	}
-
-	VX_LOG_INFO("New Window Pos x: ", x, ", y: ", y);
 }
 
 void ApplicationWindow::OnWindowMinimisedCallback(GLFWwindow* window, int iconified)

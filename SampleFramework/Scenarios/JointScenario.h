@@ -23,5 +23,6 @@ private:
 	vx::DistanceConstraint* mTrackCapsuleSphereRope;
 	//std::vector<DistanceConstraint> mNotInPipelineJoints;
 
+	void ConstaintPanel(vx::DistanceConstraint&);
 	void CreateLattice();
 };

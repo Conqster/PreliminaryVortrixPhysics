@@ -124,6 +124,16 @@ namespace vx
 	};
 
 
+	struct NonContactConstraintDrawSettings
+	{
+		bool drawConstraints = true;
+		bool drawConstraintBounds = false;
+		bool drawActiveBounds = false;
+		bool drawVelocitySolveBounds = false;
+		bool drawPositionSolveBounds = false;
+	};
+
+
 	struct WorldQuerySettings
 	{
 		bool mDebugTreeWalk = false;
@@ -218,6 +228,9 @@ namespace vx
 
 		///world query 
 		bool drawWalkedTreeQuery = false;
+
+		///joint constraint 
+		NonContactConstraintDrawSettings nonContactConstraintDrawSettings{};
 
 		/// Later add option for drawing axis orientation or not
 		/// also with new axis draw

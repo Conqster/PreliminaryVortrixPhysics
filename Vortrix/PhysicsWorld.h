@@ -80,8 +80,6 @@
 //						body_settings.shape = new SphereShape(mNewPhyObjectSettings.halfExtents.x);
 
 
-/// 
-
 
 class DebugGizmosRenderer;
 class Renderer;
@@ -136,8 +134,6 @@ namespace vx
 			const RenderSettings& setting, const Colour& c = Colour::sMagenta);
 		void OnDrawBodies(Renderer* draw_renderer, const RenderSettings& setting);
 		void OnDebugDraw(DebugGizmosRenderer* debug_renderer);
-
-		class DistanceConstraint* mTestJoint = nullptr;
 
 		class ConstraintCoordinator* mConstraintCoordinator = nullptr;
 		class ConstraintSolver* mConstraintSolver = nullptr;

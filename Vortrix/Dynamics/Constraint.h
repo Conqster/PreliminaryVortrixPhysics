@@ -18,7 +18,7 @@ namespace vx {
 		/// based on constraints policy
 		virtual void CommitSolverState(const Linear1DRow& row) = 0;
 
-		virtual void DebugGizmos(DebugGizmosRenderer* debug_renderer) const = 0;
+		virtual void DebugGizmos(DebugGizmosRenderer* debug_renderer, const NonContactConstraintDrawSettings& draw_settings) const = 0;
 
 		virtual void SolvePositionConstraint(float dt, float baumgarte) = 0;
 	protected:

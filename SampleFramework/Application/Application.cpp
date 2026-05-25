@@ -131,6 +131,7 @@ void operator delete[](void* memory, size_t size, std::align_val_t align) noexce
 #include "Scenarios/JengaScenario.h"
 #include "Scenarios/WorldQueriesScenario.h"
 #include "Scenarios/JointScenario.h"
+#include "Scenarios/PersistentContactScenario.h"
 
 Application* CreateApplication(const ApplicationSpecification& app_spec)
 {
@@ -295,6 +296,7 @@ Application::Application(const ApplicationSpecification& app_spec)
 	mScenarioCatergoies.scenarios.push_back(vx::MakeScope<SimpleBasicScenario>());
 	mScenarioCatergoies.scenarios.push_back(vx::MakeScope<WorldQueriesScenario>());
 	mScenarioCatergoies.scenarios.push_back(vx::MakeScope<JointScenario>());
+	mScenarioCatergoies.scenarios.push_back(vx::MakeScope<PersistentContactScenario>());
 	
 	ScenarioCatergory solver_scenarios;
 	solver_scenarios.name = "Solvers";
@@ -311,7 +313,7 @@ Application::Application(const ApplicationSpecification& app_spec)
 	mScenarioCatergoies.catergories.push_back(std::move(stacking_scenarios));
 
 
-	mCurrScenario = mScenarioCatergoies.scenarios.at(2).get();
+	mCurrScenario = mScenarioCatergoies.scenarios.at(3).get();
 }
 
 Application::~Application()
@@ -1740,6 +1742,17 @@ void Application::PhysicsSettingItemOverlays()
 		if (ImGui::TreeNodeEx("World Query"))
 		{
 			ImGui::Checkbox("draw Broadphase Walked Nodes", &draw_settings.drawWalkedTreeQuery);
+			ImGui::TreePop();
+		}
+
+		if (ImGui::TreeNodeEx("Non Contact Constraint"))
+		{
+			NonContactConstraintDrawSettings& constraint_draw = draw_settings.nonContactConstraintDrawSettings;
+			ImGui::Checkbox("draw constraints", &constraint_draw.drawConstraints);
+			ImGui::Checkbox("draw constraint bounds", &constraint_draw.drawConstraintBounds);
+			ImGui::Checkbox("draw active bounds", &constraint_draw.drawActiveBounds);
+			ImGui::Checkbox("draw velocity solve bounds", &constraint_draw.drawVelocitySolveBounds);
+			ImGui::Checkbox("draw position solve bounds", &constraint_draw.drawPositionSolveBounds);
 			ImGui::TreePop();
 		}
 

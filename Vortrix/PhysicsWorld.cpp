@@ -336,7 +336,7 @@ namespace vx
 		//Narrowphase: collision detection & contact generations
 		mNarrowphaseQuery->ProcessPairs(mBroadphasePairs, mStepManifolds, mContactConstraintSolver, collision_ctx);
 
-
+		
 		if (mSettings.solver.enable)
 		{
 
@@ -350,13 +350,14 @@ namespace vx
 			uint32 constraint_solver_row_count = mConstraintSolver->LinearRowCount();
 			SolverBody* solver_bodies = mConstraintSolver->GetBodiesPtr();
 			
-			/// perform warm starts 
+			/// perform warm starts
 			ConstraintSolver::WarmStart(constraint_solver_rows, 0, constraint_solver_row_count, solver_bodies);
+			ContactConstraintSolver::WarmStart(mContactConstraintSolver.ContactConstraintsPtr(), mContactConstraintSolver.NumContactConstraints(), solver_bodies);
 
 			for (int i = 0; i < mSettings.solver.velocityIterations; ++i)
 			{
-				mContactConstraintSolver.SolveVelocityConstraint(solver_bodies);
 				ConstraintSolver::SolverVelocityLinear1DRows(constraint_solver_rows, 0, constraint_solver_row_count, solver_bodies);
+				mContactConstraintSolver.SolveVelocityConstraint(solver_bodies);
 			}
 
 			//commit solver state to constraint
@@ -387,6 +388,12 @@ namespace vx
 			//	}
 			//}
 #endif // CONTACT_USE_SOLVERBODY
+
+
+
+			//commit contact constraint state to constraint
+			ContactConstraintSolver::WriteBackImplusesManifoldCache(
+				mContactConstraintSolver.ContactConstraintsPtr(), mContactConstraintSolver.NumContactConstraints());
 		}
 
 
@@ -443,7 +450,7 @@ namespace vx
 		//	mTestJoint->Solve(dt);
 
 
-
+		mContactConstraintSolver.FinaliseStepManifoldCache(mBodyManager);
 
 
 		PhysicsWorld::mFrameIdx++;
@@ -605,11 +612,10 @@ namespace vx
 		mHackDebugRenderer = debug_renderer;
 #endif // VX_DEBUG_DRAW
 
-		if (mTestJoint)
-			mTestJoint->DebugGizmos(debug_renderer);
 
-		if (mConstraintCoordinator)
-			mConstraintCoordinator->DebugGizmos(debug_renderer);
+		if (mConstraintCoordinator &&
+			mSettings.drawSettings.nonContactConstraintDrawSettings.drawConstraints)
+			mConstraintCoordinator->DebugGizmos(debug_renderer, mSettings.drawSettings.nonContactConstraintDrawSettings);
 
 		//debug_renderer->DrawLine(mExperimentRay.origin, mExperimentRay.End(), Colour::sGreen);
 

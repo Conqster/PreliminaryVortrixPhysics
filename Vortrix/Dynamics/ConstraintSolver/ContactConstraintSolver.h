@@ -10,7 +10,7 @@
 
 #include "CombineFrictionRestitution.h"
 
-#define CONTACT_USE_SOLVERBODY 0
+#define CONTACT_USE_SOLVERBODY 1
 
 #if CONTACT_USE_SOLVERBODY
 #include "Dynamics/SolverBodyIndex.h"
@@ -18,7 +18,7 @@
 #endif // CONTACT_USE_SOLVERBODY
 
 
-
+#include "Core/HashMap.h"
 
 class DebugGizmosRenderer;
 namespace vx {
@@ -167,11 +167,11 @@ namespace vx {
 				std::memset(mCachePoints, 0, mNumCachePoints * sizeof(CacheContactConstraint));
 			mNumCachePoints = 0;
 
-
 			mStats.StepReset();
 		}
 
 		void SetupContactConstraint(const ContactManifold& manifold, const struct CollisionContext& ctx);
+		void SetupContactConstraint2(const ContactManifold& manifold, const struct CollisionContext& ctx);
 		void WarmStart();
 
 
@@ -222,6 +222,10 @@ namespace vx {
 			float totalStepWorkLoss = 0.0f;
 			float totalStepWorkGain = 0.0f;
 
+			float totalNorLambda = 0.0f;
+			float totalTanLambda = 0.0f;
+			float totalBiTanLambda = 0.0f;
+
 			VX_INLINE void StepReset()
 			{
 				numContactConstraints = 0;
@@ -230,6 +234,10 @@ namespace vx {
 				totalStepKineticWork = 0.0f;
 				totalStepWorkLoss = 0.0f;
 				totalStepWorkGain = 0.0f;
+
+				totalNorLambda = 0.0f;
+				totalTanLambda = 0.0f;
+				totalBiTanLambda = 0.0f;
 			}
 		};
 		const ContactConstraintSolverStat& GetStats() const { return mStats; }
@@ -341,7 +349,7 @@ namespace vx {
 
 
 		/// SolverContactPoint
-		struct ContactConstraintPoint 
+		struct ContactPointConstraint 
 		{
 			///use pointer to point cached buffer
 			CacheContactPoint* cacheLocalPoint = nullptr;
@@ -379,28 +387,82 @@ namespace vx {
 		///
 		/// what is required 
 
-		struct ContactConstraint
+		class ContactConstraint
 		{
+		public:
 #if CONTACT_USE_SOLVERBODY
-			SolverBodyIndex body0;
-			SolverBodyIndex body1;
+			void SetBodies(SolverBodyIndex body0, SolverBodyIndex body1)
+#else
+			void SetBodies(Body* body0, Body* body1)
+#endif // CONTACT_USE_SOLVERBODY
+			{
+				mBody0 = body0;
+				mBody1 = body1;
+			}
+
+#if CONTACT_USE_SOLVERBODY
+			SolverBodyIndex BodyA() const { return mBody0; }
+			SolverBodyIndex BodyB() const { return mBody1; }
+#else
+			Body* BodyA() const { return mBody0; }
+			Body* BodyB() const { return mBody1; }
+#endif // CONTACT_USE_SOLVERBODY
+
+			Vec3 Normal() const { return Vec3::LoadFloat3Raw(mNormal); }
+
+			float FrictionCoeff() const { return mFriction; }
+			float RestitutionCoeff() const { return mRestitution; }
+
+			uint32 NumConstraintPoints() const { return numConstraintPoints; }
+
+			ContactPointConstraint& PointConstraint(uint32 i)
+			{
+				return contactPoints[i];
+			}
+
+			ContactPointConstraint* PointConstraintPtr()
+			{
+				return contactPoints.data();
+			}
+
+			const ContactPointConstraint* PointConstraintPtr() const
+			{
+				return contactPoints.data();
+			}
+			
+			const ContactPointConstraint& PointConstraint(uint32 i) const
+			{
+				return contactPoints[i];
+			}
+
+			void Normal(const Vec3& nor) { nor.Store(mNormal); }
+			void FrictionCoeff(float coeff) { mFriction = coeff; }
+			void RestitutionCoeff(float coeff) { mRestitution = coeff; }
+
+			ContactPointConstraint* CreatePointConstraint()
+			{
+				VX_ASSERT_WARN_RETURN(numConstraintPoints < ContactManifold::kMaxPoints, nullptr, "Max Contact Constraint Point excessed!!");
+				return &contactPoints[numConstraintPoints++];
+			}
+
+		private:
+#if CONTACT_USE_SOLVERBODY
+			SolverBodyIndex mBody0;
+			SolverBodyIndex mBody1;
 #else
 			Body* body0 = nullptr;
 			Body* body1 = nullptr;
 #endif // CONTACT_USE_SOLVERBODY
 
+			/// world space normal
+			Float3 mNormal{0.0f};
 
-			Float3 normal{0.0f};
+			float mFriction = 0.0f;
+			float mRestitution = 0.0f;
 
-			float friction = 0.0f;
-			float restitution = 0.0f;
+			std::array<ContactPointConstraint, ContactManifold::kMaxPoints> contactPoints{};
+			uint32 numConstraintPoints = 0;
 
-			//cache data
-			float invMass0 = 0.0f;
-			float invMass1 = 0.0f;
-
-			std::array<ContactConstraintPoint, ContactManifold::kMaxPoints> contactPoints{};
-			int numContacts = 0;
 		};
 		static_assert(std::is_trivially_copyable_v<ContactConstraint>, "must be copyable using memset");
 
@@ -428,14 +490,158 @@ namespace vx {
 		ECombineMode mCombinedRestitutionMode = ECombineMode::Maximum;
 
 
+#pragma region NEW CACHING
 
-		/// experimental cache 
-		struct CacheContraint
+
+		struct BodyPair
 		{
+			BodyID bodyA;
+			BodyID bodyB;
 
+			BodyPair() = default;
+			BodyPair(BodyID _a, BodyID _b) : bodyA(_a), bodyB(_b) {}
+
+
+			static BodyPair Create(BodyID a, BodyID b)
+			{
+				if (a > b)
+					std::swap(a, b);
+				return { a,b };
+			}
+
+			void Sort() { if (bodyA > bodyB) std::swap(bodyA, bodyB); }
+
+			uint64 Hash() const
+			{
+				return (uint64(bodyA.Value()) << 32) | uint64(bodyB.Value());
+			}
+
+			/// collision check 
+			bool operator == (const BodyPair& rhs) const { return bodyA == rhs.bodyA && bodyB == rhs.bodyB; }
+			bool operator < (const BodyPair& rhs) const { return Hash() < rhs.Hash(); }
 		};
 
+		class CachedManifold
+		{
+		public:
+			CachedManifold() = default;
+			CachedManifold(BodyID id0, BodyID id1, uint32 num_contact) : 
+				mBody0(id0), mBody1(id1), mNumContacts(num_contact){ }
 
+			BodyID GetBodyA() const { return mBody0; }
+			BodyID GetBodyB() const { return mBody1; }
+
+			uint32 NumPoints() const { return mNumContacts; }
+
+			Float3 Normal() const { return mNormal; }
+
+			CacheContactPoint* ContactPointPtr() { return mContactPoints.data(); }
+
+			Float3 mNormal;
+
+			bool mPersistent = false;
+		private:
+			BodyID mBody0;
+			BodyID mBody1;
+			uint32 mNumContacts = 0;
+
+		
+			//point to first cache point, then end = mContactPoints + mNumContact
+			std::array<CacheContactPoint, 4> mContactPoints{};
+		};
+
+		using ManifoldMap = HashMap<BodyPair, CachedManifold>;
+		using ManifoldMapEntry = ManifoldMap::Entry;
+		ManifoldMap mManifoldCache[2];
+		uint32 mManifoldWriteCache = 0;
+
+	public:
+
+		static void WriteBackImpluseCache(ContactConstraint& contact_constraint)
+		{
+			for (ContactPointConstraint* cpt_c = contact_constraint.PointConstraintPtr(),
+				*cpt_c_end = contact_constraint.PointConstraintPtr() + contact_constraint.NumConstraintPoints();
+				cpt_c < cpt_c_end; ++cpt_c)
+			{
+				CacheContactPoint* cache = cpt_c->cacheLocalPoint;
+				if (cache)
+				{
+					cache->totalNormalLambda = cpt_c->normal.totalLamda;
+					cache->totalTangentLambda[0] = cpt_c->lateralTangent[0].totalLamda;
+					cache->totalTangentLambda[1] = cpt_c->lateralTangent[1].totalLamda;
+				}
+			}
+		}
+
+
+		static void WriteBackImplusesManifoldCache(ContactConstraint* contact_constraints, size_t count)
+		{
+			for (ContactConstraint* cc = contact_constraints, *cc_end = contact_constraints + count; cc < cc_end; ++cc)
+			{
+				WriteBackImpluseCache(*cc);
+			}
+		}
+
+
+		ContactConstraint* ContactConstraintsPtr() { return mConstraints; }
+
+		uint32 NumContactConstraints() const { return mNumConstraints; }
+
+
+		//bool ValidateManifoldContactTransfer(CachedManifold& manifold, const BodyManager& body_manager)
+		//{
+		//	auto& body0 = body_manager.GetBody(manifold.GetBodyA());
+		//	auto& body1= body_manager.GetBody(manifold.GetBodyB());
+
+		//	//if bodies are dyn and awake next frame should generate manifold 
+
+		//	if (body0.IsDynamic() && body0.IsAwake() ||
+		//		body1.IsDynamic() && body1.IsAwake())
+		//		return false;
+
+		//	//only linear displacement
+		//	Vec3 dispW = body1.GetPosition() - body0.GetPosition();
+		//
+		//	float tolerance = VxSqr(0.02); //2 cm
+		//	return VxAbs(dispW.LengthSq()) < VxAbs(manifold.mRelativeDistanceSq) + tolerance;
+		//}
+		void FinaliseStepManifoldCache(const BodyManager& body_manager)
+		{
+			mManifoldWriteCache ^= 1;
+
+			///old read/new write
+			ManifoldMap& read_manifold_cache = mManifoldCache[mManifoldWriteCache];
+			ManifoldMap& _manifold_cache = mManifoldCache[mManifoldWriteCache^1];
+
+			mStats.numPersistentContact = 0;
+			for (auto& e : read_manifold_cache)
+			{
+				CachedManifold& manifold = e.second;
+				mStats.numPersistentContact++;
+				if (manifold.mPersistent)
+				{
+					//if(ValidateManifoldContactTransfer(manifold, body_manager))
+					//{
+					//	auto& v = _manifold_cache.Create(e.first, manifold).Value();
+					//	v.mPersistent = true;
+					//}
+
+					for (CacheContactPoint* ccp = manifold.ContactPointPtr(),
+						*ccp_end = manifold.ContactPointPtr() + manifold.NumPoints();
+						ccp < ccp_end; ++ccp)
+					{
+						mStats.totalNorLambda = ccp->totalNormalLambda;
+						mStats.totalTanLambda = ccp->totalTangentLambda[0];
+						mStats.totalBiTanLambda = ccp->totalTangentLambda[1];
+					}
+				}
+			}
+
+
+			read_manifold_cache.Clear();
+		}
+
+#pragma endregion
 
 		
 	
@@ -476,7 +682,11 @@ namespace vx {
 		
 #if CONTACT_USE_SOLVERBODY
 	public:
-		void SolveVelocityConstraint(struct SolverBody* bodies);
+
+		static void WarmStart(const ContactConstraint& contact_constraint, struct SolverBody& body0, SolverBody& body1);
+		static void WarmStart(ContactConstraint* contact_constraints, size_t count, SolverBody* bodies);
+
+		void SolveVelocityConstraint(SolverBody* bodies);
 		void SolvePositionCorrections(SolverBody* bodies, BodyManager& body_manager, float baumgarte, float slop, float min_limit, float max_limit, float limit_scale);
 #else
 		void SolverContactManifold(const SolverSettings& phy_settings);

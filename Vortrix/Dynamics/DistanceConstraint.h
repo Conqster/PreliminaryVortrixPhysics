@@ -11,6 +11,19 @@
 
 namespace vx {
 
+
+	struct DistanceConstraintSettings
+	{
+		Vec3 localAnchorA = Vec3(0.0f);
+		Vec3 localAnchorB = Vec3(0.0f);
+
+		float minDist = 1.0f;
+		float maxDist = 1.0f;
+
+		float frequency = 0.0f;
+		float dampingRatio = 0.0f;
+	};
+
 	class DistanceConstraint : public Constraint
 	{
 	public:
@@ -19,18 +32,30 @@ namespace vx {
 		{
 			mFlags = EConstraintFlags::SolveVelocity;// | ~EConstraintFlags::SolvePosition;
 		}
-		Body* mBodyA = nullptr;
-		Body* mBodyB = nullptr;
 
-		/// lets say this are points in body local frame
-		Vec3 mLocalAnchorA = Vec3(0.0f);
-		Vec3 mLocalAnchorB = Vec3(0.0f);
+		DistanceConstraint(Body* bodyA, Body* bodyB, const DistanceConstraintSettings& settings);
 
-		//presisent state (warm starting)
-		float mAccumulatedLambda = 0.0f;
+		void SetLocalAnchorA(const Vec3& position) { mLocalAnchorA = position; }
+		void SetLocalAnchorB(const Vec3& position) { mLocalAnchorB = position; }
 
-		float mMinDistance;
-		float mMaxDistance;
+		Vec3 GetLocalAnchorA() const { return mLocalAnchorA; }
+		Vec3 GetLocalAnchorB() const { return mLocalAnchorB; }
+
+		Body GetBodyA() const { return *mBodyA; }
+		Body GetBodyB() const { return *mBodyB; }
+
+		float GetAccumulatedLambda() const { return mAccumulatedLambda; }
+
+
+		void SetDistance(float min_dist, float max_dist)
+		{
+			VX_ASSERT_WARN(min_dist <= max_dist);
+			mMinDistance = min_dist;
+			mMaxDistance = max_dist;
+		}
+
+		float GetMinDistance() const { return mMinDistance; }
+		float GetMaxDistance() const { return mMaxDistance; }
 
 
 		void SetSpringFrequency(float freq)
@@ -67,13 +92,30 @@ namespace vx {
 		virtual void SolvePositionConstraint(float dt, float baumgarte) override;
 
 
-		void DrawConstraintBounds(DebugGizmosRenderer* debug_renderer, const Vec3& rAw, const Vec3& rBw) const;
+		void DrawConstraintBounds(DebugGizmosRenderer* debug_renderer, const Vec3& rAw, const Vec3& rBw, Colour col) const;
 
-		virtual void DebugGizmos(DebugGizmosRenderer* debug_renderer) const override;
+		virtual void DebugGizmos(DebugGizmosRenderer* debug_renderer, const NonContactConstraintDrawSettings& draw_settings) const override;
 		void QuickSolve(float dt);
 
 	private:
+		Body* mBodyA = nullptr;
+		Body* mBodyB = nullptr;
+
+		/// lets say this are points in body local frame
+		Vec3 mLocalAnchorA = Vec3(0.0f);
+		Vec3 mLocalAnchorB = Vec3(0.0f);
+
+
+		float mMinDistance;
+		float mMaxDistance;
+
+
 		SpringSettings mSpring;
+
+		//presisent state (warm starting)
+		float mAccumulatedLambda = 0.0f;
+
+
 		Vec3 mWorldAnchorA = Vec3(0.0f);
 		Vec3 mWorldAnchorB = Vec3(0.0f);
 		Vec3 mWorldAxis = Vec3(0.f);
