@@ -116,7 +116,7 @@ namespace vx
 		//allow bodies to sink into each other
 		float positionCorrectionSlop = 0.02f;// 0.01f;
 		float baumgarte = 0.2f;// 0.2f;
-		Vec2 positionCorrectionGlobalLimits = Vec2(0.01, 2.0f);
+		Vec2 positionCorrectionGlobalLimits = Vec2(0.01, 4.0f);
 		float positionCorrectionBodyLimitScale = 0.8f;
 
 		ECombineMode frictionCombineMode;

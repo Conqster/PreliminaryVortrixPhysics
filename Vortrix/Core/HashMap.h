@@ -4,7 +4,6 @@
 #include "Core/NonCopyable.h"
 
 
-
 namespace vx {
 
 
@@ -17,6 +16,10 @@ namespace vx {
 		}
 	};
 
+	////https://codeforces.com/blog/entry/144477
+	///
+	////https://en.cppreference.com/cpp/memory/null_memory_resource
+	////https://www.reddit.com/r/cpp/comments/jf0dse/performance_of_stdpmr/
 
 	/// Similar to jolt, but wrapper around std unordered 
 	/// for work around multithreading and woulkd love to 
@@ -32,7 +35,8 @@ namespace vx {
 	class HashMap : public NonCopyable
 	{
 	public:
-		using MapType = std::unordered_map<_Key, _Value, Hasher>;
+		//using MapType = std::unordered_map<_Key, _Value, Hasher>;
+		using MapType = std::pmr::unordered_map<_Key, _Value, Hasher>;
 		///using MapEntry = 
 
 		HashMap()
@@ -46,8 +50,8 @@ namespace vx {
 
 		void Init(uint32 max_bucket)
 		{
-			//mMap.rehash(max_bucket);
-			mMap.reserve(max_bucket);
+			mMap.rehash(max_bucket);
+			//mMap.reserve(max_bucket);
 		}
 
 		class Entry

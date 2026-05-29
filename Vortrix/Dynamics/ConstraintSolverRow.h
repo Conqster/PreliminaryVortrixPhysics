@@ -50,24 +50,26 @@ namespace vx {
 
 
 		float effMass;
+
+		VX_INLINE void SolvePosition(Body& body0, Body& body1, float C, float baumgarte)
+		{
+			float lambda = -effMass * baumgarte * C;
+
+			if (body0.IsDynamic())
+			{
+				Vec3 x = lambda * body0.GetInverseMass() * axis;
+				body0.ApplyLinearDisplacement(-x);
+				body0.ApplyAngularDisplacement(-lambda * Vec3::LoadFloat3Raw(invIrAXn));
+			}
+			if (body1.IsDynamic())
+			{
+				Vec3 x = lambda * body1.GetInverseMass() * axis;
+				body1.ApplyLinearDisplacement(x);
+				body1.ApplyAngularDisplacement(lambda * Vec3::LoadFloat3Raw(invIrBXn));
+			}
+		}
 	};
 
-	static void SolveRigid1DPosition(Body& body0, Body& body1, const Rigid1DConstraint& rigid_constraint, float C, float baumgarte)
-	{
-		float lambda = -rigid_constraint.effMass * baumgarte * C;
 
-		if (body0.IsDynamic())
-		{
-			Vec3 x = lambda * body0.GetInverseMass() * rigid_constraint.axis;
-			body0.ApplyLinearDisplacement(-x);
-			body0.ApplyAngularDisplacement(-lambda * Vec3::LoadFloat3Raw(rigid_constraint.invIrAXn));
-		}
-		if (body1.IsDynamic())
-		{
-			Vec3 x = lambda * body1.GetInverseMass() * rigid_constraint.axis;
-			body1.ApplyLinearDisplacement(x);
-			body1.ApplyAngularDisplacement(lambda * Vec3::LoadFloat3Raw(rigid_constraint.invIrBXn));
-		}
-	}
 
 } //namespace vx

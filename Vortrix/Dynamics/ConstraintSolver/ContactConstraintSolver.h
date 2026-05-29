@@ -150,7 +150,6 @@ namespace vx {
 		~ContactConstraintSolver()
 		{
 			delete[] mConstraints;
-			delete[] mCachePoints;
 		}
 
 		void Init(uint32 max_constraints);
@@ -162,10 +161,6 @@ namespace vx {
 			if (mNumConstraints > 0)
 				std::memset(mConstraints, 0, mNumConstraints * sizeof(ContactConstraint));
 			mNumConstraints = 0;
-
-			if (mNumCachePoints > 0)
-				std::memset(mCachePoints, 0, mNumCachePoints * sizeof(CacheContactConstraint));
-			mNumCachePoints = 0;
 
 			mStats.StepReset();
 		}
@@ -226,6 +221,10 @@ namespace vx {
 			float totalTanLambda = 0.0f;
 			float totalBiTanLambda = 0.0f;
 
+
+			int actualPointCounts = 0;
+			int actualPersistentPointCounts = 0;
+
 			VX_INLINE void StepReset()
 			{
 				numContactConstraints = 0;
@@ -238,6 +237,9 @@ namespace vx {
 				totalNorLambda = 0.0f;
 				totalTanLambda = 0.0f;
 				totalBiTanLambda = 0.0f;
+
+				actualPointCounts = 0;
+				actualPersistentPointCounts = 0;
 			}
 		};
 		const ContactConstraintSolverStat& GetStats() const { return mStats; }
@@ -298,55 +300,6 @@ namespace vx {
 			float totalNormalLambda;
 			float totalTangentLambda[2];
 		};
-
-
-		//struct ContactPairID
-		//{
-
-		//private:
-		//	BodyID mBody0;
-		//	BodyID mBody1;
-		//};
-
-		class CacheContactConstraint
-		{
-		public:
-			std::array<CacheContactPoint, 4> contactPoints;
-			
-
-			VX_INLINE int GetHash() const
-			{
-				//VX_ASSERT_WARN_RETURN(mBody0ID.IsValid() && mBody1ID.IsValid(),
-				//	0, "Invalid Contact cache body invalid id");
-			
-				//Hash32Bit(5);
-				//return Hash32Bit(((int)mBody0ID.Value() | ((int)mBody1ID.Value() << 16)));
-			}
-
-		private:
-
-			VX_INLINE int Hash32Bit(int key)
-			{
-				// Thomas Wang's hash
-				key += ~(key << 15);
-				key ^= (key >> 10);
-				key += (key << 3);
-				key ^= (key >> 6);
-				key += ~(key << 11);
-				key ^= (key >> 16);
-				return key;
-			}
-
-			//BodyID mBody0ID{};
-			//BodyID mBody1ID{};
-		};
-		static_assert(std::is_trivially_copyable_v<CacheContactConstraint>, "must be copyable using memset");
-
-		//std::array<CacheContactConstraint, kMaxConstraints> mCachePoints;
-		CacheContactConstraint* mCachePoints = nullptr;
-		int mNumCachePoints = 0;
-
-
 
 		/// SolverContactPoint
 		struct ContactPointConstraint 

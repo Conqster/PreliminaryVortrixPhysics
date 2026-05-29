@@ -44,6 +44,9 @@ void PersistentContactScenario::OnUI()
 		ImGui::Text("Num of Contacts: %d", contact_constraint_stat.numContactConstraints);
 		ImGui::Text("Num of Persistnet Contacts: %d", contact_constraint_stat.numPersistentContact);
 
+		ImGui::Text("Num of Persistent Point: %d", contact_constraint_stat.actualPointCounts);
+		ImGui::Text("Num of Valid Persistent Point: %d", contact_constraint_stat.actualPersistentPointCounts);
+
 		ImGui::Text("Total Nor Lambda: %f", contact_constraint_stat.totalNorLambda);
 		ImGui::Text("Total Tan Lambda: %f", contact_constraint_stat.totalTanLambda);
 		ImGui::Text("Total BiTan Lambda: %f", contact_constraint_stat.totalBiTanLambda);

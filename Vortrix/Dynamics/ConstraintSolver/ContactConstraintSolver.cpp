@@ -170,7 +170,7 @@ namespace vx {
 	{
 		mMaxConstraints = VxMin(max_constraints, kConstraintLimit);
 		mConstraints = new ContactConstraint[max_constraints];
-		mCachePoints = new CacheContactConstraint[max_constraints];
+		//mCachePoints = new CacheContactConstraint[max_constraints];
 
 		//mManifoldCache->Init(max_constraints);
 		mManifoldCache[0].Init(max_constraints);
@@ -181,137 +181,137 @@ namespace vx {
 	{
 		SetupContactConstraint2(_manifold, ctx);
 		return;
-		ContactManifold manifold = _manifold;
+//		ContactManifold manifold = _manifold;
+//
+//		/// for determintic simulation, enforce that 
+//		/// 1. if particpating bodies are a dynamic against a static
+//		/// 2. if both dynamic, for consitency id a < b
+//		/// 
+//		/// ensure that the A is the dynamic while B is the static 
+//		if(ctx.settings.consistentManifold)
+//		{
+//			int priority_a = static_cast<int>(manifold.a->GetMotionType());
+//			int priority_b = static_cast<int>(manifold.b->GetMotionType());
+//
+//			/// 1. dynamic > static
+//			if (priority_a < priority_b)
+//				manifold.Swap();
+//			else if (priority_a == priority_b)
+//			{
+//				/// 2. dynamic - dynamic 
+//				if (manifold.a->GetID() < manifold.b->GetID())
+//					manifold.Swap();
+//			}
+//		}
+//
+//		VX_ASSERT_WARN_VOID(manifold.a && manifold.b, "Either Bodies to not exists");
+//		//create constraint
+//		//allocate mem
+//		uint32 idx = mNumConstraints;
+//		VX_ASSERT_WARN_VOID(idx < mMaxConstraints, "Max frame contact constraint attianed returning");
+//		//mConstraints[idx] = {};
+//		ContactConstraint& constraint = mConstraints[idx];
+//		mNumConstraints++;
+//		mStats.numContactConstraints++;
+//
+//
+//		
+//		/// vaild tests 
+//		/// dyn - dyn 
+//		/// dyn - static 
+//		/// 
+//		/// 
+//		VX_ASSERT_WARN(manifold.a->IsDynamic(), "Contact Manifold body A is Static, while B is Dynamic");
+//
+//
+//#if CONTACT_USE_SOLVERBODY
+//		VX_ASSERT_WARN_VOID(ctx.constraintSolver, "trying to setup constact constraint from manifold, but solver/builder not available");
+//		
+//
+//		constraint.SetBodies(ctx.constraintSolver->GetOrCreateSolverBody(*manifold.a),
+//			ctx.constraintSolver->GetOrCreateSolverBody(*manifold.b));
+//
+//#else
+//		constraint.SetBodies(manifold.a, manifold.b);
+//#endif // CONTACT_USE_SOLVERBODY
+//
+//
+//		Body& body0 = *manifold.a;
+//		Body& body1 = *manifold.b;
+//
+//
+//		float fricition_coeff = CombinedCoefficient::GetFriction(mCombinedFrictionMode, body0, body1);
+//		float restitution_coff = CombinedCoefficient::GetRestitution(mCombinedRestitutionMode, body0, body1);
+//		constraint.FrictionCoeff(fricition_coeff);
+//		constraint.RestitutionCoeff(restitution_coff);
+//
+//		manifold.normal = manifold.normal.Normalised();
+//		constraint.Normal(manifold.normal);
+//		uint32 num_pts = VxMin(manifold.mPointCount, kMaxPoints);
+//
+//		///bodies inverse transforms 
+//		Mat44 transform0 = body0.ComputeWorldTransform();
+//		Mat44 transform1 = body1.ComputeWorldTransform();
+//
+//
+//		ContactConstraintAxesSetting constraint_axes_setting;
+//#if VX_DEBUG_DRAW
+//		constraint_axes_setting.debug_renderer = ctx.debugRenderer;
+//		constraint_axes_setting.debugDrawAxes = ctx.drawContactTBNs;
+//#endif // VX_DEBUG_DRAW
+//		constraint_axes_setting.timeStep = mPhysicsContext->stepDeltaTime;
+//
+//
+//		//create cache constrain
+//		//allocate mem
+//		uint32 _idx = mNumCachePoints;
+//		mNumCachePoints++;
+//		VX_ASSERT_WARN_VOID(_idx < mMaxConstraints, "Max frame contact constraint attianed returning");
+//		//mCachePoints[_idx] = {};
+//		CacheContactConstraint& cache_constraint = mCachePoints[_idx];
+//		//transfer points 
+//		for (int i = 0; i < num_pts; ++i)
+//		{
+//			const ManifoldPoint& mp = manifold.Points()[i];
+//
+//
+//			//add new constraint point
+//			ContactPointConstraint& constraint_pt = *constraint.CreatePointConstraint();
+//
+//
+//
+//			Vec3 p0_ls = transform0.TransformInverse(mp.pointA);
+//			Vec3 p1_ls = transform1.TransformInverse(mp.pointB);
+//			//later use this to check the cache 
+//
+//			//new cache 
+//			{
+//				constraint_pt.cacheLocalPoint = &cache_constraint.contactPoints[i];
+//				auto& clp = *constraint_pt.cacheLocalPoint;
+//				//clp = 
+//
+//				p0_ls.Store(clp.localPoint0);
+//				p1_ls.Store(clp.localPoint1);
+//
+//				clp.totalNormalLambda = 0.0f;
+//				clp.totalTangentLambda[0] = 0.0f;
+//				clp.totalTangentLambda[1] = 0.0f;
+//			}
+//			//Vec3 p = (mp.pointA + mp.pointB) * 0.5f;
+//			///// point relative to bodies
+//			//constraint.r0 = p - body0.GetPosition();
+//			//constraint.r1 = p - body1.GetPosition();
+//
+//			Vec3 pt = mp.pointB;
+//			//hack to ensure right penetration for now
+//			float depth_sq = (mp.pointA - mp.pointB).LengthSq();
+//			if (depth_sq < mp.peneration)
+//				pt = mp.pointA + manifold.normal * mp.peneration;
+//
+//			constraint_pt.SetupAxesVelocityConstraints(*manifold.a, *manifold.b, mp.pointA, mp.pointB, manifold.normal, restitution_coff, fricition_coeff, constraint_axes_setting);
+//		}
 
-		/// for determintic simulation, enforce that 
-		/// 1. if particpating bodies are a dynamic against a static
-		/// 2. if both dynamic, for consitency id a < b
-		/// 
-		/// ensure that the A is the dynamic while B is the static 
-		if(ctx.settings.consistentManifold)
-		{
-			int priority_a = static_cast<int>(manifold.a->GetMotionType());
-			int priority_b = static_cast<int>(manifold.b->GetMotionType());
-
-			/// 1. dynamic > static
-			if (priority_a < priority_b)
-				manifold.Swap();
-			else if (priority_a == priority_b)
-			{
-				/// 2. dynamic - dynamic 
-				if (manifold.a->GetID() < manifold.b->GetID())
-					manifold.Swap();
-			}
-		}
-
-		VX_ASSERT_WARN_VOID(manifold.a && manifold.b, "Either Bodies to not exists");
-		//create constraint
-		//allocate mem
-		uint32 idx = mNumConstraints;
-		VX_ASSERT_WARN_VOID(idx < mMaxConstraints, "Max frame contact constraint attianed returning");
-		//mConstraints[idx] = {};
-		ContactConstraint& constraint = mConstraints[idx];
-		mNumConstraints++;
-		mStats.numContactConstraints++;
-
-
-		
-		/// vaild tests 
-		/// dyn - dyn 
-		/// dyn - static 
-		/// 
-		/// 
-		VX_ASSERT_WARN(manifold.a->IsDynamic(), "Contact Manifold body A is Static, while B is Dynamic");
-
-
-#if CONTACT_USE_SOLVERBODY
-		VX_ASSERT_WARN_VOID(ctx.constraintSolver, "trying to setup constact constraint from manifold, but solver/builder not available");
-		
-
-		constraint.SetBodies(ctx.constraintSolver->GetOrCreateSolverBody(*manifold.a),
-			ctx.constraintSolver->GetOrCreateSolverBody(*manifold.b));
-
-#else
-		constraint.SetBodies(manifold.a, manifold.b);
-#endif // CONTACT_USE_SOLVERBODY
-
-
-		Body& body0 = *manifold.a;
-		Body& body1 = *manifold.b;
-
-
-		float fricition_coeff = CombinedCoefficient::GetFriction(mCombinedFrictionMode, body0, body1);
-		float restitution_coff = CombinedCoefficient::GetRestitution(mCombinedRestitutionMode, body0, body1);
-		constraint.FrictionCoeff(fricition_coeff);
-		constraint.RestitutionCoeff(restitution_coff);
-
-		manifold.normal = manifold.normal.Normalised();
-		constraint.Normal(manifold.normal);
-		uint32 num_pts = VxMin(manifold.mPointCount, kMaxPoints);
-
-		///bodies inverse transforms 
-		Mat44 transform0 = body0.ComputeWorldTransform();
-		Mat44 transform1 = body1.ComputeWorldTransform();
-
-
-		ContactConstraintAxesSetting constraint_axes_setting;
-#if VX_DEBUG_DRAW
-		constraint_axes_setting.debug_renderer = ctx.debugRenderer;
-		constraint_axes_setting.debugDrawAxes = ctx.drawContactTBNs;
-#endif // VX_DEBUG_DRAW
-		constraint_axes_setting.timeStep = mPhysicsContext->stepDeltaTime;
-
-
-		//create cache constrain
-		//allocate mem
-		uint32 _idx = mNumCachePoints;
-		mNumCachePoints++;
-		VX_ASSERT_WARN_VOID(_idx < mMaxConstraints, "Max frame contact constraint attianed returning");
-		//mCachePoints[_idx] = {};
-		CacheContactConstraint& cache_constraint = mCachePoints[_idx];
-		//transfer points 
-		for (int i = 0; i < num_pts; ++i)
-		{
-			const ManifoldPoint& mp = manifold.Points()[i];
-
-
-			//add new constraint point
-			ContactPointConstraint& constraint_pt = *constraint.CreatePointConstraint();
-
-
-
-			Vec3 p0_ls = transform0.TransformInverse(mp.pointA);
-			Vec3 p1_ls = transform1.TransformInverse(mp.pointB);
-			//later use this to check the cache 
-
-			//new cache 
-			{
-				constraint_pt.cacheLocalPoint = &cache_constraint.contactPoints[i];
-				auto& clp = *constraint_pt.cacheLocalPoint;
-				//clp = 
-
-				p0_ls.Store(clp.localPoint0);
-				p1_ls.Store(clp.localPoint1);
-
-				clp.totalNormalLambda = 0.0f;
-				clp.totalTangentLambda[0] = 0.0f;
-				clp.totalTangentLambda[1] = 0.0f;
-			}
-			//Vec3 p = (mp.pointA + mp.pointB) * 0.5f;
-			///// point relative to bodies
-			//constraint.r0 = p - body0.GetPosition();
-			//constraint.r1 = p - body1.GetPosition();
-
-			Vec3 pt = mp.pointB;
-			//hack to ensure right penetration for now
-			float depth_sq = (mp.pointA - mp.pointB).LengthSq();
-			if (depth_sq < mp.peneration)
-				pt = mp.pointA + manifold.normal * mp.peneration;
-
-			constraint_pt.SetupAxesVelocityConstraints(*manifold.a, *manifold.b, mp.pointA, mp.pointB, manifold.normal, restitution_coff, fricition_coeff, constraint_axes_setting);
-		}
-
-		VX_ASSERT_WARN(num_pts == constraint.NumConstraintPoints(), "Number of point stored needs to be equal compute attainable");
+		//VX_ASSERT_WARN(num_pts == constraint.NumConstraintPoints(), "Number of point stored needs to be equal compute attainable");
 	}
 
 	void ContactConstraintSolver::SetupContactConstraint2(const ContactManifold& _manifold, const CollisionContext& ctx)
@@ -442,15 +442,16 @@ namespace vx {
 
 		//create cache constrain
 		//allocate mem
-		uint32 _idx = mNumCachePoints;
-		mNumCachePoints++;
-		VX_ASSERT_WARN_VOID(_idx < mMaxConstraints, "Max frame contact constraint attianed returning");
+		//uint32 _idx = mNumCachePoints;
+		//mNumCachePoints++;
+		//VX_ASSERT_WARN_VOID(_idx < mMaxConstraints, "Max frame contact constraint attianed returning");
 		//mCachePoints[_idx] = {};
 		//CacheContactConstraint& cache_constraint = mCachePoints[_idx];
 		///the above should become a linear array of actual points, that each system could point to
 		///but at the moment, i am using the new cached manifolds std::array
 
 		//transfer points 
+		mStats.actualPointCounts = cache_pt_count;
 		for (int i = 0; i < num_contact_pts; ++i)
 		{
 			const ManifoldPoint& mp = manifold.Points()[i];
@@ -468,14 +469,15 @@ namespace vx {
 			for (const CacheContactPoint* cache_pt = cache_pt_start;
 				cache_pt < (cache_pt_start + cache_pt_count); cache_pt++)
 			{
-				if (p0_ls.IsApprox(Vec3::LoadFloat3Raw(cache_pt->localPoint0), VxSqr(0.02)) &&
-					p1_ls.IsApprox(Vec3::LoadFloat3Raw(cache_pt->localPoint1), VxSqr(0.02)))
+				if (p0_ls.IsApprox(Vec3::LoadFloat3Raw(cache_pt->localPoint0), VxSqr(0.01)) &&
+					p1_ls.IsApprox(Vec3::LoadFloat3Raw(cache_pt->localPoint1), VxSqr(0.01)))
 				{
 					point_constraint.normal.totalLamda = cache_pt->totalNormalLambda;
 					point_constraint.lateralTangent[0].totalLamda = cache_pt->totalTangentLambda[0];
 					point_constraint.lateralTangent[1].totalLamda = cache_pt->totalTangentLambda[1];
 
 					was_close = true;
+					mStats.actualPersistentPointCounts++;
 					break;
 				}
 			}
@@ -778,9 +780,6 @@ namespace vx {
 		{
 
 			float impluse = cpt_c->normal.totalLamda;
-
-			if (impluse <= 0.0f)
-				continue;
 
 			body0.v -= impluse * body0.invMass * Vec3::LoadFloat3Raw(cpt_c->normal.axis);
 			body0.w -= impluse * Vec3::LoadFloat3Raw(cpt_c->normal.invIr0XAxis);

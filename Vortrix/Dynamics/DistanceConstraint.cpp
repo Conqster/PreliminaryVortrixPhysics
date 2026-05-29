@@ -216,7 +216,7 @@ namespace vx{
 			if (error != 0)
 			{
 				Rigid1DConstraint constraint = BuildRigidConstraint();
-				SolveRigid1DPosition(*mBodyA, *mBodyB, constraint, error, baumgarte);
+				constraint.SolvePosition(*mBodyA, *mBodyB, error, baumgarte);
 			}
 		}
 	}
