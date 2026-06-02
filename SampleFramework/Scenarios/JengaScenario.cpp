@@ -28,7 +28,7 @@ void JengaScenario::Init(vx::PhysicsWorld* i_world)
 	vx::BodySettings body_setting = vx::BodySettings::DefaultDynamicConstruct();
 	body_setting.friction = 0.8f;
 	body_setting.restitution = 0.05f;
-	body_setting.shape = new vx::BoxShape(half_extents);
+	//body_setting.shape = new vx::BoxShape(half_extents);
 
 
 		//float block_length = 2.5f;

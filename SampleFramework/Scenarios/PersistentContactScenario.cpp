@@ -17,12 +17,10 @@ void PersistentContactScenario::Init(vx::PhysicsWorld* i_world)
 
 	vx::BodySettings dyn_bodies_settings = vx::BodySettings::DefaultDynamicConstruct();
 
-	vx::BoxShape* unit_box = new vx::BoxShape(0.5f);
 	dyn_bodies_settings.position = vx::Vec3(0.0f, 5.5f, 0.0f);
 	dyn_bodies_settings.debug_name = "box";
 	dyn_bodies_settings.shape = new vx::BoxShape(0.5f);
 	mPhysicsWorld->CreateBody(dyn_bodies_settings);
-
 
 	/// Ground plane
 	CreateGroundPlane(100.0f);

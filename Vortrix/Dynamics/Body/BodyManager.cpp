@@ -5,7 +5,7 @@
 
 #include "Collision/Shapes/Shape.h"
 
-
+#include <set>
 namespace vx
 {
 	void BodyManager::Init(uint32 max_bodies)
@@ -16,8 +16,16 @@ namespace vx
 	}
 	BodyManager::~BodyManager()
 	{
-		//for (auto& b : mBodies)
-		//	delete b.mShape;
+		/// JAY: move to smart pointer; ref counted
+		/// solve with set for now 
+		/// because multiple bodies might be sharing 
+		/// a shape
+		std::set<Shape*> shapes;
+		for (auto& b : mBodies)
+			shapes.insert(b.mShape);
+
+		for(auto& s : shapes)
+				delete s;
 	}
 	bool BodyManager::AddBody(const BodySettings& body_setting)
 	{

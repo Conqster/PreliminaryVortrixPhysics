@@ -65,6 +65,9 @@ namespace vx
 
 		out_pairs.clear(); //<-- fix 
 
+		if (mTree.mNodes.size() <= 0)
+			return;
+
 		//Upodates 
 		uint32 dirty_nodes_count = GatherDirtyNode();
 
@@ -143,6 +146,10 @@ namespace vx
 
 		//quicxk 
 		mTree.mLeafNodesBound.Reset();
+
+
+		VX_ASSERT(mTree.mNodes.size() > 0, "No nodes !!!");
+
 		const auto& n = *mTree.GetNode(mTree.GetLeafNodeIDs()[0]);
 		mTree.mLeafNodesBound.Merge(n.bounds);
 
@@ -189,6 +196,9 @@ namespace vx
 	template<typename BoundType>
 	void BVHBroadphase<BoundType>::CastRay(const RayCast& ray_cast, WorldRayCastQuery& world_ray_ctx) const
 	{
+		if (mTree.mNodes.size() <= 0)
+			return;
+
 		mTree.CastRay(ray_cast, world_ray_ctx);
 	}
 

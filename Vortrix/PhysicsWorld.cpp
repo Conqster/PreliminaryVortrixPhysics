@@ -43,6 +43,19 @@ namespace vx
 	{
 	}
 
+	PhysicsWorld::~PhysicsWorld()
+	{
+		//mBodies.clear();
+		delete[] mActiveBodies;
+
+		delete mBroadphase;
+		delete mNarrowphaseQuery;
+
+
+		delete mConstraintCoordinator;
+		delete mConstraintSolver;
+	}
+
 	void PhysicsWorld::CreateSimpleWorld(PhysicsWorld* io_world)
 	{
 		VX_ASSERT(io_world, "Physics World is null");
@@ -226,7 +239,9 @@ namespace vx
 		mContactConstraintSolver.Init(max_contact_constraint);
 		mContactConstraintSolver.SetPhysicsContext(&mContext);
 
-		mConstraintCoordinator = new ConstraintCoordinator;
+		mConstraintCoordinator = new ConstraintCoordinator();
+
+
 		mConstraintSolver = new ConstraintSolver;
 		mConstraintSolver->Init(mBodyManager);
 
@@ -276,7 +291,6 @@ namespace vx
 		mWorldQuery.SetDebugRender(mHackDebugRenderer);
 		mWorldQuery.SetDrawBroadphaseNodesWalked(mSettings.drawSettings.drawWalkedTreeQuery);
 
-		//sBoxVsBoxSATDebugInstances.clear();
 
 		static bool first_sim_step = true;
 		/// this is to ensure that bodies are set to activation list 
@@ -310,7 +324,7 @@ namespace vx
 		}
 
 		/// Broadphase collsion
-		VX_ASSERT_WARN(mBroadphase, "Broadphase is null.");
+		//VX_ASSERT_WARN(mBroadphase, "Broadphase is null.");
 		if (mBroadphase != nullptr)
 			mBroadphase->ComputeCollidingPair(mContext, mBroadphasePairs);
 
@@ -322,21 +336,21 @@ namespace vx
 		//mConstraintCoordinator->PrepConstraintSolving(*mConstraintSolver, mContext);
 		//mConstraintSolver->SolverAll(mContext, mSettings.solver.velocityIterations);
 
-
+	
 		/// for now need to invalidate previous frame local bodies 
 		/// so the bodies could be update for use by narrowphase handshake 
 		/// with contact constraint, fix later 
 		mConstraintSolver->HackClear();
 		CollisionContext collision_ctx
-		{ 
-			mSettings.collision, mHackDebugRenderer, 
-			mSettings.drawSettings.drawContactConstraintSolverTBNs, 
-			mFrameIdx, mConstraintSolver 
+		{
+			mSettings.collision, mHackDebugRenderer,
+			mSettings.drawSettings.drawContactConstraintSolverTBNs,
+			mFrameIdx, mConstraintSolver
 		};
 		//Narrowphase: collision detection & contact generations
 		mNarrowphaseQuery->ProcessPairs(mBroadphasePairs, mStepManifolds, mContactConstraintSolver, collision_ctx);
 
-		
+
 		if (mSettings.solver.enable)
 		{
 

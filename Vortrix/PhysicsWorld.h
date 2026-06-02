@@ -103,18 +103,7 @@ namespace vx
 	{
 	public:
 		PhysicsWorld(const PhysicsWorldSettings& in_settings);
-		~PhysicsWorld()
-		{
-			//mBodies.clear();
-			delete[] mActiveBodies;
-
-			delete mBroadphase;
-			delete mNarrowphaseQuery;
-
-
-			delete mConstraintCoordinator;
-			delete mConstraintSolver;
-		}
+		~PhysicsWorld();
 
 		static void CreateSimpleWorld(PhysicsWorld* io_world);
 

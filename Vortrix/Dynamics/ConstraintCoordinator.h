@@ -20,6 +20,13 @@ namespace vx {
 	class ConstraintCoordinator
 	{
 	public:
+		ConstraintCoordinator() = default;
+		~ConstraintCoordinator()
+		{
+			for (auto& c : mConstraints)
+				delete c; //<-- fix this
+		}
+
 		void AddConstraint(Constraint* constraint)
 		{
 			mConstraints.push_back(constraint);
@@ -53,10 +60,14 @@ namespace vx {
 			for (auto& c : mConstraints)
 				c->DebugGizmos(debug_renderer, draw_settings);
 		}
+
+
 	private: 
 		//for now vector 
 		std::vector<Constraint*> mConstraints;
 	};
+
+
 
 
 	struct SolverBody
@@ -101,6 +112,14 @@ namespace vx {
 			mBodies.reserve(max_bodies);
 			mBodyToSolverBody.resize(max_bodies);
 			mConstraintPositionSolveQueue.reserve(100);
+		}
+
+		~ConstraintSolver()
+		{
+			mBodies.clear();
+			mBodyToSolverBody.clear();
+			mConstraintPositionSolveQueue.clear();
+			mLinear1DRows.clear();
 		}
 
 		///in order to trck is bodies is already participamt with another constraint 

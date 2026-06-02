@@ -342,6 +342,7 @@ void Scenario::CreateJenga(vx::BodySettings body_setting, const vx::Vec3& half_e
 	//float gap = 0.05f;
 
 	vx::BoxShape* xShape = new vx::BoxShape(half_extent.Swizzle<vx::kAxisZ, vx::kAxisY, vx::kAxisX>());
+
 	vx::BoxShape* zShape = new vx::BoxShape(half_extent);
 
 	float width = (half_extent.X() * 2.0f);

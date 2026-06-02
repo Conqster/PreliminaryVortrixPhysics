@@ -1,88 +1,4 @@
-#include <memory>
-
-
-struct HeapAlloctionMetric
-{
-	size_t totalAllocatedBytes = 0;
-	size_t totalAllocatedCount = 0;
-
-	size_t totalDeallocatedBytes = 0;
-	size_t totalDeallocatedCount = 0;
-
-	uint32_t CurrentUsage() { return totalAllocatedBytes - totalDeallocatedBytes; }
-	uint32_t RemainingPredicatedDealloc() { return totalAllocatedCount - totalDeallocatedCount; }
-};
-
-static HeapAlloctionMetric gHeapAllocated;
-void* operator new(size_t size) {
-	gHeapAllocated.totalAllocatedBytes += size;
-  	gHeapAllocated.totalAllocatedCount++;
-
-	//printf("Allocated %llu bytes.\n", size);
-	return malloc(size);
-}
-
-void* operator new[](size_t size) {
-	gHeapAllocated.totalAllocatedBytes += size;
-	gHeapAllocated.totalAllocatedCount++;
-
-	//printf("Allocated %llu bytes.\n", size);
-	return malloc(size);
-}
-
-
-void* operator new[](size_t size, std::align_val_t alignment) noexcept {
-	size_t align = static_cast<size_t>(alignment);
-	void* p = nullptr;
-
-	gHeapAllocated.totalAllocatedBytes += size;
-	gHeapAllocated.totalAllocatedCount++;
-	///printf("Deallocated %llu bytes.\n", size);
-
-#ifdef  _WIN32
-	p = _aligned_malloc(size, align);
-#else
-	p = std::aligned_alloc(align, size);
-#endif //  _WIN32
-
-	if (!p) throw std::bad_alloc();
-
-	return p;
-}
-
-
-void operator delete(void* memory, size_t size) noexcept {
-	gHeapAllocated.totalDeallocatedBytes += size;
-	gHeapAllocated.totalDeallocatedCount++;
-
-	///printf("Deallocated %llu bytes.\n", size);
-	free(memory);
-}
-
-void __CRTDECL operator delete[](void* memory, size_t size) noexcept {
-	gHeapAllocated.totalDeallocatedBytes += size;
-	gHeapAllocated.totalDeallocatedCount++;
-	///printf("Deallocated %llu bytes.\n", size);
-	free(memory);
-}
-
-
-
-void operator delete[](void* memory, size_t size, std::align_val_t align) noexcept {
-	if (!memory) return;
-
-	gHeapAllocated.totalDeallocatedBytes += size;
-	gHeapAllocated.totalDeallocatedCount++;
-	///printf("Deallocated %llu bytes.\n", size);
-
-#ifdef  _WIN32
-	_aligned_free(memory);
-#else
-	free(memory);
-#endif //  _WIN32
-}
-//
-
+#include "Core/VxMemory.h"
 
 #include "Application.h"
 #include "Input/InputSystem.h"
@@ -1335,13 +1251,13 @@ void Application::OnDrawImGuiOverlays()
 			ImGui::Checkbox("Show Debug Rotation", &bShowDebugRotation);
 			
 			ImGui::SeparatorText("Memory Usage");
-			ImGui::Text("Total Allocated: %llu Bytes.", gHeapAllocated.totalAllocatedBytes);
-			ImGui::Text("Total Allocated Calls: %llu.", gHeapAllocated.totalAllocatedCount);
-			ImGui::Text("Total Deallocated: %llu Bytes.", gHeapAllocated.totalDeallocatedBytes);
-			ImGui::Text("Total Deallocated calles: %llu .", gHeapAllocated.totalDeallocatedCount);
+			ImGui::Text("Current Allocate Bytes: %llu Bytes.", vx::sMemoryProfile.CurrentAllocBytes());
+			ImGui::Text("Current Allocate Count: %llu.\n", vx::sMemoryProfile.CurrentAllocCount());
+			ImGui::Text("\nTotal Allocated: %llu Bytes.", vx::sMemoryProfile.allocatedBytes);
+			ImGui::Text("Total Allocated Calls: %llu.", vx::sMemoryProfile.allocs);
+			ImGui::Text("\nTotal Deallocated: %llu Bytes.", vx::sMemoryProfile.deallocatedBytes);
+			ImGui::Text("Total Deallocated calles: %llu .", vx::sMemoryProfile.deallocs);
 
-			ImGui::Text("Current Usage: %llu Bytes.", gHeapAllocated.CurrentUsage());
-			ImGui::Text("Remaining Predicated Dealloc: %llu Bytes.", gHeapAllocated.RemainingPredicatedDealloc());
 		}
 		ImGui::End();
 	}

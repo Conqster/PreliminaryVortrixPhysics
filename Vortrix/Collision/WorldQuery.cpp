@@ -195,6 +195,7 @@ namespace vx {
 
 	bool WorldQuery::CastRay(const RayCast& ray_cast, QueryProcessor& query_processor)
 	{
+		VX_ASSERT_WARN_RETURN(mBroadphase, false, "Broadphase null");
 		WorldQueryContext<RayCast, RayShapeFn> ctx
 		{ 
 			ray_cast, 

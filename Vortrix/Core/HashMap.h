@@ -52,6 +52,9 @@ namespace vx {
 		{
 			mMap.rehash(max_bucket);
 			//mMap.reserve(max_bucket);
+
+			
+			
 		}
 
 		class Entry
