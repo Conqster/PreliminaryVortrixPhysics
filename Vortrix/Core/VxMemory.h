@@ -1,145 +1,30 @@
-#include <memory>
-
-#include <iostream>
-
-//struct HeapAlloctionMetric
-//{
-//	size_t totalAllocatedBytes = 0;
-//	size_t totalAllocatedCount = 0;
-//
-//	size_t totalDeallocatedBytes = 0;
-//	size_t totalDeallocatedCount = 0;
-//
-//	uint32_t CurrentUsage() { return totalAllocatedBytes - totalDeallocatedBytes; }
-//	uint32_t RemainingPredicatedDealloc() { return totalAllocatedCount - totalDeallocatedCount; }
-//};
-//
-//
-//
-//template<size_t Size>
-//class MemoryProfile
-//{
-//
-//
-//	uint32_t mAllocations[Size];
-//};
-//
-//
-//static HeapAlloctionMetric gHeapAllocated;
-//void* operator new(size_t size) {
-//	gHeapAllocated.totalAllocatedBytes += size;
-//	gHeapAllocated.totalAllocatedCount++;
-//
-//	return malloc(size);
-//}
-//
-//
-//void* operator new[](size_t size) {
-//	gHeapAllocated.totalAllocatedBytes += size;
-//	gHeapAllocated.totalAllocatedCount++;
-//
-//	return malloc(size);
-//}
-//void* operator new[](size_t size, std::align_val_t alignment) noexcept {
-//	size_t align = static_cast<size_t>(alignment);
-//	void* p = nullptr;
-//
-//	gHeapAllocated.totalAllocatedBytes += size;
-//	gHeapAllocated.totalAllocatedCount++;
-//
-//#ifdef  _WIN32
-//	p = _aligned_malloc(size, align);
-//#else
-//	p = std::aligned_alloc(align, size);
-//#endif //  _WIN32
-//
-//	if (!p) throw std::bad_alloc();
-//
-//	return p;
-//}
-//
-//void operator delete (void* pointer) noexcept
-//{
-//	std::cout << "Unsized mem free (delete) !!\n";
-//	free(pointer);
-//}
-//void operator delete(void* pointer, size_t size) noexcept {
-//	gHeapAllocated.totalDeallocatedBytes += size;
-//	gHeapAllocated.totalDeallocatedCount++;
-//	free(pointer);
-//}
-//void operator delete(void* pointer, size_t size, std::align_val_t align) noexcept {
-//	if (!pointer) return;
-//
-//	gHeapAllocated.totalDeallocatedBytes += size;
-//	gHeapAllocated.totalDeallocatedCount++;
-//
-//
-//#ifdef  _WIN32
-//	_aligned_free(pointer);
-//#else
-//	free(pointer);
-//#endif //  _WIN32
-//}
-//
-//void operator delete(void* pointer, std::align_val_t align) noexcept {
-//	if (!pointer) return;
-//
-//	std::cout << "Unsized mem free (delete align) !!\n";
-//#ifdef  _WIN32
-//	_aligned_free(pointer);
-//#else
-//	free(pointer);
-//#endif //  _WIN32
-//}
-//
-//
-//void operator delete[](void* pointer) noexcept
-//{
-//	std::cout << "Unsized mem free (array)!!\n";
-//	free(pointer);
-//}
-////void operator delete[](void* memory, size_t size) noexcept {
-////	gHeapAllocated.totalDeallocatedBytes += size;
-////	gHeapAllocated.totalDeallocatedCount++;
-////	free(memory);
-////}
-//void operator delete[](void* pointer, size_t size, std::align_val_t align) noexcept {
-//	if (!pointer) return;
-//
-//	gHeapAllocated.totalDeallocatedBytes += size;
-//	gHeapAllocated.totalDeallocatedCount++;
-//
-//
-//#ifdef  _WIN32
-//	_aligned_free(pointer);
-//#else
-//	free(pointer);
-//#endif //  _WIN32
-//}
-//
-//void operator delete[](void* pointer, std::align_val_t align) noexcept {
-//	if (!pointer) return;
-//	std::cout << "Unsized mem free!!\n";
-//
-//#ifdef  _WIN32
-//	_aligned_free(pointer);
-//#else
-//	free(pointer);
-//#endif //  _WIN32
-//}
-
-
-
-
-//void* operator new ([[maybe_unused]] size_t inCount, void* inPointer) noexcept { return inPointer; } \
-//void operator delete ([[maybe_unused]] void* inPointer, [[maybe_unused]] void* inPlace) noexcept { /* Do nothing */ } \
-//void* operator new[]([[maybe_unused]] size_t inCount, void* inPointer) noexcept { return inPointer; } \
-//void operator delete[]([[maybe_unused]] void* inPointer, [[maybe_unused]] void* inPlace) noexcept { /* Do nothing */ }
-
 #include "Core.h"
+#include "Core/Logger.h"
 
 namespace vx{
+
+
+	///Bytes -> kB
+	double ToKilobyte(uint32_t bytes)
+	{
+		return static_cast<double>(bytes) / 1000;
+	}
+	///Bytes -> KiB
+	double ToKibibyte(uint32_t bytes)
+	{
+		return static_cast<double>(bytes) / 1024;
+	}
+
+	///Bytes -> MB
+	double ToMegabyte(uint32_t bytes)
+	{
+		return static_cast<double>(bytes) * 1e-6;
+	}
+	///Bytes -> MiB
+	double ToMebibyte(uint32_t bytes)
+	{
+		return static_cast<double>(bytes) / (1024 * 1024);
+	}
 
 	struct MemoryProfile
 	{
@@ -223,23 +108,6 @@ namespace vx{
 			deallocatedBytes += h->size;
 			deallocs++;
 			free(h->raw);
-
-			//for (int i = 0; i < mCurrTracking; ++i)
-			//{
-			//	auto& h = mAllocations[i];
-			//	if (h.ptr == block)
-			//	{
-			//		deallo_block = ((Header*)block) - 1;
-			//		deallocatedBytes += h.size;
-			//		deallocs++;
-
-			//		std::swap(h, mAllocations[mCurrTracking - 1]);
-			//		mCurrTracking--;
-
-			//		break;
-			//	}
-			//}
-			//free(deallo_block);
 		}
 
 		VX_INLINE void AlignedDealloc(void* block)
@@ -255,6 +123,19 @@ namespace vx{
 #else
 			free(h->raw);
 #endif //  _WIN32
+		}
+
+
+		~MemoryProfile()
+		{
+			//VX_LOG_INFO("----------------------------OUT OF SCOPE ~ ------------------");
+			//VX_LOG_INFO("Allocated Count: ", allocs);
+			//VX_LOG_INFO("Allocated Bytes: ", allocatedBytes);
+			//VX_LOG_INFO("Deallocated Count: ", deallocs);
+			//VX_LOG_INFO("Deallocated Bytes: ", deallocatedBytes);
+			//VX_LOG_INFO("Curr Allocated Count: ", CurrentAllocCount());
+			//VX_LOG_INFO("Curr Allocated Bytes: ", CurrentAllocBytes());
+			//VX_LOG_INFO("-------------------------------------------------------------");
 		}
 
 	};

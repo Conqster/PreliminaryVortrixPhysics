@@ -33,6 +33,9 @@
 
 #include "Dynamics/ConstraintCoordinator.h"
 
+
+#include "Dynamics/PointConstraint.h"
+
 namespace vx
 {
 
@@ -364,9 +367,12 @@ namespace vx
 			uint32 constraint_solver_row_count = mConstraintSolver->LinearRowCount();
 			SolverBody* solver_bodies = mConstraintSolver->GetBodiesPtr();
 			
-			/// perform warm starts
-			ConstraintSolver::WarmStart(constraint_solver_rows, 0, constraint_solver_row_count, solver_bodies);
-			ContactConstraintSolver::WarmStart(mContactConstraintSolver.ContactConstraintsPtr(), mContactConstraintSolver.NumContactConstraints(), solver_bodies);
+			if (mSettings.solver.warmstart)
+			{
+				/// perform warm starts
+				ConstraintSolver::WarmStart(constraint_solver_rows, 0, constraint_solver_row_count, solver_bodies);
+				ContactConstraintSolver::WarmStart(mContactConstraintSolver.ContactConstraintsPtr(), mContactConstraintSolver.NumContactConstraints(), solver_bodies);
+			}
 
 			for (int i = 0; i < mSettings.solver.velocityIterations; ++i)
 			{
@@ -411,8 +417,11 @@ namespace vx
 		}
 
 
-
-
+		if(mBallJoint)
+			mBallJoint->QuickSolve(dt);
+		if (mBallJoint2)
+			//mBallJoint2->QuickSolveEach1D(dt);
+			mBallJoint2->QuickSolve1DJacobianRow(dt);
 
 
 		UpdateBodiesActivationState(dt);
@@ -625,6 +634,13 @@ namespace vx
 #if VX_DEBUG_DRAW
 		mHackDebugRenderer = debug_renderer;
 #endif // VX_DEBUG_DRAW
+
+
+
+		if (mBallJoint)
+			mBallJoint->DebugGizmos(debug_renderer, mSettings.drawSettings.nonContactConstraintDrawSettings);
+		if (mBallJoint2)
+			mBallJoint2->DebugGizmos(debug_renderer, mSettings.drawSettings.nonContactConstraintDrawSettings);
 
 
 		if (mConstraintCoordinator &&

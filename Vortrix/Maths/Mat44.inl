@@ -396,6 +396,7 @@ namespace vx
 
 	inline VX_INLINE float Mat44::Determinant3x3() const
 	{
+		return GetAxisX().ScalarTriple(GetAxisY(), GetAxisZ());
 		/// using geomteric form
 		/// scalar triple
 		//return GetAxisX().Dot(GetAxisY().Cross(GetAxisZ()));
@@ -530,8 +531,8 @@ namespace vx
 	{
 		VX_ASSERT(IsAffine3x3(), "Matrix not affine, bottom row of full 4x4 must be [0 0 0]");
 		const float det = Determinant3x3();
-		VX_ASSERT(VxAbs(det) > kEpsilon, "Matrix is singular (non-invertible)");
-
+		//VX_ASSERT(VxAbs(det) > kEpsilon, "Matrix is singular (non-invertible)");
+	
 
 #ifdef VX_SIMD_SSE
 

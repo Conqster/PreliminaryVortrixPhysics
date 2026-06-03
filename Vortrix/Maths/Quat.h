@@ -108,6 +108,7 @@ namespace vx
 		/// Rotate vector by inverse quaternion
 		/// Quaternion is assume (|q| = 1)
 		/// Equivalent to transforming into local space
+		/// and inverse(local) = q.InverseRotate(world - t)
 		VX_INLINE Vec3 InverseRotate(const Vec3& vec) const;
 		/// Rotate vector using full quaternion multiplication
 		/// Quaternion is assume (|q| = 1)

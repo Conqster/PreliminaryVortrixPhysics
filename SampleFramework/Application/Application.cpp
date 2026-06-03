@@ -1251,12 +1251,33 @@ void Application::OnDrawImGuiOverlays()
 			ImGui::Checkbox("Show Debug Rotation", &bShowDebugRotation);
 			
 			ImGui::SeparatorText("Memory Usage");
-			ImGui::Text("Current Allocate Bytes: %llu Bytes.", vx::sMemoryProfile.CurrentAllocBytes());
-			ImGui::Text("Current Allocate Count: %llu.\n", vx::sMemoryProfile.CurrentAllocCount());
-			ImGui::Text("\nTotal Allocated: %llu Bytes.", vx::sMemoryProfile.allocatedBytes);
-			ImGui::Text("Total Allocated Calls: %llu.", vx::sMemoryProfile.allocs);
-			ImGui::Text("\nTotal Deallocated: %llu Bytes.", vx::sMemoryProfile.deallocatedBytes);
-			ImGui::Text("Total Deallocated calles: %llu .", vx::sMemoryProfile.deallocs);
+			size_t _bytes = vx::sMemoryProfile.CurrentAllocBytes();
+			ImGui::Text("Current Allocate Count: %llu.", vx::sMemoryProfile.CurrentAllocCount());
+			if(vx::ToKilobyte(_bytes) < 1e+3)
+				ImGui::Text("Current Allocate Bytes: %llu Bytes [%.2f kB | %.2f KiB].", 
+					_bytes, vx::ToKilobyte(_bytes), vx::ToKibibyte(_bytes));
+			else
+				ImGui::Text("Current Allocate Bytes: %llu Bytes [%.2f MB | %.2f MiB].",
+					_bytes, vx::ToMegabyte(_bytes), vx::ToMegabyte(_bytes));
+
+			_bytes = vx::sMemoryProfile.allocatedBytes;
+			ImGui::Text("\nTotal Allocated Calls: %llu.", vx::sMemoryProfile.allocs);
+			if (vx::ToKilobyte(_bytes) < 1e+3)
+				ImGui::Text("Total Allocate Bytes: %llu Bytes [%.2f kB | %.2f KiB].",
+					_bytes, vx::ToKilobyte(_bytes), vx::ToKibibyte(_bytes));
+			else
+				ImGui::Text("Total Allocate Bytes: %llu Bytes [%.2f MB | %.2f MiB].",
+					_bytes, vx::ToMegabyte(_bytes), vx::ToMegabyte(_bytes));
+
+
+			_bytes = vx::sMemoryProfile.deallocatedBytes;
+			ImGui::Text("\nTotal Deallocated calles: %llu .", vx::sMemoryProfile.deallocs);
+			if (vx::ToKilobyte(_bytes) < 1e+3)
+				ImGui::Text("Total Deallocated Bytes: %llu Bytes [%.2f kB | %.2f KiB].",
+					_bytes, vx::ToKilobyte(_bytes), vx::ToKibibyte(_bytes));
+			else
+				ImGui::Text("Total Deallocated Bytes: %llu Bytes [%.2f MB | %.2f MiB].",
+					_bytes, vx::ToMegabyte(_bytes), vx::ToMegabyte(_bytes));
 
 		}
 		ImGui::End();
@@ -1588,6 +1609,7 @@ void Application::PhysicsSettingItemOverlays()
 		if (ImGui::TreeNodeEx("SOLVER"))
 		{
 			ImGui::Checkbox("Enable Contact Solver", &phy_settings.solver.enable);
+			ImGui::Checkbox("Enable Warm Start", &phy_settings.solver.warmstart);
 			ImGui::Checkbox("Ensure Contact Manifold Consistent", &phy_settings.collision.consistentManifold);
 			ImGui::SliderInt("Contact Constraint Interations", &phy_settings.solver.velocityIterations, 0, 25);
 			ImGui::SliderInt("Contact Position Interations", &phy_settings.solver.positionIterations, 0, 10);

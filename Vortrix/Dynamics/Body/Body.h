@@ -257,7 +257,7 @@ namespace vx
 			return mBounds;
 		}
 		
-
+		///this is the inv interia with world rotation
 		Mat44 ComputeInvInteriaWorld() const;
 		Mat44 GetInvInteriaTensor() const { return Mat44::Scale(mInvInertiaTensorDiagonal); }
 

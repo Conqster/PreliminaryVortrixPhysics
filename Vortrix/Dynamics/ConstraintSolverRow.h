@@ -35,6 +35,8 @@ namespace vx {
 
 		//for now has hack 
 		class Constraint* user = nullptr;
+
+		//later have idx part as a single constraint have multiple rows 
 	};
 
 

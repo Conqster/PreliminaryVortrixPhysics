@@ -15,6 +15,8 @@
 #include "Collision/RayCast.h"
 #include "Collision/WorldQuery.h"
 
+
+
 ////Things to do 
 /// Implement 
 ///		MotionDynamics
@@ -112,6 +114,9 @@ namespace vx
 
 		void CreateBody(const BodySettings& body_setting);
 		void AddBody(const Body& body);
+
+		class PointConstraint* mBallJoint = nullptr;
+		PointConstraint* mBallJoint2 = nullptr;
 
 		////////////////////////////////////////////////////////////////////////
 		/// Step Simulation
