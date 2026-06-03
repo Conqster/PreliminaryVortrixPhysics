@@ -67,7 +67,8 @@ void PersistentContactScenario::Init(vx::PhysicsWorld* i_world)
 	//phys_constraint_coord->AddConstraintT(joint);
 
 	//maybe every frame update worldanhor
-	mPhysicsWorld->mBallJoint = new vx::PointConstraint(&mPhysicsWorld->GetBodies()[0], &mPhysicsWorld->GetBodies()[1], point_constraint_setting);
+	//mPhysicsWorld->mBallJoint = new vx::PointConstraint(&mPhysicsWorld->GetBodies()[0], &mPhysicsWorld->GetBodies()[1], point_constraint_setting);
+	vx::PointConstraint pt_constraint = vx::PointConstraint(&mPhysicsWorld->GetBodies()[0], &mPhysicsWorld->GetBodies()[1], point_constraint_setting);
 	//mPhysicsWorld->mBallJoint = new vx::PointConstraint(&mPhysicsWorld->GetBodies()[0], &mPhysicsWorld->GetBodies()[1], dyn_bodies_settings.position + Vec3(-1.0f, 0.0f, 0.0f));
 
 
@@ -81,7 +82,16 @@ void PersistentContactScenario::Init(vx::PhysicsWorld* i_world)
 	mPhysicsWorld->CreateBody(dyn_bodies_settings);
 
 	mPhysicsWorld->mBallJoint2 = new vx::PointConstraint(&mPhysicsWorld->GetBodies()[2], &mPhysicsWorld->GetBodies()[3], point_constraint_setting);
+	//vx::PointConstraint pt_constraint2 = vx::PointConstraint(&mPhysicsWorld->GetBodies()[2], &mPhysicsWorld->GetBodies()[3], point_constraint_setting);
 
+
+	mPhysicsWorld->CreateBody(dyn_bodies_settings);
+	vx::PointConstraint pt_constraint3 = vx::PointConstraint(&mPhysicsWorld->GetBodies()[1], &mPhysicsWorld->GetBodies()[4], point_constraint_setting);
+
+
+	mPhysicsWorld->CreateConstraintT(pt_constraint);
+	//mPhysicsWorld->CreateConstraintT(pt_constraint2);
+	mPhysicsWorld->CreateConstraintT(pt_constraint3);
 
 	/// Ground plane
 	CreateGroundPlane(100.0f);
@@ -100,13 +110,13 @@ void PersistentContactScenario::OnUI()
 	if (mPhysicsWorld == nullptr)
 		return;
 
+
 	//contact contraints
 	auto& contact_constraint_stat = mPhysicsWorld->GetContactConstraintSolverStats();
 
 	if (ImGui::Begin("PersistentContactScenario Window"))
 	{
 		vx::StackString<32> text;
-		text << mPhysicsWorld->mBallJoint2->mLastStepBias;
 		ImGui::Text("Last Step Bias: %s", text.Data());
 
 

@@ -16,9 +16,8 @@
 
 namespace vx {
 
-	NarrowphaseQuery::NarrowphaseQuery(BodyManager* in_body_manager)
+	NarrowphaseQuery::NarrowphaseQuery()
 	{
-		mBodyManager = in_body_manager;
 		mDispatcher.Register(EShapeType::Sphere, EShapeType::Sphere, &Narrowphase::SphereVsSphere);
 
 		mDispatcher.Register(EShapeType::Sphere, EShapeType::Plane, &Narrowphase::SphereVsPlane);
@@ -42,6 +41,11 @@ namespace vx {
 
 		mDispatcher.Register(EShapeType::Box, EShapeType::Capsule, &Narrowphase::BoxVsCapsule);
 		mDispatcher.Register(EShapeType::Capsule, EShapeType::Box, &CollisionDispatcher::SwappedRef<Narrowphase::BoxVsCapsule>);
+	}
+
+	void NarrowphaseQuery::Init(BodyManager* in_body_manager)
+	{
+		mBodyManager = in_body_manager;
 	}
 
 	void NarrowphaseQuery::ProcessPairs(const std::vector<BroadphasePair>& pairs, std::vector<ContactManifold>& out_manifolds, ContactConstraintSolver& contact_solver , const CollisionContext& ctx)

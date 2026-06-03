@@ -16,27 +16,28 @@ namespace vx {
 		Vec3 axis;
 
 		/// rAXn = rA.Cross(nor);
-		Float3 rAXn;	/// rAXn = rA.Cross(nor);
+		Float3 rAXn;	
 		float bias;
 		
 		///invIrAXn = mBodyA->ComputeInvInteriaWorld().Multiply3x3(rAXn);
-		Float3 invIrAXn;	///invIrAXn = mBodyA->ComputeInvInteriaWorld().Multiply3x3(rAXn);
+		Float3 invIrAXn;
 		float lambda = 0.0f;
 
 		/// rAXn = rA.Cross(nor);
 		Float3 rBXn;	/// rAXn = rA.Cross(nor);
-		float minLambda = 0.0f;
+		float minLambda = -kMaxf;
 		
-		///invIrAXn = mBodyA->ComputeInvInteriaWorld().Multiply3x3(rAXn
-		Float3 invIrBXn;	///invIrAXn = mBodyA->ComputeInvInteriaWorld().Multiply3x3(rAXn);
+		///invIrBXn = mBodyA->ComputeInvInteriaWorld().Multiply3x3(rAXn
+		Float3 invIrBXn;
 
 
-		float maxLambda = 0.0f;
+		float maxLambda = kMaxf;
 
 		//for now has hack 
 		class Constraint* user = nullptr;
 
 		//later have idx part as a single constraint have multiple rows 
+		uint32 hackIdx = 0;
 	};
 
 
@@ -48,7 +49,7 @@ namespace vx {
 		Float3 invIrAXn;	
 
 		///invIrAXn = mBodyA->ComputeInvInteriaWorld().Multiply3x3(rAXn
-		Float3 invIrBXn;	///invIrAXn = mBodyA->ComputeInvInteriaWorld().Multiply3x3(rAXn);
+		Float3 invIrBXn;
 
 
 		float effMass;

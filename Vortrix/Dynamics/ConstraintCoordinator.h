@@ -16,6 +16,8 @@ class DebugGizmosRenderer;
 namespace vx {
 
 
+	///Constraints 
+	using Constraints = std::vector<Constraint*>;
 
 	class ConstraintCoordinator
 	{
@@ -27,7 +29,7 @@ namespace vx {
 				delete c; //<-- fix this
 		}
 
-		void AddConstraint(Constraint* constraint)
+		void Add(Constraint* constraint)
 		{
 			mConstraints.push_back(constraint);
 		}
@@ -38,14 +40,14 @@ namespace vx {
 		//}
 
 		template<typename T>
-		T* AddConstraintT(const T& joint)
+		T* CreateT(const T& joint)
 		{
 			T* _j = new T(joint);
-			AddConstraint(_j);
+			Add(_j);
 			return _j;
 		}
 
-		std::vector<Constraint*>& GetConstraints() { return mConstraints; }
+		Constraints& GetConstraints() { return mConstraints; }
 
 		void PrepConstraintSolving(ConstraintSolver& solver, const PhysicsStepContext& ctx)
 		{
@@ -64,7 +66,7 @@ namespace vx {
 
 	private: 
 		//for now vector 
-		std::vector<Constraint*> mConstraints;
+		Constraints mConstraints;
 	};
 
 

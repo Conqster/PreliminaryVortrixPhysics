@@ -1,6 +1,7 @@
 #include "DistanceConstraint.h"
 #include "PhysicsWorldSettings.h"
 #include "Core/Profiler.h"
+#include "PointConstraint.h"
 
 
 

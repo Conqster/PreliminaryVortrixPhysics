@@ -52,10 +52,7 @@ namespace vx
 		delete[] mActiveBodies;
 
 		delete mBroadphase;
-		delete mNarrowphaseQuery;
 
-
-		delete mConstraintCoordinator;
 		delete mConstraintSolver;
 	}
 
@@ -237,12 +234,11 @@ namespace vx
 
 		mBroadphasePairs.reserve(max_body_pairs);
 
-		mNarrowphaseQuery = new NarrowphaseQuery(&mBodyManager);
+		///later pass body manager as via ctx
+		mNarrowphaseQuery.Init(&mBodyManager);
 
 		mContactConstraintSolver.Init(max_contact_constraint);
 		mContactConstraintSolver.SetPhysicsContext(&mContext);
-
-		mConstraintCoordinator = new ConstraintCoordinator();
 
 
 		mConstraintSolver = new ConstraintSolver;
@@ -351,7 +347,8 @@ namespace vx
 			mFrameIdx, mConstraintSolver
 		};
 		//Narrowphase: collision detection & contact generations
-		mNarrowphaseQuery->ProcessPairs(mBroadphasePairs, mStepManifolds, mContactConstraintSolver, collision_ctx);
+		
+		mNarrowphaseQuery.ProcessPairs(mBroadphasePairs, mStepManifolds, mContactConstraintSolver, collision_ctx);
 
 
 		if (mSettings.solver.enable)
@@ -361,7 +358,7 @@ namespace vx
 #if CONTACT_USE_SOLVERBODY
 			/// contact constraint should be done
 			/// time to prep joint constraints 
-			mConstraintCoordinator->PrepConstraintSolving(*mConstraintSolver, mContext);
+			mConstraintCoordinator.PrepConstraintSolving(*mConstraintSolver, mContext);
 
 			Linear1DRow* constraint_solver_rows = mConstraintSolver->GetLinearRowPtr();
 			uint32 constraint_solver_row_count = mConstraintSolver->LinearRowCount();
@@ -371,13 +368,17 @@ namespace vx
 			{
 				/// perform warm starts
 				ConstraintSolver::WarmStart(constraint_solver_rows, 0, constraint_solver_row_count, solver_bodies);
-				ContactConstraintSolver::WarmStart(mContactConstraintSolver.ContactConstraintsPtr(), mContactConstraintSolver.NumContactConstraints(), solver_bodies);
+				//fix this bad nested if branches
+				if (mSettings.solver.enableContact)
+					ContactConstraintSolver::WarmStart(mContactConstraintSolver.ContactConstraintsPtr(), mContactConstraintSolver.NumContactConstraints(), solver_bodies);
 			}
 
 			for (int i = 0; i < mSettings.solver.velocityIterations; ++i)
 			{
 				ConstraintSolver::SolverVelocityLinear1DRows(constraint_solver_rows, 0, constraint_solver_row_count, solver_bodies);
-				mContactConstraintSolver.SolveVelocityConstraint(solver_bodies);
+				//fix this bad nested if branches
+				if (mSettings.solver.enableContact)
+					mContactConstraintSolver.SolveVelocityConstraint(solver_bodies);
 			}
 
 			//commit solver state to constraint
@@ -417,11 +418,18 @@ namespace vx
 		}
 
 
+
+		auto& solver_settings = mSettings.solver;
 		if(mBallJoint)
-			mBallJoint->QuickSolve(dt);
+			mBallJoint->QuickSolveUnified3DJacobian(dt, 
+				solver_settings.velocityIterations, 
+				solver_settings.positionIterations, 
+				solver_settings.baumgarte);
 		if (mBallJoint2)
-			//mBallJoint2->QuickSolveEach1D(dt);
-			mBallJoint2->QuickSolve1DJacobianRow(dt);
+			mBallJoint2->QuickSolveSplit1DJacobians(dt,
+				solver_settings.velocityIterations,
+				solver_settings.positionIterations,
+				solver_settings.baumgarte);
 
 
 		UpdateBodiesActivationState(dt);
@@ -450,22 +458,24 @@ namespace vx
 			for (int i = 0; i < mSettings.solver.positionIterations; ++i)
 			{
 				ConstraintSolver::SolveConstraintsPosition(solve_constraint_position, num_position_constraint, dt, baumgarte);
-				//for (auto& c : mConstraintCoordinator->GetConstraints())
-				//	c->SolvePositionConstraint(dt, baumgarte);
+
+#if CONTACT_USE_SOLVERBODY
+				//fix this bad nested if branches
+				if (mSettings.solver.enableContact)
+				{
+					mContactConstraintSolver.SolvePositionCorrections(
+						mConstraintSolver->GetBodiesPtr(), mBodyManager,
+						mSettings.solver.baumgarte, mSettings.solver.positionCorrectionSlop,
+						mSettings.solver.positionCorrectionGlobalLimits[0], mSettings.solver.positionCorrectionGlobalLimits[1],
+						mSettings.solver.positionCorrectionBodyLimitScale);
+				}
+#endif // CONTACT_USE_SOLVERBODY
 			}
 
 #if !CONTACT_USE_SOLVERBODY
 			mContactConstraintSolver.SolvePositionConstraint(mSettings.solver);
-#else
-			for (int i = 0; i < mSettings.solver.positionIterations; ++i)
-			{
-				mContactConstraintSolver.SolvePositionCorrections(
-					mConstraintSolver->GetBodiesPtr(), mBodyManager,
-					mSettings.solver.baumgarte, mSettings.solver.positionCorrectionSlop,
-					mSettings.solver.positionCorrectionGlobalLimits[0], mSettings.solver.positionCorrectionGlobalLimits[1],
-					mSettings.solver.positionCorrectionBodyLimitScale);
-			}
 #endif // !CONTACT_USE_SOLVERBODY
+
 		}
 
 
@@ -643,9 +653,8 @@ namespace vx
 			mBallJoint2->DebugGizmos(debug_renderer, mSettings.drawSettings.nonContactConstraintDrawSettings);
 
 
-		if (mConstraintCoordinator &&
-			mSettings.drawSettings.nonContactConstraintDrawSettings.drawConstraints)
-			mConstraintCoordinator->DebugGizmos(debug_renderer, mSettings.drawSettings.nonContactConstraintDrawSettings);
+		if (mSettings.drawSettings.nonContactConstraintDrawSettings.drawConstraints)
+			mConstraintCoordinator.DebugGizmos(debug_renderer, mSettings.drawSettings.nonContactConstraintDrawSettings);
 
 		//debug_renderer->DrawLine(mExperimentRay.origin, mExperimentRay.End(), Colour::sGreen);
 
@@ -908,9 +917,9 @@ namespace vx
 		}
 	}
 
-	const CollisionResolutionStat* PhysicsWorld::GetNarrowphaseStats() const
+	const CollisionResolutionStat PhysicsWorld::GetNarrowphaseStats() const
 	{
-		return (mNarrowphaseQuery) ? &mNarrowphaseQuery->Stats() : /*(const CollisionResolutionStat*)*/nullptr; //
+		return mNarrowphaseQuery.Stats();
 	}
 
 

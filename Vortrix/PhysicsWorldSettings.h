@@ -107,6 +107,7 @@ namespace vx
 		int velocityIterations = 10; // 8;
 
 		bool enable = true;
+		bool enableContact = true;
 		bool warmstart = true;
 		float restitutionThreshold = 1.0f; //0.2f - 0.5f
 		float frictionThreshold = 0.02f;

@@ -12,7 +12,8 @@ namespace vx {
 	{
 	public:
 
-		NarrowphaseQuery(BodyManager* in_body_manager);
+		NarrowphaseQuery();
+		void Init(BodyManager* in_body_manager);
 
 		const CollisionResolutionStat& Stats() const { return mStats; }
 

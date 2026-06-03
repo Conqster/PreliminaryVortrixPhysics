@@ -15,7 +15,9 @@
 #include "Collision/RayCast.h"
 #include "Collision/WorldQuery.h"
 
+#include "Dynamics/ConstraintCoordinator.h"
 
+#include "Collision/Narrowphase/NarrowphaseQuery.h"
 
 ////Things to do 
 /// Implement 
@@ -129,8 +131,11 @@ namespace vx
 		void OnDrawBodies(Renderer* draw_renderer, const RenderSettings& setting);
 		void OnDebugDraw(DebugGizmosRenderer* debug_renderer);
 
-		class ConstraintCoordinator* mConstraintCoordinator = nullptr;
-		class ConstraintSolver* mConstraintSolver = nullptr;
+		template<typename T>
+		T* CreateConstraintT(const T& constraint) { return mConstraintCoordinator.CreateT(constraint); }
+		void AddConstraint(Constraint* constraint) { return mConstraintCoordinator.Add(constraint); }
+
+		Constraints& GetConstraints() { return mConstraintCoordinator.GetConstraints(); }
 
 		void QuickDebugDrawInertia(DebugGizmosRenderer* debug_renderer);
 
@@ -139,7 +144,7 @@ namespace vx
 		const PhysicsWorldSettings& GetSettings() const { return mSettings; }
 		PhysicsWorldSettings& GetSettings() { return mSettings; }
 
-		const struct CollisionResolutionStat* GetNarrowphaseStats() const;
+		const CollisionResolutionStat GetNarrowphaseStats() const;
 
 		const ContactConstraintSolver::ContactConstraintSolverStat& GetContactConstraintSolverStats() const 
 		{ return mContactConstraintSolver.GetStats(); }
@@ -185,9 +190,12 @@ namespace vx
 		Broadphase* mBroadphase = nullptr;
 		std::vector<BroadphasePair> mBroadphasePairs;
 		std::vector<class ContactManifold> mStepManifolds;
-		NarrowphaseQuery* mNarrowphaseQuery = nullptr;
+		NarrowphaseQuery mNarrowphaseQuery;
 
 		ContactConstraintSolver mContactConstraintSolver;
+
+		ConstraintCoordinator mConstraintCoordinator;
+		class ConstraintSolver* mConstraintSolver = nullptr;
 
 		//hack for now 
 		DebugGizmosRenderer* mHackDebugRenderer = nullptr;

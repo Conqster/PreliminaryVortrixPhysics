@@ -1592,13 +1592,12 @@ void Application::PhysicsSettingItemOverlays()
 			if (ImGui::TreeNode("Narrowphase Stats"))
 			{
 				//if(auto& narrow_stats = mPhysicsWorld->GetNarrowphaseStats())
-				if (const auto& narrow_stats = mPhysicsWorld->GetNarrowphaseStats())
-				{
-					ImGui::Text("Number of pair received: %d", narrow_stats->numPairReceived);
-					ImGui::Text("Number of contact pairs: %d", narrow_stats->numContactPair);
-					ImGui::Text("Max attained contact pairs: %d", narrow_stats->maxAttainedContactPair);
-				}
-
+				const auto& narrow_stats = mPhysicsWorld->GetNarrowphaseStats();
+				
+				ImGui::Text("Number of pair received: %d", narrow_stats.numPairReceived);
+				ImGui::Text("Number of contact pairs: %d", narrow_stats.numContactPair);
+				ImGui::Text("Max attained contact pairs: %d", narrow_stats.maxAttainedContactPair);
+				
 				ImGui::TreePop();
 			}
 
@@ -1608,7 +1607,8 @@ void Application::PhysicsSettingItemOverlays()
 
 		if (ImGui::TreeNodeEx("SOLVER"))
 		{
-			ImGui::Checkbox("Enable Contact Solver", &phy_settings.solver.enable);
+			ImGui::Checkbox("Enable Solver", &phy_settings.solver.enable);
+			ImGui::Checkbox("Enable Contact Solver", &phy_settings.solver.enableContact);
 			ImGui::Checkbox("Enable Warm Start", &phy_settings.solver.warmstart);
 			ImGui::Checkbox("Ensure Contact Manifold Consistent", &phy_settings.collision.consistentManifold);
 			ImGui::SliderInt("Contact Constraint Interations", &phy_settings.solver.velocityIterations, 0, 25);
