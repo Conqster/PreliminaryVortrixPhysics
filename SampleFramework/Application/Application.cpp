@@ -243,6 +243,7 @@ Application::~Application()
 	delete mPhysicsWorld;
 	delete mParticleWorld;
 	mDebugGizmos = nullptr;
+	mPhysicsWorld = nullptr;
 	VX_LOG_DEBUG("Closing application program...");
 	mWindow.Destroy();
 	mPtrInputEventHandle = nullptr;
@@ -307,6 +308,7 @@ void Application::Run()
 		{
 			if (mCurrentScenarioDuration > mRunningScenarioDuration)
 			{
+				(mCurrScenario) ? mCurrScenario->OnClose() : void(0);
 				mCurrScenario = mPendingRunScenarios.front();
 				mPhysicsDebugState.triggerReset = true;
 				mCurrentScenarioDuration = 0.0f;
@@ -493,7 +495,10 @@ void Application::ResetCamera()
 void Application::CheckInputs()
 {
 	if (Input::GetKeyDown(IKeyCode::R))
-			mPhysicsDebugState.triggerReset = true;
+	{
+		(mCurrScenario) ? mCurrScenario->OnClose() : void(0);
+		mPhysicsDebugState.triggerReset = true;
+	}
 	
 	bool ctr_pressed = Input::GetKey(IKeyCode::RightControl) || Input::GetKey(IKeyCode::LeftControl);
 	bool alt_pressed = Input::GetKey(IKeyCode::RightAlt) || Input::GetKey(IKeyCode::LeftAlt);
@@ -927,6 +932,7 @@ void Application::OnExpandDrawScenarioCatergory(const ScenarioCatergory& catergo
 		for (const auto& scenario : catergory.scenarios)
 					if (ImGui::MenuItem(scenario->Name()))
 					{
+						(mCurrScenario) ? mCurrScenario->OnClose() : void(0);
 						mCurrScenario = scenario.get();
 						mPhysicsDebugState.triggerReset = true;
 						mPhysicsAppSetting.StateStats().paused = true;

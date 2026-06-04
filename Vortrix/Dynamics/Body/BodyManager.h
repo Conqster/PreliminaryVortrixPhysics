@@ -7,9 +7,11 @@
 #include "Body.h"
 namespace vx 
 {
-
 	class Body;
 	class BodySettings;
+
+	using BodyVector = std::vector<Body>;
+	
 	class BodyManager
 	{
 	public:
@@ -20,7 +22,7 @@ namespace vx
 		bool AddBody(const BodySettings& body_setting);
 		bool AddBody(Body& _body);
 
-		std::vector<Body>& GetBodies() { return mBodies; }
+		BodyVector& GetBodies() { return mBodies; }
 		std::vector<BodyDebug>& GetBodiesDebug() { return mBodiesDebugInfo; }
 
 		const Body& GetBody(BodyID id) const { return mBodies[id.Value()]; }
@@ -43,7 +45,7 @@ namespace vx
 		VX_INLINE uint32 MaxBodies() const { return mMaxBodies; }
 
 	private:
-		std::vector<Body> mBodies;
+		BodyVector mBodies;
 		std::vector<BodyDebug> mBodiesDebugInfo;
 
 		uint32 mMaxBodies = 0;

@@ -3,6 +3,7 @@
 #include "PhysicsWorld.h"
 #include "Vortrix/Collision/Shapes/PlaneShape.h"
 #include "Vortrix/Collision/Shapes/BoxShape.h"
+#include "Vortrix/Collision/Shapes/SphereShape.h"
 
 #include "SampleFramework/Camera.h"
 
@@ -12,6 +13,7 @@
 #include "SampleFramework/Renderer/DebugGizmosRenderer.h"
 
 #include "SampleFramework/Input/InputSystem.h"
+#include "Dynamics/Constraints/DistanceConstraint.h"
 
 using namespace InputSystem;
 
@@ -130,6 +132,14 @@ void Scenario::MouseCastRay()
 			//transform point to body local
 			mPointBodyFrame = Mat44::TransformInverse(
 				Mat44::RotationTranslation(body.GetOrientation(), body.GetPosition()), point);
+
+			if(mHasMouseConstraint)
+			{
+				mMouseDragConstraintSettings.localAnchorA = body.GetOrientation().InverseRotate(point - body.GetPosition());
+				mMouseDragConstraint = new vx::DistanceConstraint(&body, mMouseDragBody, mMouseDragConstraintSettings);
+				mPhysicsWorld->AddConstraint(mMouseDragConstraint);
+				mMouseDragBody->SetPosition(cursor_ws);
+			}
 		}
 
 
@@ -145,73 +155,169 @@ void Scenario::MouseCastRay()
 		mDebugGizmos->DrawLine(ray_end_point, ray_cast.End(), vx::Colour::sGreen);
 }
 
+void Scenario::Init(vx::PhysicsWorld* i_world)
+{
+	mPhysicsWorld = i_world;
+	VX_ASSERT(i_world, "Physics World is null"); 
+
+	mMouseDragConstraintSettings.minDist = 1.25f;
+	mMouseDragConstraintSettings.maxDist = 2.5f;
+	mMouseDragConstraintSettings.frequency = vx::DegToRad(120.0f);
+	mMouseDragConstraintSettings.dampingRatio = 0.0f;
+	mMouseDragConstraintSettings.localAnchorB = {};
+
+	mMouseDragBody = new vx::Body(Vec3(0.0f));
+	mMouseDragBody->SetShape(new vx::SphereShape(0.125f));
+	mHasMouseConstraint = true;
+}
+
+void Scenario::OnClose()
+{
+	if (mMouseDragBody)
+		delete mMouseDragBody->GetShape();
+	if (mPhysicsWorld)
+	{
+		mPhysicsWorld->RemoveConstraint(mMouseDragConstraint);
+		delete mMouseDragConstraint;
+		mMouseDragConstraint = nullptr;
+	}
+	mHasMouseConstraint = false;
+}
 
 void Scenario::PostPhysicsStep(float dt)
 {
 	MouseClickCheck();
 	if (mAllowBaseMouseCast)MouseCastRay();
 
-	if (mBody.IsValid() && mMouseEvent == EClickEvent::Held)
+	if(mHasMouseConstraint)
 	{
-
-		vx::Body& body = mPhysicsWorld->GetBodyManager().GetBody(mBody);
-		vx::Vec3 pt_ws = body.GetPosition() + body.GetOrientation().Rotate(mPointBodyFrame);
-
-		//hack
-		vx::Vec3 cam_pos = mAppCamera->GetPosition();
-		vx::Vec3 cam_fwd = mAppCamera->GetForward();
-		vx::Vec2 mouse_cursor_pos = mAppWindow->MouseCursorPosition();
-		vx::Vec3 cursor_ws(mouse_cursor_pos.X(), mouse_cursor_pos.Y(), -1.0f);
-		cursor_ws = mAppCamera->ScreenToWorld(cursor_ws, mAppWindow->GetWidth(), mAppWindow->GetHeight());
-
-		cam_fwd = (cursor_ws - cam_pos).Normalised();
-		vx::Vec3 new_pos = cursor_ws + cam_fwd * t_dist;
-
-		//translate body 
-		vx::Vec3 translate_ws = new_pos - body.GetOrientation().Rotate(mPointBodyFrame);
-		body.SetPosition(translate_ws);
-
-		mDebugGizmos->DrawAACross(pt_ws, GetBasisAxisColourArray().data(), 3, 0.2f);
-
-		//might move to on select
-		body.ClearVelocities();
-		body.ClearAccumulatedForces();
-
-		//cast ray down 
-		vx::RayCast ray_cast = vx::RayCast(body.GetPosition(), vx::Vec3(0.0f, -1.0f, 0.0f) * 100.0f);
-		vx::AllRaycastHitProcessor<16> processor;
-		mPhysicsWorld->GetWorldQuery().CastRay(ray_cast, processor);
-		vx::Vec3 end = ray_cast.End();
-		if (processor.HasHit())
+		if (mBody.IsValid() && mMouseDragConstraint && mMouseEvent == EClickEvent::Held)
 		{
-			processor.Sort();
-			vx::RaycastResult result = processor.Result();
-			for (int i = 0; i < result.hitCount; ++i)
-			{
-				vx::RaycastHit hit = processor.Hits()[i];
-				if (hit.body != mBody)
-				{
-					end = ray_cast.PointAlongRay(hit.fraction);
 
-					vx::Colour col = vx::Colour::sYellow;
-					mDebugGizmos->DrawAACross(end, &col, 1, 0.3f);
-					break;
+			vx::Vec3 cam_pos = mAppCamera->GetPosition();
+			vx::Vec3 cam_fwd = mAppCamera->GetForward();
+			vx::Vec2 mouse_cursor_pos = mAppWindow->MouseCursorPosition();
+			vx::Vec3 cursor_ws(mouse_cursor_pos.X(), mouse_cursor_pos.Y(), -1.0f);
+			cursor_ws = mAppCamera->ScreenToWorld(cursor_ws, mAppWindow->GetWidth(), mAppWindow->GetHeight());
+
+			cam_fwd = (cursor_ws - cam_pos).Normalised();
+			vx::Vec3 new_pos = cursor_ws + cam_fwd * t_dist;
+
+			mMouseDragBody->SetPosition(new_pos);
+
+
+			vx::Body& body = mPhysicsWorld->GetBodyManager().GetBody(mBody);
+			//cast ray down 
+			vx::RayCast ray_cast = vx::RayCast(body.GetPosition(), vx::Vec3(0.0f, -1.0f, 0.0f) * 100.0f);
+			vx::AllRaycastHitProcessor<16> processor;
+			mPhysicsWorld->GetWorldQuery().CastRay(ray_cast, processor);
+			vx::Vec3 end = ray_cast.End();
+			if (processor.HasHit())
+			{
+				processor.Sort();
+				vx::RaycastResult result = processor.Result();
+				for (int i = 0; i < result.hitCount; ++i)
+				{
+					vx::RaycastHit hit = processor.Hits()[i];
+					if (hit.body != mBody)
+					{
+						end = ray_cast.PointAlongRay(hit.fraction);
+
+						vx::Colour col = vx::Colour::sYellow;
+						mDebugGizmos->DrawAACross(end, &col, 1, 0.3f);
+						break;
+					}
 				}
 			}
+			mDebugGizmos->DrawLine(ray_cast.origin, end, vx::Colour::sCyan);
 		}
-		mDebugGizmos->DrawLine(ray_cast.origin, end, vx::Colour::sCyan);
+		else if (mBody.IsValid() && mMouseDragConstraint && (mMouseEvent == EClickEvent::Up || mMouseEvent == EClickEvent::None))
+		{
+			vx::Body& body = mPhysicsWorld->GetBodyManager().GetBody(mBody);
+			//might just release key jolt body 
+			//body.ApplyImpulse(vx::Vec3(0.0f, 1.0f, 0.0f) * 10.0f * (1.0f/body.GetInverseMass()));
+			//body.WakeUp(vx::Vec3(0.0f, 1.0f, 0.0f) * 1000.0f);
+			mBody = vx::BodyID();
 
-	}
-	else if (mBody.IsValid() && (mMouseEvent == EClickEvent::Up || mMouseEvent == EClickEvent::None))
-	{
-		vx::Body& body = mPhysicsWorld->GetBodyManager().GetBody(mBody);
-		//might just release key jolt body 
-		//body.ApplyImpulse(vx::Vec3(0.0f, 1.0f, 0.0f) * 10.0f * (1.0f/body.GetInverseMass()));
-		body.WakeUp(vx::Vec3(0.0f, 1.0f, 0.0f) * 1000.0f);
-		mBody = vx::BodyID();
+			mPhysicsWorld->RemoveConstraint(mMouseDragConstraint);
+			delete mMouseDragConstraint;
+			mMouseDragConstraint = nullptr;
+		}
+		else
+		{
+			mBody = vx::BodyID();
+			if(mMouseDragConstraint)
+			{
+				mPhysicsWorld->RemoveConstraint(mMouseDragConstraint);
+				delete mMouseDragConstraint;
+				mMouseDragConstraint = nullptr;
+			}
+		}
 	}
 	else
-		mBody = vx::BodyID();
+	{
+		if (mBody.IsValid() && mMouseEvent == EClickEvent::Held)
+		{
+
+			vx::Body& body = mPhysicsWorld->GetBodyManager().GetBody(mBody);
+			vx::Vec3 pt_ws = body.GetPosition() + body.GetOrientation().Rotate(mPointBodyFrame);
+
+			//hack
+			vx::Vec3 cam_pos = mAppCamera->GetPosition();
+			vx::Vec3 cam_fwd = mAppCamera->GetForward();
+			vx::Vec2 mouse_cursor_pos = mAppWindow->MouseCursorPosition();
+			vx::Vec3 cursor_ws(mouse_cursor_pos.X(), mouse_cursor_pos.Y(), -1.0f);
+			cursor_ws = mAppCamera->ScreenToWorld(cursor_ws, mAppWindow->GetWidth(), mAppWindow->GetHeight());
+
+			cam_fwd = (cursor_ws - cam_pos).Normalised();
+			vx::Vec3 new_pos = cursor_ws + cam_fwd * t_dist;
+
+			//translate body 
+			vx::Vec3 translate_ws = new_pos - body.GetOrientation().Rotate(mPointBodyFrame);
+			body.SetPosition(translate_ws);
+
+			mDebugGizmos->DrawAACross(pt_ws, GetBasisAxisColourArray().data(), 3, 0.2f);
+
+			//might move to on select
+			body.ClearVelocities();
+			body.ClearAccumulatedForces();
+
+			//cast ray down 
+			vx::RayCast ray_cast = vx::RayCast(body.GetPosition(), vx::Vec3(0.0f, -1.0f, 0.0f) * 100.0f);
+			vx::AllRaycastHitProcessor<16> processor;
+			mPhysicsWorld->GetWorldQuery().CastRay(ray_cast, processor);
+			vx::Vec3 end = ray_cast.End();
+			if (processor.HasHit())
+			{
+				processor.Sort();
+				vx::RaycastResult result = processor.Result();
+				for (int i = 0; i < result.hitCount; ++i)
+				{
+					vx::RaycastHit hit = processor.Hits()[i];
+					if (hit.body != mBody)
+					{
+						end = ray_cast.PointAlongRay(hit.fraction);
+
+						vx::Colour col = vx::Colour::sYellow;
+						mDebugGizmos->DrawAACross(end, &col, 1, 0.3f);
+						break;
+					}
+				}
+			}
+			mDebugGizmos->DrawLine(ray_cast.origin, end, vx::Colour::sCyan);
+
+		}
+		else if (mBody.IsValid() && (mMouseEvent == EClickEvent::Up || mMouseEvent == EClickEvent::None))
+		{
+			vx::Body& body = mPhysicsWorld->GetBodyManager().GetBody(mBody);
+			//might just release key jolt body 
+			//body.ApplyImpulse(vx::Vec3(0.0f, 1.0f, 0.0f) * 10.0f * (1.0f/body.GetInverseMass()));
+			body.WakeUp(vx::Vec3(0.0f, 1.0f, 0.0f) * 1000.0f);
+			mBody = vx::BodyID();
+		}
+		else
+			mBody = vx::BodyID();
+	}
 }
 
 void Scenario::CreateGroundPlane(float half_size)

@@ -32,9 +32,10 @@
 #include "SimulationContexts.h"
 
 #include "Dynamics/ConstraintCoordinator.h"
+#include "Dynamics/ConstraintSolver.h"
 
 
-#include "Dynamics/PointConstraint.h"
+#include "Dynamics/Constraints/PointConstraint.h"
 
 namespace vx
 {

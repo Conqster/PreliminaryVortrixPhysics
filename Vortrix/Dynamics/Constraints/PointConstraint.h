@@ -1,10 +1,9 @@
 #pragma once
-#include "Body/Body.h"
+#include "Dynamics/Body/Body.h"
 #include "SampleFramework/Renderer/DebugGizmosRenderer.h"
 
 
 #include "Constraint.h"
-#include "ConstraintCoordinator.h"
 
 
 namespace vx {
@@ -68,12 +67,7 @@ namespace vx {
 
 		/// essentailly used for commiting back accumulated lambda
 		/// based on constraints policy
-		virtual void CommitSolverState(const Linear1DRow& row) override
-		{
-			//mAccumulatedLambda[row.hackIdx] = row.lambda;
-			mAccumulatedLambda = Vec3(0.0f);
-		}
-
+		virtual void CommitSolverState(const Linear1DRow& row) override;
 
 		virtual void SolvePositionConstraint(float dt, float baumgarte) override;
 

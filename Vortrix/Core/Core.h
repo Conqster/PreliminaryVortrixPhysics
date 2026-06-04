@@ -108,6 +108,9 @@
 
 
 
+#define VX_STACK_ALLOC(n)		alloca(n)
+
+
 //standard c++ includes
 #include <vector>
 

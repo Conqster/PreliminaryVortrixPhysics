@@ -1,8 +1,8 @@
 #include "DistanceConstraint.h"
 #include "PhysicsWorldSettings.h"
 #include "Core/Profiler.h"
-#include "PointConstraint.h"
 
+#include "Dynamics/ConstraintSolver.h"
 
 
 namespace vx{
@@ -79,7 +79,7 @@ namespace vx{
 		Vec3 rA, rB;
 		Vec3 dispW = ComputeConstraintPropertiesDisplacement(rA, rB);
 		Vec3 nor = dispW.Normalised();
-		row.axis = nor;
+		nor.Store(row.axis);
 
 		bool bodyA_nonstatic = !mBodyA->IsStatic();
 		bool bodyB_nonstatic = !mBodyB->IsStatic();
@@ -378,15 +378,16 @@ namespace vx{
 		Vec3 invIrBXn = Vec3::LoadFloat3Raw(solver_row.invIrBXn);
 
 
+		Vec3 axis = Vec3::LoadFloat3Raw(solver_row.axis);
 
 		//jacobian 
 		float jv;
 		if (dyn_a && dyn_b) ///if constexpr (
-			jv = (lin_velA - lin_velB).Dot(solver_row.axis);
+			jv = (lin_velA - lin_velB).Dot(axis);
 		else if (dyn_a)
-			jv = lin_velA.Dot(solver_row.axis);
+			jv = lin_velA.Dot(axis);
 		else if (dyn_b)
-			jv = (-lin_velB).Dot(solver_row.axis);
+			jv = (-lin_velB).Dot(axis);
 		else
 		{
 			VX_LOG_ERROR("Static vs static this should not be possible");
@@ -412,12 +413,12 @@ namespace vx{
 		//store changes
 		if (dyn_a)
 		{
-			lin_velA -= impluse * inv_massA * solver_row.axis;
+			lin_velA -= impluse * inv_massA * axis;
 			ang_velA -= impluse * invIrAXn;
 		}
 		if (dyn_b)
 		{
-			lin_velB += impluse * inv_massB * solver_row.axis;
+			lin_velB += impluse * inv_massB * axis;
 			ang_velB += impluse * invIrBXn;
 		}
 

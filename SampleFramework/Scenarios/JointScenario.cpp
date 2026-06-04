@@ -9,7 +9,7 @@
 
 #include "external/imgui/imgui.h"
 
-#include "Dynamics/DistanceConstraint.h"
+#include "Dynamics/Constraints/DistanceConstraint.h"
 #include "Dynamics/ConstraintCoordinator.h"
 
 void RopeSetting(vx::DistanceConstraintSettings& constraint_settings)
@@ -46,10 +46,9 @@ void HardBarSetting(vx::DistanceConstraintSettings& constraint_settings)
 
 void JointScenario::Init(vx::PhysicsWorld* i_world)
 {
+	Scenario::Init(i_world);
 
 	vx::BodySettings dyn_bodies_settings = vx::BodySettings::DefaultDynamicConstruct();
-	mPhysicsWorld = i_world;
-	VX_ASSERT(mPhysicsWorld, "Physics World is null");
 
 
 
@@ -127,12 +126,17 @@ void JointScenario::Init(vx::PhysicsWorld* i_world)
 	vx::Body* body_c = &mPhysicsWorld->GetBodies()[6];
 	vx::Body* body_d = &mPhysicsWorld->GetBodies()[7];
 
-	mPhysicsWorld->CreateConstraintT(vx::DistanceConstraint(body_a, body_b,constraint_hardbar_settings));
-	mPhysicsWorld->CreateConstraintT(vx::DistanceConstraint(body_b, body_c,constraint_hardbar_settings));
-	mPhysicsWorld->CreateConstraintT(vx::DistanceConstraint(body_c, body_d,constraint_hardbar_settings));
-	mPhysicsWorld->CreateConstraintT(vx::DistanceConstraint(body_d, body_a,constraint_hardbar_settings));
-	mPhysicsWorld->CreateConstraintT(vx::DistanceConstraint(body_a, body_c,constraint_hardbar_settings));
-	mPhysicsWorld->CreateConstraintT(vx::DistanceConstraint(body_b, body_d,constraint_hardbar_settings));
+
+	vx::DistanceConstraint joints[] =
+	{
+		vx::DistanceConstraint(body_a, body_b,constraint_hardbar_settings),
+		vx::DistanceConstraint(body_b, body_c,constraint_hardbar_settings),
+		vx::DistanceConstraint(body_c, body_d,constraint_hardbar_settings),
+		vx::DistanceConstraint(body_d, body_a,constraint_hardbar_settings),
+		vx::DistanceConstraint(body_a, body_c,constraint_hardbar_settings),
+		vx::DistanceConstraint(body_b, body_d,constraint_hardbar_settings)
+	};
+	mPhysicsWorld->CreateConstraintsT(joints, 6);
 
 
 	//achor to the static 
@@ -345,42 +349,41 @@ void JointScenario::CreateLattice()
 	hardbar_constraint_settings.maxDist = 3.5f;
 	hardbar_constraint_settings.dampingRatio = 0.0f;
 
-	mPhysicsWorld->CreateConstraintT(vx::DistanceConstraint(body_a, body_b, hardbar_constraint_settings));
-	mPhysicsWorld->CreateConstraintT(vx::DistanceConstraint(body_b, body_c, hardbar_constraint_settings));
-	mPhysicsWorld->CreateConstraintT(vx::DistanceConstraint(body_c, body_d, hardbar_constraint_settings));
-	mPhysicsWorld->CreateConstraintT(vx::DistanceConstraint(body_d, body_a, hardbar_constraint_settings));
 
-	mPhysicsWorld->CreateConstraintT(vx::DistanceConstraint(body_a, body_c, hardbar_constraint_settings));
-	mPhysicsWorld->CreateConstraintT(vx::DistanceConstraint(body_b, body_d, hardbar_constraint_settings));
+	vx::DistanceConstraint joints[] =
+	{
+		vx::DistanceConstraint(body_a, body_b, hardbar_constraint_settings),
+		vx::DistanceConstraint(body_b, body_c, hardbar_constraint_settings),
+		vx::DistanceConstraint(body_c, body_d, hardbar_constraint_settings),
+		vx::DistanceConstraint(body_d, body_a, hardbar_constraint_settings),
 
-	mPhysicsWorld->CreateConstraintT(vx::DistanceConstraint(body_a1, body_b1, hardbar_constraint_settings));
-	mPhysicsWorld->CreateConstraintT(vx::DistanceConstraint(body_b1, body_c1, hardbar_constraint_settings));
-	mPhysicsWorld->CreateConstraintT(vx::DistanceConstraint(body_c1, body_d1, hardbar_constraint_settings));
-	mPhysicsWorld->CreateConstraintT(vx::DistanceConstraint(body_d1, body_a1, hardbar_constraint_settings));
-	
-	mPhysicsWorld->CreateConstraintT(vx::DistanceConstraint(body_a1, body_c1, hardbar_constraint_settings));
-	mPhysicsWorld->CreateConstraintT(vx::DistanceConstraint(body_b1, body_d1, hardbar_constraint_settings));
+		vx::DistanceConstraint(body_a, body_c, hardbar_constraint_settings),
+		vx::DistanceConstraint(body_b, body_d, hardbar_constraint_settings),
 
+		vx::DistanceConstraint(body_a1, body_b1, hardbar_constraint_settings),
+		vx::DistanceConstraint(body_b1, body_c1, hardbar_constraint_settings),
+		vx::DistanceConstraint(body_c1, body_d1, hardbar_constraint_settings),
+		vx::DistanceConstraint(body_d1, body_a1, hardbar_constraint_settings),
 
+		vx::DistanceConstraint(body_a1, body_c1, hardbar_constraint_settings),
+		vx::DistanceConstraint(body_b1, body_d1, hardbar_constraint_settings),
 
-	mPhysicsWorld->CreateConstraintT(vx::DistanceConstraint(body_a, body_a1, hardbar_constraint_settings));
-	mPhysicsWorld->CreateConstraintT(vx::DistanceConstraint(body_b, body_b1, hardbar_constraint_settings));
-	mPhysicsWorld->CreateConstraintT(vx::DistanceConstraint(body_c, body_c1, hardbar_constraint_settings));
-	mPhysicsWorld->CreateConstraintT(vx::DistanceConstraint(body_d, body_d1, hardbar_constraint_settings));
+		vx::DistanceConstraint(body_a, body_a1, hardbar_constraint_settings),
+		vx::DistanceConstraint(body_b, body_b1, hardbar_constraint_settings),
+		vx::DistanceConstraint(body_c, body_c1, hardbar_constraint_settings),
+		vx::DistanceConstraint(body_d, body_d1, hardbar_constraint_settings),
 
+		vx::DistanceConstraint(body_c, body_d1, hardbar_constraint_settings),
+		vx::DistanceConstraint(body_d, body_c1, hardbar_constraint_settings),
 
+		vx::DistanceConstraint(body_a, body_b1, hardbar_constraint_settings),
+		vx::DistanceConstraint(body_b, body_a1, hardbar_constraint_settings),
 
-	mPhysicsWorld->CreateConstraintT(vx::DistanceConstraint(body_c, body_d1, hardbar_constraint_settings));
-	mPhysicsWorld->CreateConstraintT(vx::DistanceConstraint(body_d, body_c1, hardbar_constraint_settings));
+		vx::DistanceConstraint(body_a, body_d1, hardbar_constraint_settings),
+		vx::DistanceConstraint(body_d, body_a1, hardbar_constraint_settings),
 
-	mPhysicsWorld->CreateConstraintT(vx::DistanceConstraint(body_a, body_b1, hardbar_constraint_settings));
-	mPhysicsWorld->CreateConstraintT(vx::DistanceConstraint(body_b, body_a1, hardbar_constraint_settings));
-
-
-
-	mPhysicsWorld->CreateConstraintT(vx::DistanceConstraint(body_a, body_d1, hardbar_constraint_settings));
-	mPhysicsWorld->CreateConstraintT(vx::DistanceConstraint(body_d, body_a1, hardbar_constraint_settings));
-
-	mPhysicsWorld->CreateConstraintT(vx::DistanceConstraint(body_b, body_c1, hardbar_constraint_settings));
-	mPhysicsWorld->CreateConstraintT(vx::DistanceConstraint(body_c, body_b1, hardbar_constraint_settings));
+		vx::DistanceConstraint(body_b, body_c1, hardbar_constraint_settings),
+		vx::DistanceConstraint(body_c, body_b1, hardbar_constraint_settings),
+	};
+	mPhysicsWorld->CreateConstraintsT(joints, 24);
 }

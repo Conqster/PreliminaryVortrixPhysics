@@ -5,9 +5,12 @@
 class DebugGizmosRenderer;
 namespace vx {
 
-	struct Linear1DRow;
 	class ConstraintSolver;
+	class ConstraintCoordinator;
 	struct PhysicsStepContext;
+	struct Linear1DRow;
+
+	struct NonContactConstraintDrawSettings;
 
 	class Constraint
 	{
@@ -21,6 +24,12 @@ namespace vx {
 		virtual void DebugGizmos(DebugGizmosRenderer* debug_renderer, const NonContactConstraintDrawSettings& draw_settings) const = 0;
 
 		virtual void SolvePositionConstraint(float dt, float baumgarte) = 0;
+
+		/// idx in coordinate constraint vector
+		using Idx = uint32;
+		/// idx in coordinate constraint vector
+		static constexpr Idx kInvalidIdx = 0xffffffff;
+		Idx ConstraintIdx()const { return mConstraintIdx; }
 	protected:
 		/// could be used, in PrepSolver/BuildSolver or BuildIsland
 		/// or even SolverPositionConstraint
@@ -34,6 +43,9 @@ namespace vx {
 		/// correction, i.e reducing the number of constraint loop is most are not 
 		/// hard/rigid constraint
 		EConstraintFlags mFlags = EConstraintFlags::SolveVelocity | EConstraintFlags::SolvePosition;
+
+		friend ConstraintCoordinator;
+		Idx mConstraintIdx = kInvalidIdx;
 
 		virtual bool RequiresPositionCorrection() = 0;
 	};

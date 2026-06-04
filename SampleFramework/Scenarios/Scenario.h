@@ -12,6 +12,8 @@
 #include <array>
 
 #include <functional>
+
+#include "Vortrix/Dynamics/Constraints/DistanceConstraint.h"
 namespace vx {
 	class PhysicsWorld;
 	struct BodySettings;
@@ -35,7 +37,7 @@ class Scenario
 {
 public:
 	virtual ~Scenario() = default;
-	virtual void Init(vx::PhysicsWorld*) = 0;
+	virtual void Init(vx::PhysicsWorld*);
 
 	virtual const char* Name() = 0;
 
@@ -45,6 +47,8 @@ public:
 	virtual void PostPhysicsStep(float dt);
 
 	virtual void OnUI() {}
+	virtual void OnClose();
+
 
 
 	void SetCamera(Camera* cam) { mAppCamera = cam; }
@@ -71,6 +75,11 @@ protected:
 	EClickEvent mMouseEvent = EClickEvent::None;
 	vx::BodyID mBody{};
 	vx::Vec3 mPointBodyFrame;
+
+	vx::Body* mMouseDragBody = nullptr;
+	vx::DistanceConstraintSettings mMouseDragConstraintSettings;
+	vx::DistanceConstraint* mMouseDragConstraint = nullptr;
+	bool mHasMouseConstraint = false;
 
 	vx::Vec3 mCamFwd;
 	float t_dist;

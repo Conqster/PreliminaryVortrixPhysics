@@ -1,6 +1,9 @@
 #pragma once
 #include "Scenario.h"
 
+namespace vx {
+	class Constraint;
+}
 
 class PersistentContactScenario : public Scenario
 {
@@ -16,6 +19,9 @@ public:
 	void OnUI() override;
 	void PostPhysicsStep(float dt) override;
 
+	void OnClose() override;
+	~PersistentContactScenario();
+
 private:
-	
+	vx::Constraint* mTestConstraint;
 };

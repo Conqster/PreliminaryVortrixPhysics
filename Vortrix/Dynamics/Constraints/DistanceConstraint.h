@@ -1,11 +1,10 @@
 #pragma once
-#include "Body/Body.h"
+#include "Dynamics/Body/Body.h"
 #include "SampleFramework/Renderer/DebugGizmosRenderer.h"
 
-#include "ConstraintSolverRow.h"
+#include "Dynamics/ConstraintSolverRow.h"
 
 #include "Constraint.h"
-#include "ConstraintCoordinator.h"
 
 #include "SpringSettings.h"
 

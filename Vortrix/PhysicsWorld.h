@@ -24,22 +24,12 @@
 ///		MotionDynamics
 /// fix shapes; especially box; function needs to be in local space
 /// 
-/// And in Release ensure some debug prints are striped out
 /// 
-/// play around the opportunity to use a list for active bodies. 
-/// 
-/// 
+
 /// 
 /// a deadly bug, you can just set the desnsity of a shap ein body manage 
 /// the shape might be shared between multiple bodies
-/// 
-/// 
-/// Texture Factory Add Texture to registy not self
-/// 
-/// flags option
-/// VX_DISABLE_FORCE_INLINE
-/// VX_DEBUG
-/// 
+
 /// 
 /// 
 /// Later moving to Island building 
@@ -82,6 +72,12 @@
 //				else
 //					//body_settings.shape = mShapeArena.AllocateObject<SphereShape>(mNewPhyObjectSettings.halfExtents.x);
 //						body_settings.shape = new SphereShape(mNewPhyObjectSettings.halfExtents.x);
+
+
+///
+/// CONVERT MOUSE INTERACTION TO CONSTRAINT BASED
+/// MEMOPRY ALLOC
+
 
 
 
@@ -133,13 +129,16 @@ namespace vx
 
 		template<typename T>
 		T* CreateConstraintT(const T& constraint) { return mConstraintCoordinator.CreateT(constraint); }
-		void AddConstraint(Constraint* constraint) { return mConstraintCoordinator.Add(constraint); }
+		template<typename T>
+		void CreateConstraintsT(const T* constraint_Ts, uint32 count) { return mConstraintCoordinator.CreateT(constraint_Ts, count); }
+		void AddConstraint(Constraint* constraint) { return mConstraintCoordinator.Add(&constraint, 1); }
+		void RemoveConstraint(Constraint* constraint) { return mConstraintCoordinator.Remove(&constraint, 1); }
 
 		Constraints& GetConstraints() { return mConstraintCoordinator.GetConstraints(); }
 
 		void QuickDebugDrawInertia(DebugGizmosRenderer* debug_renderer);
 
-		std::vector<Body>& GetBodies() { return mBodyManager.GetBodies(); }
+		BodyVector& GetBodies() { return mBodyManager.GetBodies(); }
 
 		const PhysicsWorldSettings& GetSettings() const { return mSettings; }
 		PhysicsWorldSettings& GetSettings() { return mSettings; }
@@ -154,11 +153,6 @@ namespace vx
 		//VX_INLINE BVHBroadphase<AABB>* GetBVH_AABB_Broadphase() { return mBroadphase->AsBVH_AABB(); }
 		const std::vector<BroadphasePair>& GetBroadphasePairs() const { return mBroadphasePairs; }
 
-		///hack to convert colour32 to glm
-		//VX_INLINE static glm::vec3 ColourToGLM(const Colour& col)
-		//{
-		//	return glm::vec3(static_cast<float>(col.r), static_cast<float>(col.g), static_cast<float>(col.b)) / 255.0f;
-		//}
 
 		void QuickBoxBoxDebug(DebugGizmosRenderer* debug_renderer);
 

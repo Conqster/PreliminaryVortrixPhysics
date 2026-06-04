@@ -10,9 +10,7 @@
 
 void BoxPyramidStackScenario::Init(vx::PhysicsWorld* i_world)
 {
-	mPhysicsWorld = i_world;
-	VX_ASSERT(mPhysicsWorld, "Physics World is null");
-
+	Scenario::Init(i_world);
 
 	if (mAppCamera)
 	{

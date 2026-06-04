@@ -13,9 +13,8 @@
 
 void SimpleBasicScenario::Init(vx::PhysicsWorld* i_world)
 {
-	mPhysicsWorld = i_world;
-	VX_ASSERT(i_world, "Physics World is null");
-	
+	Scenario::Init(i_world);
+
 	//have physics context to config for scenario
 	//io_world->mContactConstraintSolver.SetPhysicsContext(&io_world->mContext);
 

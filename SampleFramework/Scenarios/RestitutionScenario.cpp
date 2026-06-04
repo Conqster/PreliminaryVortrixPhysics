@@ -16,9 +16,7 @@
 
 void RestitutionScenario::Init(vx::PhysicsWorld* i_world)
 {
-	mPhysicsWorld = i_world;
-	VX_ASSERT(mPhysicsWorld, "Physics World is null");
-
+	Scenario::Init(i_world);
 
 	/// Ground plane
 	//CreateGroundPlane(100.0f);

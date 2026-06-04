@@ -1,6 +1,8 @@
 #pragma once
 #include "Core/Core.h"
+#include "Body/BodyID.h"
 
+#include "Maths/Vec3.h"
 
 namespace vx {
 	class SolverBodyIndex
@@ -22,4 +24,17 @@ namespace vx {
 	private:
 		uint32 mIndex = kInvalidIndex;
 	};
+
+
+
+	struct SolverBody
+	{
+		/// linear velocity
+		Vec3 v = Vec3(0.0f);
+		/// angularVelocity
+		Vec3 w = Vec3(0.0f);
+		float invMass;
+		BodyID bodyID;
+	};
+
 } ///namespace vx

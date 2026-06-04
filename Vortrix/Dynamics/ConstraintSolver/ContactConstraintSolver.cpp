@@ -6,7 +6,7 @@
 
 #include "SimulationContexts.h"
 
-#include "Dynamics/ConstraintCoordinator.h"
+#include "Dynamics/ConstraintSolver.h"
 
 
 namespace vx {

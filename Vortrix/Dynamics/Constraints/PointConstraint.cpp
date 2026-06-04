@@ -1,5 +1,6 @@
 #include "PointConstraint.h"
 
+#include "Dynamics/ConstraintSolver.h"
 
 namespace vx {
 
@@ -74,6 +75,12 @@ namespace vx {
 
 
 		return true;
+	}
+
+	void PointConstraint::CommitSolverState(const Linear1DRow& row)
+	{
+		mAccumulatedLambda[row.hackIdx] = row.lambda;
+		//mAccumulatedLambda = Vec3(0.0f);
 	}
 
 	void PointConstraint::SolvePositionConstraint(float dt, float baumgarte)
@@ -158,8 +165,8 @@ namespace vx {
 		//debug_renderer->DrawAACross(rAw, &Colour(1.0f, 0.2f, 0.2f), 1, 0.085f);
 		//debug_renderer->DrawAACross(rBw, &Colour(0.2f, 1.0f, 0.4f), 1, 0.085f);
 
-		debug_renderer->DrawAACross(rAw, &Colour(1.0f, 0.2f, 0.2f), 1, 1.5f);
-		debug_renderer->DrawAACross(rBw, &Colour(0.2f, 1.0f, 0.4f), 1, 1.5f);
+		debug_renderer->DrawAACross(rAw, &Colour(1.0f, 0.2f, 0.2f), 1, 0.5f);
+		debug_renderer->DrawAACross(rBw, &Colour(0.2f, 1.0f, 0.4f), 1, 0.5f);
 
 		//error
 		if (!rAw.IsApprox(rBw))
@@ -376,7 +383,7 @@ namespace vx {
 
 			for (int x = 0; x < 3; ++x)
 			{
-				Vec3 axis = rows[x].axis.Normalised();
+				Vec3 axis = Vec3::LoadFloat3Raw(rows[x].axis).Normalised();
 
 				Vec3 rAXaxis = Vec3::LoadFloat3Raw(rows[x].rAXn);
 				Vec3 rBXaxis = Vec3::LoadFloat3Raw(rows[x].rBXn);
@@ -520,7 +527,7 @@ namespace vx {
 	void PointConstraint::BuildAxis1DJacobian(Linear1DRow* o_row, float accumulated_lambda, const Vec3& axis,
 		const Vec3& rA, const Vec3& rB, const Vec3& dispW, float dt)
 	{
-		o_row->axis = axis;
+		axis.Store(o_row->axis);
 		//lets take into consideration that 
 		// that the achor point is not COM
 

@@ -10,8 +10,7 @@
 
 void FrictionScenario::Init(vx::PhysicsWorld* i_world)
 {
-	mPhysicsWorld = i_world;
-	VX_ASSERT(mPhysicsWorld, "Physics World is null");
+	Scenario::Init(i_world);
 
 	vx::Quat orientation = vx::Quat::FromAxisAngle(vx::Vec3::Forward(), vx::DegToRad(mSlopAngle));
 	/// Ground plane

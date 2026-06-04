@@ -62,7 +62,8 @@ namespace vx {
 			}
 
 			o_eff_mass = 1.0f / (inv_eff_mass + gamma);
-			o_bias = vel_bias + (beta * C) / dt;
+			//o_bias = vel_bias + (beta * C) / dt;
+			o_bias = vel_bias + beta * (C / dt);
 			o_gamma = gamma;
 		}
 	};

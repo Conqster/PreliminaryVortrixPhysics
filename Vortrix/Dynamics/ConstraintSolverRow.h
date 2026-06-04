@@ -3,9 +3,12 @@
 #include "Maths/Vec3.h"
 #include "Maths/Float3.h"
 
+#include "Body/Body.h"
+
 namespace vx {
 
-	struct Linear1DRow
+
+	struct alignas(16) Linear1DRow
 	{
 		SolverBodyIndex bodyAidx;	/// later change to SolverBody only caches required data 
 		SolverBodyIndex bodyBidx;	/// like position, velocities before write back, and constraint stores actual BodyID
@@ -13,25 +16,23 @@ namespace vx {
 		float effMass;
 		float gamma;
 
-		Vec3 axis;
+		Float3 axis;
+		float bias;
 
 		/// rAXn = rA.Cross(nor);
 		Float3 rAXn;	
-		float bias;
+		float lambda = 0.0f;
 		
 		///invIrAXn = mBodyA->ComputeInvInteriaWorld().Multiply3x3(rAXn);
 		Float3 invIrAXn;
-		float lambda = 0.0f;
+		float minLambda = -kMaxf;
 
 		/// rAXn = rA.Cross(nor);
 		Float3 rBXn;	/// rAXn = rA.Cross(nor);
-		float minLambda = -kMaxf;
+		float maxLambda = kMaxf;
 		
 		///invIrBXn = mBodyA->ComputeInvInteriaWorld().Multiply3x3(rAXn
 		Float3 invIrBXn;
-
-
-		float maxLambda = kMaxf;
 
 		//for now has hack 
 		class Constraint* user = nullptr;
