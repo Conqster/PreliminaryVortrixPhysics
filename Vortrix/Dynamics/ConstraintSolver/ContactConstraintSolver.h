@@ -20,6 +20,8 @@
 
 #include "Core/HashMap.h"
 
+#include "Dynamics/Body/BodyID.h"
+
 class DebugGizmosRenderer;
 namespace vx {
 
@@ -466,7 +468,7 @@ namespace vx {
 
 			uint64 Hash() const
 			{
-				return (uint64(bodyA.Value()) << 32) | uint64(bodyB.Value());
+				return (uint64(bodyA.ID()) << 32) | uint64(bodyB.ID());
 			}
 
 			/// collision check 

@@ -64,6 +64,137 @@ namespace vx
 	}
 
 	template<typename BoundType>
+	void BVHTree<BoundType>::RemoveBody(const BodyID& id)
+	{
+		/// not good 
+		/// best id the node is the first O(1)
+		/// worst cast O(n) if the last or does not exist
+		/// on average O(n/2) -> O(n)
+		for (NodeID* n = mLeafNodeIDs, *n_end = mLeafNodeIDs + mLeafNodeCount;
+			n < n_end; ++n)
+		{
+			if(mNodes[*n].body)
+				if (mNodes[*n].body->GetID() == id)
+				{
+					DeleteAndUpdateParent(*n);
+					return;
+				}
+		}
+	}
+
+	template<typename BoundType>
+	void BVHTree<BoundType>::DeleteNode(Node& node)
+	{
+		///this is to prevent silent bugs
+		//VX_ASSERT(node.parent == kInvalidNode, "Ensure Node is Detached from tree");
+		//VX_ASSERT(node.children[0] == kInvalidNode, "Ensure Node is Detached from tree");
+		//VX_ASSERT(node.children[1] == kInvalidNode, "Ensure Node is Detached from tree");
+		VX_ASSERT(node.leafNodeIdx == -1, "Ensure Node is Detached from tree");
+
+		//later have a free list, since no multi threading no need for generation idx'ing
+		node.Invalidate();
+
+		return;
+		//
+		//NodeID id = node.id;
+		//NodeID last_node_id = NodeID(mNodes.size() - 1);
+		////i.e Check if node is in the middle, so move the last node to this position
+		//if (id < last_node_id)
+		//{
+		//	NodeID new_id = id;
+
+		//	Node& last_node = GetNode(last_node_id);
+		//	///last node parent 
+		//	Node& last_node_parent = GetNode(last_node.parent);
+		//	//move this to a function, are we left or right child
+		//	NodeID* last_node_in_parent = nullptr;
+		//	if(last_node_parent.children[0] == last_node_id)
+		//		last_node_in_parent = &last_node_parent.children[0];
+		//	else if(last_node_parent.children[1] == last_node_id)
+		//		last_node_in_parent = &last_node_parent.children[1];
+		//	
+		//	if (last_node_in_parent)
+		//		*last_node_in_parent = new_id;
+
+		//	///if the old node is internal, then when need to update its children parent id
+		//	if (last_node.IsInternal())
+		//	{
+		//		last_node.children[0] = new_id;
+		//		last_node.children[1] = new_id;
+		//	}
+
+		//	//check tracking leaf node
+		//	//if (last_node.IsLeaf())
+
+
+		//	///now our new id
+		//	last_node.id = new_id;
+		//	std::swap(mNodes[id], mNodes[new_id]);
+		//}
+
+		////remove last node
+		//mNodes.pop_back();
+	}
+
+	template<typename BoundType>
+	void BVHTree<BoundType>::DeleteAndUpdateParent(const NodeID id)
+	{
+		///assume node is leaf 
+		Node& node = mNodes[id];
+		VX_ASSERT(node.IsLeaf(), "Deleting Node needs to be leaf");
+		RemoveTrackingNode(id);
+
+		VX_LOG_DEBUG("Deleting: ", id, "-", node.id, ", parent: ", node.parent);
+
+		//special case if parent is invalid, this is root
+		if (node.parent == kInvalidNode)
+		{
+			//DeleteNode(node);
+			mNodes[id].Invalidate();
+			mRootID = kInvalidNode;
+			return;
+		}
+
+
+		///replace parent node with current node sibling 
+		Node& parent_node = GetNode2(node.parent);
+		NodeID sibling_id = kInvalidNode;
+		if (parent_node.children[0] != id && parent_node.children[0] != kInvalidNode) //not curr node and valid
+			sibling_id = parent_node.children[0];
+		else if (parent_node.children[1] != id && parent_node.children[1] != kInvalidNode) //not curr node and valid
+			sibling_id = parent_node.children[1];
+
+		VX_ASSERT(sibling_id != kInvalidNode, "node should not have children");
+
+		Node& sibling_node = GetNode2(sibling_id);
+		VX_ASSERT(sibling_node.id != kInvalidNode, "node should not have children");
+		VX_ASSERT(sibling_id == sibling_node.id);
+		//shifting the sibling up and update its parent
+		sibling_node.parent = parent_node.parent;
+
+		//relink parent, sibling take parent place 
+		//so grand parent point to sibling now not parent
+		if (parent_node.parent != kInvalidNode)
+		{
+			Node& grand_parent = GetNode2(parent_node.parent);
+
+			if (grand_parent.children[0] == node.parent) //not curr node and valid
+				grand_parent.children[0] = sibling_id;
+			else if (grand_parent.children[1] == node.parent) //not curr node and valid
+				grand_parent.children[1] = sibling_id;
+		}
+		else if(node.parent == mRootID) //grand parent is invalid and parent was root
+			mRootID = sibling_id;
+
+		//if (sibling_node.parent == kInvalidNode && node.parent == mRootID) //was root
+
+		VX_LOG_DEBUG("Our sibling: ", sibling_id, "-", sibling_node.id, ", parent: ", sibling_node.parent);
+
+		DeleteNode(node);
+		DeleteNode(parent_node);
+	}
+
+	template<typename BoundType>
 	inline void BVHTree<BoundType>::InsertNode(const BVHContext& bvh_context, NodeID new_node_id, NodeID tranverse_node_id)
 	{
 		//ensure this is a valid node 
@@ -432,6 +563,7 @@ namespace vx
 	template<typename BoundType>
 	void BVHTree<BoundType>::CastRay(const RayCast& ray_cast, WorldRayCastQuery& world_ray_ctx) const
 	{
+		if (mRootID == kInvalidNode) return;
 		static constexpr int k_max_node_stack = 512;
 		static NodeID node_stack[k_max_node_stack];
 #define NODE_STACK_GUARDR(x) if (top > k_max_node_stack - x) continue
@@ -445,6 +577,9 @@ namespace vx
 		do
 		{
 			NodeID curr_node_id = node_stack[--top];
+			if (curr_node_id == kInvalidNode)
+				continue;
+
 			Node curr_node = mNodes[curr_node_id];
 
 			if (curr_node.IsLeaf())

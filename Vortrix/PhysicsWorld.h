@@ -111,7 +111,7 @@ namespace vx
 		void Init(float max_bodies, float max_body_pairs, float max_contact_constraint);
 
 		void CreateBody(const BodySettings& body_setting);
-		void AddBody(const Body& body);
+		void RemoveBody(const BodyID& id);
 
 		class PointConstraint* mBallJoint = nullptr;
 		PointConstraint* mBallJoint2 = nullptr;

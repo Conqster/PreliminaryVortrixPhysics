@@ -59,6 +59,12 @@ namespace vx
 	}
 
 	template<typename BoundType>
+	void BVHBroadphase<BoundType>::RemoveBody(const BodyID& id)
+	{
+		mTree.RemoveBody(id);
+	}
+
+	template<typename BoundType>
 	void BVHBroadphase<BoundType>::ComputeCollidingPair(PhysicsStepContext& physics_ctx, std::vector<BroadphasePair>& out_pairs)
 	{
 		VX_PROFILE_FUNCTION();
@@ -69,7 +75,7 @@ namespace vx
 			return;
 
 		//Upodates 
-		uint32 dirty_nodes_count = GatherDirtyNode();
+		uint32 dirty_nodes_count = GatherDirtyNodes();
 
 		// 
 		// 1.check dirty up dirty
@@ -139,7 +145,7 @@ namespace vx
 	}
 
 	template<typename BoundType>
-	uint32 BVHBroadphase<BoundType>::GatherDirtyNode()
+	uint32 BVHBroadphase<BoundType>::GatherDirtyNodes()
 	{
 		///collect 
 		uint32 dirty_node_count = 0;
@@ -157,6 +163,8 @@ namespace vx
 		for (int i = 0; i < mTree.GetLeafNodeCount(); ++i)
 		{
 			const auto& n = *mTree.GetNode(leaf_node_ids[i]);
+
+			VX_ASSERT(!n.IsInvalid(), "Node is invalid");
 
 			bool dirty = false;
 			bool moved = n.body->GetTransformedState().MovedSince(mLastStep);

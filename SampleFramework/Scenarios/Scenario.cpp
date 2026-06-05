@@ -175,7 +175,7 @@ void Scenario::OnClose()
 {
 	if (mMouseDragBody)
 		delete mMouseDragBody->GetShape();
-	if (mPhysicsWorld)
+	if (mPhysicsWorld && mMouseDragConstraint)
 	{
 		mPhysicsWorld->RemoveConstraint(mMouseDragConstraint);
 		delete mMouseDragConstraint;

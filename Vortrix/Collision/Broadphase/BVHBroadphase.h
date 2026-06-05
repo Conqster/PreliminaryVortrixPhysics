@@ -42,6 +42,7 @@ namespace vx
 		}
 
 		void InsertBody(Body* body) override;
+		void RemoveBody(const BodyID& id) override;
 
 		BVHTree<AABB>::BVHContext GetTreeStat() { return mTree.GetContext(); }
 		void ComputeCollidingPair(struct PhysicsStepContext& physics_ctx, std::vector<BroadphasePair>& out_pairs) override;
@@ -54,7 +55,7 @@ namespace vx
 
 		void DebugDraw(DebugGizmosRenderer* debug_renderer, const DrawSettings& settings) override;
 
-		uint32 GatherDirtyNode();
+		uint32 GatherDirtyNodes();
 
 		virtual void CastRay(const RayCast& ray_cast, WorldRayCastQuery& world_ray_ctx) const override;
 

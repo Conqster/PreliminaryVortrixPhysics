@@ -186,6 +186,8 @@ namespace vx
 		/// for optimisation 
 		/// Broad refits dynamic bodies node when aawake
 		bool IsAwake() const { return mAwake; }
+		///to participate in simulation id needs to be valid
+		bool IsIDValid() const { return mID.IsValid(); }
 		float GetInverseMass() const { return mInverseMass; }
 
 		bool IsDynamic() const { return mMotionType == EMotionType::Dynamic; }

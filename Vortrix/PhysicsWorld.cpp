@@ -209,9 +209,9 @@ namespace vx
 
 	void PhysicsWorld::GenerateWorldDefaultConfig(int& o_max_bodies, int& o_max_body_pairs, int& o_max_contact_constraint)
 	{
-		o_max_bodies = 16384;
+		o_max_bodies = 10240;// 16384;
 
-		int avg_max_pair = 8;
+		int avg_max_pair = 4;// 8;
 		o_max_body_pairs = avg_max_pair * o_max_bodies;
 
 		int avg_contact_per_body = 4;
@@ -261,17 +261,19 @@ namespace vx
 
 	void PhysicsWorld::CreateBody(const BodySettings& body_setting)
 	{
-		if(mBodyManager.AddBody(body_setting))
+		const BodyID body_id = mBodyManager.AddBody(body_setting);
+
+		if(body_id.IsValid())
 		{
-			//quick hack 
-			mBroadphase->InsertBody(&mBodyManager.GetBodies().back());
+			//mBroadphase->InsertBody(&mBodyManager.GetBodies().back());
+			mBroadphase->InsertBody(&mBodyManager.GetBody(body_id));
 		}
 	}
 
-	void PhysicsWorld::AddBody(const Body& _body)
+	void PhysicsWorld::RemoveBody(const BodyID& id)
 	{
-		///Body& body = mBodies.emplace_back(_body);
-		//mBroadphase->InsertBody(&body);
+		mBroadphase->RemoveBody(id);
+		mBodyManager.RemoveBody(id);
 	}
 
 
@@ -591,6 +593,9 @@ namespace vx
 		//return;
 		for (auto it = GetBodies().begin(); it != GetBodies().end(); ++it)
 		{
+			if (!it->GetID().IsValid())
+				continue;
+
 			/// support to colour bodies by 
 			/// 1. State: Dynamic(Awake/Sleeping), Static
 			/// 2. Collision: Colliding(Dyn-Dyn/Dyn-Static) , Not Colliding
@@ -600,7 +605,7 @@ namespace vx
 			Colour c = Colour::sMagenta;
 
 			if (draw_settings.bodyColourMode == vx::EBodyColourMode::Instances)
-				c = mRandomColourInst[it->GetID().Value() % mRandomColourInst.size()]; //quick hack 
+				c = mRandomColourInst[it->GetID().ID() % mRandomColourInst.size()]; //quick hack 
 			else if (draw_settings.bodyColourMode == vx::EBodyColourMode::MotionType)
 				c = it->IsDynamic() ? draw_settings.dynamicColour : draw_settings.staticColour;
 			else if (draw_settings.bodyColourMode == vx::EBodyColourMode::MotionState)
@@ -999,6 +1004,10 @@ namespace vx
 		mNumActiveBodies = 0;
 		for (auto& body : GetBodies())
 		{
+			//quick hack 
+			if (!body.GetID().IsValid())
+				continue;
+
 			if (mSettings.sleeping.enable)
 				body.UpdateSleepState(dt, mSettings.sleeping);
 

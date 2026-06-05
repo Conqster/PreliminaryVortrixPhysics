@@ -19,26 +19,32 @@ namespace vx
 
 		~BodyManager();
 
-		bool AddBody(const BodySettings& body_setting);
-		bool AddBody(Body& _body);
+		const BodyID AddBody(const BodySettings& body_setting);
+		const BodyID AddBody(Body& _body);
+
+
+		//it bettre to remove body via Physocs world as to manage broadphase handles etc
+		void RemoveBody(const Body& body) { RemoveBody(body.GetID()); }
+		void RemoveBody(const BodyID& id);
 
 		BodyVector& GetBodies() { return mBodies; }
 		std::vector<BodyDebug>& GetBodiesDebug() { return mBodiesDebugInfo; }
 
-		const Body& GetBody(BodyID id) const { return mBodies[id.Value()]; }
-		Body& GetBody(BodyID id) { return mBodies[id.Value()]; }
+		const Body& GetBody(BodyID id) const { return mBodies[id.Idx()]; }
+		Body& GetBody(BodyID id) { return mBodies[id.Idx()]; }
 
 		const BodyDebug& GetBodyDebugInfo(const Body& body) const;
-		const BodyDebug& GetBodyDebugInfo(BodyID id) const { return mBodiesDebugInfo[id.Value()]; }
+		const BodyDebug& GetBodyDebugInfo(BodyID id) const { return mBodiesDebugInfo[id.Idx()]; }
 		BodyDebug& GetBodyDebugInfo(const Body& body);
-		BodyDebug& GetBodyDebugInfo(BodyID id) { return mBodiesDebugInfo[id.Value()]; }
+		BodyDebug& GetBodyDebugInfo(BodyID id) { return mBodiesDebugInfo[id.Idx()]; }
 
 		const char* GetBodyDebugName(const Body& body) const;
-		const char* GetBodyDebugName(BodyID id) const { return mBodiesDebugInfo[id.Value()].name.Data(); }
+		const char* GetBodyDebugName(BodyID id) const { return mBodiesDebugInfo[id.Idx()].name.Data(); }
 
 		const BodySimStats& GetBodySimStats(const Body& body) const;
 		BodySimStats& GetBodySimStats(const Body& body);
-		const BodySimStats& GetBodySimStats(BodyID id) const { return mBodiesDebugInfo[id.Value()].simulationStats; }
+		VX_INLINE const BodySimStats& GetBodySimStats(BodyID id) const { return mBodiesDebugInfo[id.Idx()].simulationStats; }
+		VX_INLINE BodySimStats& GetBodySimStats(BodyID id) { return mBodiesDebugInfo[id.Idx()].simulationStats; }
 
 		void UpdateBodyVelocitySimStat(const Body& body);
 
@@ -49,6 +55,15 @@ namespace vx
 		std::vector<BodyDebug> mBodiesDebugInfo;
 
 		uint32 mMaxBodies = 0;
+
+
+		std::vector<uint32> mFreedIdxs;
+		std::vector<uint8> mBodyIdxGenerations;
+
+		VX_INLINE uint8 GetBodyIdxNextGeneration(uint32 idx)
+		{
+			return ++mBodyIdxGenerations[idx];
+		}
 	};
 
 }

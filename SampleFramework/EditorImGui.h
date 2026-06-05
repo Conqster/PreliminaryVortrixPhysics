@@ -17,6 +17,7 @@ class Texture;
 #include "Vortrix/Dynamics/Body/EBodyDebugFlags.h"
 #include "Vortrix/Dynamics/Body/EDynamicsDofs.h"
 namespace vx{
+	class PhysicsWorld;
 	class BodyManager;
 	class Body;
 	class BodyDebug;
@@ -35,7 +36,7 @@ public:
 	bool UIBlockingInput();
 
 	void DrawParticlesOverlayItems(std::vector<vx::Particles::Particle>& particles) const;
-	void DrawBodiesOverlayItems(vx::BodyManager& body_manager);
+	void DrawBodiesOverlayItems(vx::BodyManager& body_manager, vx::PhysicsWorld* physics_world);
 
 	static bool EditQuatWithDrag(vx::Quat& quat, bool& editing,
 		vx::Vec2& pad_size);

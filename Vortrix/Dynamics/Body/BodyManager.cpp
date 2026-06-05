@@ -13,6 +13,10 @@ namespace vx
 		mMaxBodies = max_bodies;
 		mBodies.reserve(mMaxBodies);
 		mBodiesDebugInfo.reserve(mMaxBodies);
+
+		uint32 min_free_list = 64;
+		mFreedIdxs.reserve(min_free_list);
+		mBodyIdxGenerations.resize(mMaxBodies, 0);
 	}
 	BodyManager::~BodyManager()
 	{
@@ -23,16 +27,16 @@ namespace vx
 		std::set<Shape*> shapes;
 		for (auto& b : mBodies)
 			shapes.insert(b.mShape);
-
+		
 		for(auto& s : shapes)
 				delete s;
 	}
-	bool BodyManager::AddBody(const BodySettings& body_setting)
+	const BodyID BodyManager::AddBody(const BodySettings& body_setting)
 	{
 		if(mBodies.size() >= mMaxBodies - 1)
 		{
 			VX_LOG_WARN("Body manager body limit attained");
-			return false;
+			return BodyID();
 		}
 
 		vx::Body body = Body(body_setting.position);
@@ -82,31 +86,61 @@ namespace vx
 		//since orientation might have change percompute bounds
 		body.ComputeWorldSpaceBoundsInternal();
 
-		bool success = AddBody(body);
-		success &= body.GetID().Value() == mBodiesDebugInfo.size();
+		BodyID id = AddBody(body);
+		bool success = id.IsValid();
 
-		//new body debug 
+
+		if (id.Generation() <= 1U)
+			mBodiesDebugInfo.emplace_back();
+
+		success &= body.GetID().Idx() < mBodiesDebugInfo.size();
 		VX_ASSERT_WARN(success, "Invalid Body creation or Miss-matching id for body & body debug");
-		BodyDebug& body_debug = mBodiesDebugInfo.emplace_back();
 		StackString<40> _s(body_setting.debug_name);
-		_s << " - body " << body.GetID().Value();
-		//body_debug.name = body_setting.debug_name + " - body " + std::to_string(body.GetID().Value());
-		body_debug.name = _s;
-		return success;
+		_s << " - body_ " << body.GetID().ID() << ", idx_" << body.GetID().Idx();
+		mBodiesDebugInfo[body.GetID().Idx()].name = _s;
+		return id;
 	}
-	bool BodyManager::AddBody(Body& _body)
+	const BodyID BodyManager::AddBody(Body& _body)
 	{
 		if (_body.GetID().IsValid())
-			return false;
+			return _body.GetID();
 
-		uint32 idx;
 
-		idx = static_cast<uint32>(mBodies.size());
-		_body.mID = BodyID(idx);
+		BodyID id = BodyID();
+		if (!mFreedIdxs.empty())
+		{
+			uint32 idx = mFreedIdxs[0];
+			std::swap(mFreedIdxs[0], mFreedIdxs.back());
+			mFreedIdxs.pop_back();
+			
+			uint8 gen = GetBodyIdxNextGeneration(idx);
+			id = BodyID(idx, gen);
+			_body.mID = id;
+			mBodies[idx] = _body;
+		}
+		else
+		{
+			uint32 idx = static_cast<uint32>(mBodies.size());
 
-		mBodies.emplace_back(_body);
+			uint8 gen = GetBodyIdxNextGeneration(idx);
+			id = BodyID(idx, gen);
+			_body.mID = id;
+			mBodies.emplace_back(_body);
+		}
+		return id;
+	}
 
-		return true;
+	void BodyManager::RemoveBody(const BodyID& id)
+	{
+		VX_ASSERT(id.IsValid(), "Attempting to remoev invalid body");
+
+
+		//remove from broadphase 
+
+		mFreedIdxs.push_back(id.Idx());
+		mBodies[id.Idx()].mID = BodyID();
+		//this would affect shape 
+
 	}
 
 	const BodyDebug& BodyManager::GetBodyDebugInfo(const Body& body) const
@@ -131,12 +165,15 @@ namespace vx
 
 	BodySimStats& BodyManager::GetBodySimStats(const Body& body)
 	{
-		return mBodiesDebugInfo[body.GetID().Value()].simulationStats;
+		return GetBodySimStats(body.GetID());
+		//return mBodiesDebugInfo[body.GetID().Value()].simulationStats;
 	}
 
 	void BodyManager::UpdateBodyVelocitySimStat(const Body& body)
 	{
-		BodySimStats& sim_stat = mBodiesDebugInfo[body.GetID().Value()].simulationStats;
+		//BodySimStats& sim_stat = mBodiesDebugInfo[body.GetID().Value()].simulationStats;
+		
+		BodySimStats& sim_stat = GetBodySimStats(body.GetID());
 
 		sim_stat.maxAttainedLinearVelocitySq = VxMax(sim_stat.maxAttainedLinearVelocitySq, body.GetLinearVelocity().LengthSq());
 		sim_stat.maxAttainedAngularVelocitySq = VxMax(sim_stat.maxAttainedAngularVelocitySq, body.GetAngularVelocity().LengthSq());

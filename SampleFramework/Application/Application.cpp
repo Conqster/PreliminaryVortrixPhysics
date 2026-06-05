@@ -1056,8 +1056,10 @@ void Application::OnDrawImGuiOverlays()
 				ImGui::Separator();
 				for (int i = 0; i < num_active_bodies; ++i)
 				{
-					vx::StackString<16> label("BodyID: ");
-					label << active_bodies[i].Value();
+					vx::StackString<32> label("Body_");
+					label << active_bodies[i].ID() <<
+						",Idx_" << active_bodies[i].Idx() <<//;
+						",gen_" << active_bodies[i].Generation();
 					ImGui::Text(label.Data());
 				}
 			}
@@ -1113,7 +1115,7 @@ void Application::OnDrawImGuiOverlays()
 			if (ImGui::BeginTabItem("Physics - Bodies"))
 			{
 				if (mPhysicsWorld)
-					mUI.DrawBodiesOverlayItems(mPhysicsWorld->GetBodyManager());
+					mUI.DrawBodiesOverlayItems(mPhysicsWorld->GetBodyManager(), mPhysicsWorld);
 				else
 					ImGui::Text("Physics World Null!!!");
 				ImGui::EndTabItem();
@@ -2227,6 +2229,7 @@ void Application::PhysicsInteraction()
 
 	auto Find_CacheData = [&](const vx::Float3& he, float density, const vx::EShapeType shape_type, bool override_mass, CacheData& o_cache_data)
 		{
+			return false;
 			for (uint32 i = 0; i < k_max_cache_data; ++i)
 			{
 				if (cached_shape_data[i].CompareProp(he, density, shape_type, override_mass))

@@ -22,10 +22,8 @@ namespace vx
 		void Init(BodyManager* in_body_manager, const BroadphaseInitInfo& info) override{}
 
 
-		void InsertBody(Body* body) override
-		{
-
-		}
+		void InsertBody(Body* body) override {}
+		void RemoveBody(const BodyID& id) override {}
 		void ComputeCollidingPair(PhysicsStepContext& physics_ctx, std::vector<BroadphasePair>& out_pairs) override
 		{
 			VX_PROFILE_FUNCTION();

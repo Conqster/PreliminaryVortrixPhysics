@@ -25,6 +25,7 @@ namespace vx{
 		mFlags |= EConstraintFlags::Active;
 
 		bool active = (mBodyA->IsAwake() || mBodyB->IsAwake()) && (mBodyA->IsDynamic() || mBodyB->IsDynamic());
+		active &= (mBodyA->IsIDValid() && mBodyB->IsIDValid());
 		if (!active)
 		{
 			mFlags &= ~EConstraintFlags::Active;

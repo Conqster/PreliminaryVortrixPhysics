@@ -16,6 +16,7 @@
 #include "Renderer/Texture.h"
 
 #include "Dynamics/Body/BodyManager.h"
+#include "PhysicsWorld.h"
 
 void EditorImGui::Initialise(GLFWwindow* glfw_win)
 {
@@ -142,14 +143,14 @@ void EditorImGui::DrawBodyOverlayDetails(vx::Body& body, vx::BodyDebug& body_deb
 	
 	static std::vector<BodyEulerAngle> cache_body_euler;
 
-	if (body.GetID().Value() >= cache_body_euler.size())
+	if (body.GetID().Idx() >= cache_body_euler.size())
 	{
-		cache_body_euler.resize(body.GetID().Value() + 1);
+		cache_body_euler.resize(body.GetID().Idx() + 1);
 		vx::Vec3 angle = vx::RadToDeg(body.GetOrientation().GetEulerAngles());
-		cache_body_euler[body.GetID().Value()].FromVec3(angle);
+		cache_body_euler[body.GetID().Idx()].FromVec3(angle);
 	}
 
-	auto& euler = cache_body_euler[body.GetID().Value()];
+	auto& euler = cache_body_euler[body.GetID().Idx()];
 	if constexpr (Type == EMotionType::Dynamic)
 	{
 		if (body.IsAwake())
@@ -268,7 +269,7 @@ void EditorImGui::DrawBodyOverlayDetails(vx::Body& body, vx::BodyDebug& body_deb
 	}
 }
 
-void EditorImGui::DrawBodiesOverlayItems(vx::BodyManager& body_manager)
+void EditorImGui::DrawBodiesOverlayItems(vx::BodyManager& body_manager, vx::PhysicsWorld* physics_world)
 {
 	std::vector<vx::Body>& bodies = body_manager.GetBodies();
 
@@ -403,10 +404,17 @@ void EditorImGui::DrawBodiesOverlayItems(vx::BodyManager& body_manager)
 	for (size_t i = 0; i < count; ++i)
 	{
 		auto& p = bodies[i];
+
+		vx::BodyID id = p.GetID();
+		if (!id.IsValid())
+			continue;
+
 		ImGui::PushID(&p);
-		ImGui::SeparatorText(body_manager.GetBodyDebugName(p.GetID()));
+		ImGui::SeparatorText(body_manager.GetBodyDebugName(id));
 		//draw_body_prop(p);
 		(this->*draw_body_table[static_cast<int>(p.GetMotionType())])(p, body_manager.GetBodyDebugInfo(p));
+		if (ImGui::Button("Delete"))
+			physics_world->RemoveBody(id);
 		ImGui::PopID();
 	}
 }

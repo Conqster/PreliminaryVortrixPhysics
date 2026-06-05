@@ -81,6 +81,24 @@ namespace vx
 
 			//quick check 
 			int leafNodeIdx = -1;								//56 + 4 = 60 bytes 
+
+			bool IsInvalid() const { return id == kInvalidNode; }
+
+			///use to remove node without having to clear Nodebuffer
+			void Invalidate()
+			{
+				//id = kInvalidNode;
+				//body = nullptr;
+				//leafNodeIdx = -1;
+				//children[0] = kInvalidNode;
+				//children[1] = kInvalidNode;
+				//parent = kInvalidNode;
+				//depth = 
+				//bounds.Reset();
+				*this = Node();
+				id = kInvalidNode;
+			}
+
 			//node becomes dirty when leaf moves
 			//bool dirty = false;
 			//bool pad[3];
@@ -118,25 +136,24 @@ namespace vx
 			return &mNodes[id];
 		}
 
+		inline Node& GetNode2(const NodeID& id)
+		{
+			VX_ASSERT_WARN((id < mNodes.size() && id != kInvalidNode), "Invalid id & out of bounds");
+			return mNodes[id];
+		}
+
 
 		//void Insert(Body* body, const BoundType& bounds){AddBody(body, bounds);}
 
 
 		void AddBody(Body* body, const BoundType& bounds);
+		void RemoveBody(const BodyID& id);
+		void DeleteNode(Node& node);
+		void DeleteAndUpdateParent(const NodeID id);
 		
 		/// new to change this to allocate 
 		NodeID EmplaceNode(NodeID parent, const BoundType& bounds, Body* body);
 
-
-
-		/// <summary>
-		/// Not necessary for move 
-		/// let gets this basic working
-		/// </summary>
-		void Remove()
-		{
-
-		}
 		const Nodebuffer& GetNodes() const { return mNodes; }
 
 
@@ -324,7 +341,7 @@ namespace vx
 		bool RemoveTrackingNode(NodeID node_id) //pass NodeID small memory ref
 		{
 			VX_ASSERT_WARN_RETURN(node_id != kInvalidNode, false, "Invalid node");
-			Node& node = mNodes[node_id];
+			const Node& node = mNodes[node_id];
 			if (node.leafNodeIdx <= -1) return false;
 
 			//move node to the end 
@@ -336,8 +353,10 @@ namespace vx
 			//swap
 			mLeafNodeIDs[idx] = last_leaf;
 			mNodes[last_leaf].leafNodeIdx = idx;
-
 			mLeafNodeCount--;
+			//reset node
+			mNodes[node_id].leafNodeIdx = -1;
+
 
 			return true;
 		}

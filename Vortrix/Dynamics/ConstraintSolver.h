@@ -72,7 +72,7 @@ namespace vx {
 		/// that can be shared with other constraints 
 		SolverBodyIndex GetOrCreateSolverBody(BodyID physics_body_id, const PhysicsStepContext& ctx)
 		{
-			SolverBodyIndex& solver_idx = mBodyToSolverBody[physics_body_id.Value()];
+			SolverBodyIndex& solver_idx = mBodyToSolverBody[physics_body_id.Idx()];
 
 			//if (solver_idx.Value() >= 0)
 			if (solver_idx.IsValid())
@@ -108,7 +108,7 @@ namespace vx {
 
 		SolverBodyIndex GetOrCreateSolverBody(const Body& body)
 		{
-			SolverBodyIndex& solver_idx = mBodyToSolverBody[body.GetID().Value()];
+			SolverBodyIndex& solver_idx = mBodyToSolverBody[body.GetID().Idx()];
 
 			//if (solver_idx.Value() >= 0)
 			if (solver_idx.IsValid())

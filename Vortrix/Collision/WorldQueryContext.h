@@ -85,7 +85,7 @@ namespace vx {
 				//world space normal 
 				hit_result.body = body.GetID();
 
-				VX_ASSERT_WARN(hit_result.body != BodyID::kInvalidID, "Invalid Bodiy");
+				VX_ASSERT_WARN(hit_result.body.IsValid(), "Invalid Bodiy");
 				hit_result.normal = q.Rotate(hit_result.normal);
 				queryProcessor.AddHit(hit_result);
 

@@ -129,17 +129,23 @@ void PersistentContactScenario::PostPhysicsStep(float dt)
 
 void PersistentContactScenario::OnClose()
 {
-	if(mPhysicsWorld && mPhysicsWorld->mBallJoint2)
+	if(mPhysicsWorld)
 	{
-		delete mPhysicsWorld->mBallJoint2;
-		mPhysicsWorld->mBallJoint2 = nullptr;
+		if(mPhysicsWorld->mBallJoint2)
+		{
+			delete mPhysicsWorld->mBallJoint2;
+			mPhysicsWorld->mBallJoint2 = nullptr;
+		}
 	}
 }
 
 PersistentContactScenario::~PersistentContactScenario()
 {
 	Scenario::OnClose();
-	OnClose();
+	
+	//dontr use desconstructor here
+	// as Os would reclaim mem anyway for now 
+	//OnClose();
 }
 
 void PersistentContactScenario::OnUI()
