@@ -96,7 +96,7 @@ namespace vx
 		success &= body.GetID().Idx() < mBodiesDebugInfo.size();
 		VX_ASSERT_WARN(success, "Invalid Body creation or Miss-matching id for body & body debug");
 		StackString<40> _s(body_setting.debug_name);
-		_s << " - body_ " << body.GetID().ID() << ", idx_" << body.GetID().Idx();
+		_s << " - body_" << body.GetID().ID() << ", idx_" << body.GetID().Idx();
 		mBodiesDebugInfo[body.GetID().Idx()].name = _s;
 		return id;
 	}

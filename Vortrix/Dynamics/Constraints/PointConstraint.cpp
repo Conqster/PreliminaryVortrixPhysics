@@ -5,12 +5,10 @@
 namespace vx {
 
 
-	PointConstraint::PointConstraint(Body* bodyA, Body* bodyB, const PointConstraintSettings& settings)
+	PointConstraint::PointConstraint(Body* bodyA, Body* bodyB, const PointConstraintSettings& settings) : 
+		Constraint(bodyA, bodyB)
 	{
 		VX_ASSERT(bodyA && bodyB, "invalid constraint body pairs");
-
-		mBodyA = bodyA;
-		mBodyB = bodyB;
 
 		if (settings.anchorPointFrame == EConstraintFrame::World)
 		{

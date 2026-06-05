@@ -135,6 +135,8 @@ void Scenario::MouseCastRay()
 
 			if(mHasMouseConstraint)
 			{
+				mMouseDragBody = mPhysicsWorld->CreateBody(mMouseDragBodySettings);
+
 				mMouseDragConstraintSettings.localAnchorA = body.GetOrientation().InverseRotate(point - body.GetPosition());
 				mMouseDragConstraint = new vx::DistanceConstraint(&body, mMouseDragBody, mMouseDragConstraintSettings);
 				mPhysicsWorld->AddConstraint(mMouseDragConstraint);
@@ -160,21 +162,21 @@ void Scenario::Init(vx::PhysicsWorld* i_world)
 	mPhysicsWorld = i_world;
 	VX_ASSERT(i_world, "Physics World is null"); 
 
-	mMouseDragConstraintSettings.minDist = 1.25f;
-	mMouseDragConstraintSettings.maxDist = 2.5f;
-	mMouseDragConstraintSettings.frequency = vx::DegToRad(120.0f);
-	mMouseDragConstraintSettings.dampingRatio = 0.0f;
+	mMouseDragConstraintSettings.minDist = 0.0625f;
+	mMouseDragConstraintSettings.maxDist = 0.0625f;
+	mMouseDragConstraintSettings.frequency = vx::DegToRad(90.0f);
+	mMouseDragConstraintSettings.dampingRatio = 1.0f;
 	mMouseDragConstraintSettings.localAnchorB = {};
 
-	mMouseDragBody = new vx::Body(Vec3(0.0f));
-	mMouseDragBody->SetShape(new vx::SphereShape(0.125f));
+	mMouseDragBodySettings = vx::BodySettings::DefaultStaticConstruct();
+	mMouseDragBodySettings.shape = new vx::SphereShape(0.0625f);
+	mMouseDragBodySettings.inBroadphase = false;
+
 	mHasMouseConstraint = true;
 }
 
 void Scenario::OnClose()
 {
-	if (mMouseDragBody)
-		delete mMouseDragBody->GetShape();
 	if (mPhysicsWorld && mMouseDragConstraint)
 	{
 		mPhysicsWorld->RemoveConstraint(mMouseDragConstraint);
@@ -189,7 +191,7 @@ void Scenario::PostPhysicsStep(float dt)
 	MouseClickCheck();
 	if (mAllowBaseMouseCast)MouseCastRay();
 
-	if(mHasMouseConstraint)
+	if(mHasMouseConstraint && mMouseDragBody != nullptr)
 	{
 		if (mBody.IsValid() && mMouseDragConstraint && mMouseEvent == EClickEvent::Held)
 		{
@@ -242,6 +244,9 @@ void Scenario::PostPhysicsStep(float dt)
 			mPhysicsWorld->RemoveConstraint(mMouseDragConstraint);
 			delete mMouseDragConstraint;
 			mMouseDragConstraint = nullptr;
+
+			mPhysicsWorld->RemoveBody(mMouseDragBody->GetID());
+			mMouseDragBody = nullptr;
 		}
 		else
 		{
@@ -252,6 +257,9 @@ void Scenario::PostPhysicsStep(float dt)
 				delete mMouseDragConstraint;
 				mMouseDragConstraint = nullptr;
 			}
+
+			mPhysicsWorld->RemoveBody(mMouseDragBody->GetID());
+			mMouseDragBody = nullptr;
 		}
 	}
 	else

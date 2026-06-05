@@ -8,7 +8,8 @@
 namespace vx{
 
 	DistanceConstraint::DistanceConstraint(Body* bodyA, Body* bodyB, const DistanceConstraintSettings& settings) :
-		mBodyA(bodyA), mBodyB(bodyB), mLocalAnchorA(settings.localAnchorA),
+		Constraint(bodyA, bodyB),
+		mLocalAnchorA(settings.localAnchorA),
 		mLocalAnchorB(settings.localAnchorB), mMinDistance(settings.minDist),
 		mMaxDistance(settings.maxDist),
 		mSpring({ settings.frequency, settings.dampingRatio })

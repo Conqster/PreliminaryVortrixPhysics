@@ -259,15 +259,12 @@ namespace vx
 		}
 	}
 
-	void PhysicsWorld::CreateBody(const BodySettings& body_setting)
+	Body* PhysicsWorld::CreateBody(const BodySettings& body_setting)
 	{
 		const BodyID body_id = mBodyManager.AddBody(body_setting);
-
-		if(body_id.IsValid())
-		{
-			//mBroadphase->InsertBody(&mBodyManager.GetBodies().back());
+		if(body_id.IsValid() && body_setting.inBroadphase)
 			mBroadphase->InsertBody(&mBodyManager.GetBody(body_id));
-		}
+		return (body_id.IsValid()) ? &mBodyManager.GetBody(body_id) : nullptr;
 	}
 
 	void PhysicsWorld::RemoveBody(const BodyID& id)

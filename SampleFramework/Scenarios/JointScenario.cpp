@@ -186,8 +186,8 @@ void JointScenario::PostPhysicsStep(float dt)
 //Constraint window
 void JointScenario::ConstaintPanel(vx::DistanceConstraint& constraint)
 {
-	const Body& bA = constraint.GetBodyA();
-	const Body& bB = constraint.GetBodyB();
+	const Body& bA = *constraint.BodyA();
+	const Body& bB = *constraint.BodyB();
 
 	const auto& body_manager = mPhysicsWorld->GetBodyManager();
 	ImGui::Text("Body A: [%s], id: %d \nBody B: [%s], id: %d", 

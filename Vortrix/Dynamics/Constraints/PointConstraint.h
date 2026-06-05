@@ -41,8 +41,9 @@ namespace vx {
 	class PointConstraint : public Constraint
 	{
 	public:
-
-		PointConstraint()
+		EConstraintType Type() const override { return EConstraintType::Point; }
+		const char* TypeName() const override { return "Point Constraint"; }
+		PointConstraint() : Constraint(nullptr, nullptr)
 		{
 			mFlags = EConstraintFlags::SolveVelocity;// | ~EConstraintFlags::SolvePosition;
 		}
@@ -57,9 +58,6 @@ namespace vx {
 
 		Vec3 GetLocalAnchorA() const { return mLocalAnchorA; }
 		Vec3 GetLocalAnchorB() const { return mLocalAnchorB; }
-
-		Body GetBodyA() const { return *mBodyA; }
-		Body GetBodyB() const { return *mBodyB; }
 
 		Vec3 GetAccumulatedLambda() const { return mAccumulatedLambda; }
 
@@ -96,9 +94,6 @@ namespace vx {
 		{
 			return Contains(EConstraintFlags::SolvePosition, mFlags);
 		}
-
-		Body* mBodyA = nullptr;
-		Body* mBodyB = nullptr;
 
 		/// lets say this are points in body local frame
 		Vec3 mLocalAnchorA = Vec3(0.0f);

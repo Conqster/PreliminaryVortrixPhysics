@@ -18,6 +18,9 @@
 #include "Dynamics/Body/BodyManager.h"
 #include "PhysicsWorld.h"
 
+#include "Dynamics/Constraints/DistanceConstraint.h"
+#include "Dynamics/Constraints/PointConstraint.h"
+
 void EditorImGui::Initialise(GLFWwindow* glfw_win)
 {
 	IMGUI_CHECKVERSION();
@@ -415,6 +418,89 @@ void EditorImGui::DrawBodiesOverlayItems(vx::BodyManager& body_manager, vx::Phys
 		(this->*draw_body_table[static_cast<int>(p.GetMotionType())])(p, body_manager.GetBodyDebugInfo(p));
 		if (ImGui::Button("Delete"))
 			physics_world->RemoveBody(id);
+		ImGui::PopID();
+	}
+}
+
+void EditorImGui::DrawDistanceConstraintOverlayUniqueProps(vx::DistanceConstraint& constraint)
+{
+	Vec3 _p = constraint.GetLocalAnchorA();
+	if (ImGui::DragFloat3("Local Anchor A", &_p[0], 0.01f))
+		constraint.SetLocalAnchorA(_p);
+	_p = constraint.GetLocalAnchorB();
+	ImGui::DragFloat3("Local Anchor B", &_p[0], 0.01f);
+	constraint.SetLocalAnchorB(_p);
+
+	float min_dist = constraint.GetMinDistance();
+	float max_dist = constraint.GetMaxDistance();
+	bool updated_dist = ImGui::DragFloat("Min Distance", &min_dist, 0.1f);
+	updated_dist |= ImGui::DragFloat("Max Distance", &max_dist, 0.1f);
+	if (updated_dist)
+		constraint.SetDistance(min_dist, max_dist);
+
+	ImGui::Text("Accumulated Lambda: %f", constraint.GetAccumulatedLambda());
+
+	if(ImGui::TreeNode("Spring Setting"))
+	{
+		float v = constraint.GetSpringFrequency();
+		if (ImGui::SliderAngle("mFrequency [Hz:Rad/sec]", &v, 0.0f))
+			constraint.SetSpringFrequency(v);
+
+		v = constraint.GetSpringDampingRatio();
+		if (ImGui::DragFloat("Damping Ratio", &v, 0.01f))
+			constraint.SetSpringDampingRatio(v);
+
+		ImGui::TreePop();
+	}
+}
+
+void EditorImGui::DrawPointConstraintOverlayUniqueProps(vx::PointConstraint& constraint)
+{
+	Vec3 _p = constraint.GetLocalAnchorA();
+	if (ImGui::DragFloat3("Local Anchor A", &_p[0], 0.01f))
+		constraint.SetLocalAnchorA(_p);
+	_p = constraint.GetLocalAnchorB();
+	ImGui::DragFloat3("Local Anchor B", &_p[0], 0.01f);
+	constraint.SetLocalAnchorB(_p);
+
+	ImGui::Checkbox("Has Velocity Bias", &constraint.mHasVelocityBias);
+	ImGui::DragFloat("Error treshold", &constraint.mErrorTreshold);
+
+	ImGui::Text("Accumulated Lambda: %s", constraint.GetAccumulatedLambda().ToString().c_str());
+}
+
+void EditorImGui::DrawConstraintsOverlayItems(vx::BodyManager& body_manager, std::vector<vx::Constraint*>& constraints)
+{
+	vx::uint32 count = 0;
+	for(int i = 0; i < constraints.size(); ++i)
+	{
+		vx::Constraint* c = constraints[i];
+		ImGui::PushID(c);
+		vx::StackString<32> text;
+		text << ++count << " Type: " << c->TypeName();
+		ImGui::SeparatorText(text.Data());
+		ImGui::Text("Idx: %d", c->ConstraintIdx());
+		//two body constraint 
+		Body* bA = c->BodyA();
+		Body* bB = c->BodyB();
+
+		if(bA && bB)
+		{
+			ImGui::Text("Body A: [%s].\nBody B: [%s].",
+				body_manager.GetBodyDebugName(*bA),
+				body_manager.GetBodyDebugName(*bB));
+		}
+
+
+		switch (c->Type())
+		{
+		case vx::EConstraintType::Distance:
+			DrawDistanceConstraintOverlayUniqueProps(*(vx::DistanceConstraint*)(c));
+			break;
+		case vx::EConstraintType::Point:
+			DrawPointConstraintOverlayUniqueProps(*(vx::PointConstraint*)(c));
+			break;
+		}
 		ImGui::PopID();
 	}
 }

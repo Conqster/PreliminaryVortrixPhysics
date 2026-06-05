@@ -5,8 +5,16 @@
 class DebugGizmosRenderer;
 namespace vx {
 
+	enum class EConstraintType : uint8
+	{
+		Distance,
+		Point,
+	};
+
+
 	class ConstraintSolver;
 	class ConstraintCoordinator;
+	class Body;
 	struct PhysicsStepContext;
 	struct Linear1DRow;
 
@@ -15,6 +23,14 @@ namespace vx {
 	class Constraint
 	{
 	public:
+
+		Constraint(Body* bodyA, Body* bodyB) : mBodyA(bodyA), mBodyB(bodyB) {}
+		virtual EConstraintType Type() const = 0;
+		virtual const char* TypeName() const = 0;
+
+		///assume all constraint are two bodies for now, until required not to be
+		Body* BodyA() const { return mBodyA; }
+		Body* BodyB() const { return mBodyB; }
 		//virtual bool PrepSolver(SolverBuilder*) = 0;
 		virtual bool PrepSolver(ConstraintSolver*, const PhysicsStepContext&) = 0;
 		/// essentailly used for commiting back accumulated lambda
@@ -48,6 +64,9 @@ namespace vx {
 		Idx mConstraintIdx = kInvalidIdx;
 
 		virtual bool RequiresPositionCorrection() = 0;
+
+		Body* mBodyA = nullptr;
+		Body* mBodyB = nullptr;
 	};
 
 } //namespace vx

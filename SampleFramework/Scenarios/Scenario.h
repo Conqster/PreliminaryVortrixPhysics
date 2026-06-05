@@ -76,8 +76,9 @@ protected:
 	vx::BodyID mBody{};
 	vx::Vec3 mPointBodyFrame;
 
-	vx::Body* mMouseDragBody = nullptr;
+	vx::BodySettings mMouseDragBodySettings;
 	vx::DistanceConstraintSettings mMouseDragConstraintSettings;
+	vx::Body* mMouseDragBody = nullptr;
 	vx::DistanceConstraint* mMouseDragConstraint = nullptr;
 	bool mHasMouseConstraint = false;
 

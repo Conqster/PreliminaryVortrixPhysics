@@ -26,8 +26,12 @@ namespace vx {
 	class DistanceConstraint : public Constraint
 	{
 	public:
+		EConstraintType Type() const override { return EConstraintType::Distance; }
+		const char* TypeName() const override { return "Distance Constraint"; }
 
-		DistanceConstraint() 
+		DistanceConstraint() : Constraint(nullptr, nullptr), 
+			mLocalAnchorA(Vec3(0.0f)), mLocalAnchorB(Vec3(0.0f)),
+			mMinDistance(0.0f), mMaxDistance(0.0f)
 		{
 			mFlags = EConstraintFlags::SolveVelocity;// | ~EConstraintFlags::SolvePosition;
 		}
@@ -39,9 +43,6 @@ namespace vx {
 
 		Vec3 GetLocalAnchorA() const { return mLocalAnchorA; }
 		Vec3 GetLocalAnchorB() const { return mLocalAnchorB; }
-
-		Body GetBodyA() const { return *mBodyA; }
-		Body GetBodyB() const { return *mBodyB; }
 
 		float GetAccumulatedLambda() const { return mAccumulatedLambda; }
 
@@ -97,9 +98,6 @@ namespace vx {
 		void QuickSolve(float dt);
 
 	private:
-		Body* mBodyA = nullptr;
-		Body* mBodyB = nullptr;
-
 		/// lets say this are points in body local frame
 		Vec3 mLocalAnchorA = Vec3(0.0f);
 		Vec3 mLocalAnchorB = Vec3(0.0f);
@@ -109,7 +107,7 @@ namespace vx {
 		float mMaxDistance;
 
 
-		SpringSettings mSpring;
+		SpringSettings mSpring{};
 
 		//presisent state (warm starting)
 		float mAccumulatedLambda = 0.0f;
@@ -129,6 +127,5 @@ namespace vx {
 		Vec3 ComputeConstraintPropertiesDisplacement(Vec3& o_rA, Vec3& o_rB);
 		Linear1DRow BuildDistanceJacobian(float dt);
 		Rigid1DConstraint BuildRigidConstraint();
-
 	};
 } //namespace vx

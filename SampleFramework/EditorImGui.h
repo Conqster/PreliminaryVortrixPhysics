@@ -22,6 +22,10 @@ namespace vx{
 	class Body;
 	class BodyDebug;
 	enum class EMotionType : uint8;
+
+	class Constraint;
+	class DistanceConstraint;
+	class PointConstraint;
 }
 
 class EditorImGui
@@ -37,6 +41,8 @@ public:
 
 	void DrawParticlesOverlayItems(std::vector<vx::Particles::Particle>& particles) const;
 	void DrawBodiesOverlayItems(vx::BodyManager& body_manager, vx::PhysicsWorld* physics_world);
+	void DrawConstraintsOverlayItems(vx::BodyManager& body_manager, std::vector<vx::Constraint*>& constraints);
+
 
 	static bool EditQuatWithDrag(vx::Quat& quat, bool& editing,
 		vx::Vec2& pad_size);
@@ -66,6 +72,10 @@ private:
 	void DrawBodyOverlayDetails(vx::Body& body, vx::BodyDebug& body_debug_info);
 	static void DrawBodyFlags(vx::EBodySimphaseFlags flags);
 	static bool DrawAllowedDofFlags(vx::EDynamicsDofs& flags);
+
+
+	void DrawDistanceConstraintOverlayUniqueProps(vx::DistanceConstraint& constraint);
+	void DrawPointConstraintOverlayUniqueProps(vx::PointConstraint& constraint);
 };
 
 

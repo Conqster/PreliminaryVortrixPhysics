@@ -1120,6 +1120,14 @@ void Application::OnDrawImGuiOverlays()
 					ImGui::Text("Physics World Null!!!");
 				ImGui::EndTabItem();
 			}
+			if (ImGui::BeginTabItem("Physics - Constraints"))
+			{
+				if (mPhysicsWorld)
+					mUI.DrawConstraintsOverlayItems(mPhysicsWorld->GetBodyManager(), mPhysicsWorld->GetConstraints());
+				else
+					ImGui::Text("Physics World Null!!!");
+				ImGui::EndTabItem();
+			}
 			if (ImGui::BeginTabItem("Physics - Particles"))
 			{
 				if(mParticleWorld)

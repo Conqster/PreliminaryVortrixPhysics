@@ -75,6 +75,9 @@ namespace vx
 		float maxLinearVelocity = 0.0f;
 		float maxAngularVelocity = 0.0f;
 
+		/// if in broadphase body participates in collision
+		bool inBroadphase = true;
+
 		EDynamicsDofs degreeFreedom = EDynamicsDofs::All;
 	};
 
