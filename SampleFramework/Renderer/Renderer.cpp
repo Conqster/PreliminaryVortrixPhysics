@@ -27,10 +27,9 @@ void Renderer::Initialise(ApplicationWindow* display_window)
 	mWindow = display_window;
 
 	
-	bool success = mMeshShader.Create("experiment", "assets/shaders/test.vert", "assets/shaders/test.frag");
-	success &= mShadowShader.Create("shadow_depth", "assets/shaders/shadowDepth.vert", "assets/shaders/shadowDepth.frag");
-	success &= mWorldGridShader.Create("world_grid", "assets/shaders/worldGrid/worldGrid.vert", "assets/shaders/worldGrid/worldGrid.frag", "assets/shaders/worldGrid/worldGrid.geo");
-	success &= mTex2ScreenShader.Create("texture_screen", "assets/shaders/TextureToScreen.vert", "assets/shaders/TextureToScreen.frag");
+	bool success = mShadowShader.Create("shadow_depth", "assets/shaders/shadowDepth.vert", "assets/shaders/shadowDepth.frag");
+	//success &= mWorldGridShader.Create("world_grid", "assets/shaders/worldGrid/worldGrid.vert", "assets/shaders/worldGrid/worldGrid.frag", "assets/shaders/worldGrid/worldGrid.geo");
+	//success &= mTex2ScreenShader.Create("texture_screen", "assets/shaders/TextureToScreen.vert", "assets/shaders/TextureToScreen.frag");
 
 	VX_ASSERT_WARN(success, "Failed create a shaders!!!");
 	VX_LOG_DEBUG("Successfully create a shaders!!!");
@@ -62,14 +61,14 @@ void Renderer::Initialise(ApplicationWindow* display_window)
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LEQUAL);
 
-	mCubePrimitive = Loader::LoadMesh("assets/meshes/cube.rmesh");
+	//mCubePrimitive = Loader::LoadMesh("assets/meshes/cube.rmesh");
 	mQuadPrimitive = Loader::LoadMesh("assets/meshes/quad.rmesh");
-	mQuadXZPrimitive = Loader::LoadMesh("assets/meshes/quadXZ.rmesh");
-	mSpherePrimitive = Util::CreateSphere(); 
-	mCapsulePrimitive = Util::CreateCapsule(1.0f, 0.5f, 3);
+	//mQuadXZPrimitive = Loader::LoadMesh("assets/meshes/quadXZ.rmesh");
+	//mSpherePrimitive = Util::CreateSphere(); 
+	//mCapsulePrimitive = Util::CreateCapsule(1.0f, 0.5f, 3);
 	//mSpherePrimitive = Util::CreateOctaSphere();
 	//mSpherePrimitive = Util::CreateCapsule(1.0f, 0.5f, 3);
-	mTrianglePrimitive = Loader::LoadMesh("assets/meshes/triangle.rmesh");
+	//mTrianglePrimitive = Loader::LoadMesh("assets/meshes/triangle.rmesh");
 
 	mShadowMapRT.Create(4096, 4096);
 
@@ -98,10 +97,10 @@ void Renderer::Initialise(ApplicationWindow* display_window)
 	SetCallbacks();
 
 
-
+	mFont = vx::MakeRef<Font>();
 	mFontShader = vx::MakeRef<Shader>();
 	mFontShader->Create("Font shader", "assets/shaders/FontShader.vert", "assets/shaders/FontShader.frag");
-	mFont.Create("assets/fonts/Inter_18pt-Regular.ttf", mFontShader);
+	mFont->Create("assets/fonts/Inter_18pt-Regular.ttf", mFontShader);
 
 	GenerateBoxGeometry();
 	//GenerateSphereGeometry();
@@ -116,7 +115,7 @@ void Renderer::Initialise(ApplicationWindow* display_window)
 
 void Renderer::DrawText3D(const std::string_view& text, const vx::Vec3& pos, float scale, const vx::Colour& col, ETextAlignment align)
 {
-	mFont.DrawText3D(text, pos, mCamera->GetRight(), mCamera->GetUp(), scale, col, align);
+	mFont->DrawText3D(text, pos, mCamera->GetRight(), mCamera->GetUp(), scale, col, align);
 }
 
 
@@ -124,7 +123,7 @@ void Renderer::DrawText3D_DynScale(const std::string_view& text, const vx::Vec3&
 {
 	float dist = vx::VxAbs((mCamera->GetPosition() - pos).Length());
 	scale *= dist;
-	mFont.DrawText3D(text, pos, mCamera->GetRight(), mCamera->GetUp(), scale, col, align);
+	mFont->DrawText3D(text, pos, mCamera->GetRight(), mCamera->GetUp(), scale, col, align);
 }
 
 void Renderer::BeginFrame(Camera* p_camera, vx::Colour clear_colour)
@@ -163,62 +162,10 @@ void Renderer::BeginFrame(Camera* p_camera, vx::Colour clear_colour)
 	mFontShader->SetUniformMat4("uView", mCamera->ViewMat());
 
 
-	
-	mMeshShader.Bind();
-	//trs
-	//test_transform = glm::translate(test_transform, delta_pos * 0.1f);
-	mMeshShader.SetUniformMat4("uProj", mCamera->ProjMat(mWindow->GetAspectRatio()));
-	mMeshShader.SetUniformMat4("uView", mCamera->ViewMat());
-
-
-
-	//mTex2ScreenShader.Bind();
-	//mTex2ScreenShader.SetUniformMat4("uView", mCamera->ViewMat());
-
-
-
 	mGPUShadowData.zfar = mCamera->GetProperties().zFar;
 	mGPUShadowData.viewProj = mShadowData.ComputeProjectionViewMat(light_dir);
 
 	mDirLightShadowUBO.Upload(&mGPUShadowData);
-
-
-	mMeshShader.SetUniformVec3("uCameraPos", mCamera->GetPosition());
-
-	mMeshShader.SetUniformMat4("uLightSpaceMat", mGPUShadowData.viewProj);
-
-
-	mMeshShader.SetUniformVec3("ulight.direction", light_dir);
-	mMeshShader.SetUniformVec3("ulight.colour", mDirLight.colour);
-	mMeshShader.SetUniform1f("ulight.intensity", mDirLight.intensity);
-	mMeshShader.SetUniform1f("uShadowFar", mShadowData.instantousFar);
-	mMeshShader.SetUniform1f("uShadowFar", mCamera->GetProperties().zFar);
-
-
-	bool test_new_geometry_draw = false;
-	if(test_new_geometry_draw)
-	{
-		int use_idx = (mFrameRenderableEntities.size() > 5) ? 5 : 1;
-		RenderableEntity entt = mFrameRenderableEntities[use_idx];
-		vx::Mat44 transform = entt.transform;
-		transform.SetTranslation(vx::Vec3(5.0f, -01.25f, 1.0f));
-		DrawGeometry(transform, vx::Colour::sCyan, mBoxGeometry, mCheckersTexSamplerBindless);
-		transform.SetTranslation(vx::Vec3(-1.0f, 0.5f, -1.0f));
-		vx::Vec3 scale;
-		transform = mFrameRenderableEntities[use_idx].transform.Decompose(scale);
-		transform.TranslateGlobal(vx::Vec3(0.0f, 1.5f, 0.0f));
-		DrawGeometry(transform, vx::Colour::sYellow, mBoxGeometry, mCheckersTexSamplerBindless);
-		transform = mFrameRenderableEntities[use_idx].transform.Decompose(scale);
-		//transform.SetTranslation(vx::Vec3(1.0f, 1.5f, -1.0f));
-		//transform = transform.Multiply(vx::Vec4(1.0f, 1.5f, -1.0f, 1.0f));
-		transform.TranslateLocal(vx::Vec3(0.0f, 1.5f, 0.0f));
-		DrawGeometry(transform, vx::Colour(0.5f), mBoxGeometry, mCheckersTexSamplerBindless);
-
-		transform.TranslateLocal(vx::Vec3(1.0f, 0.0f, 0.0f));
-		DrawGeometry(transform, vx::Colour(0.0f, 0.0f, 1.0f), mSphereGeometry, mCheckersTexSamplerBindless);
-		transform.TranslateLocal(vx::Vec3(0.0f, 0.0f, 1.0f));
-		DrawGeometry(transform, vx::Colour::sWhite, mSphereGeometry, mCheckersTexSamplerBindless);
-	}
 
 }
 
@@ -226,24 +173,17 @@ void Renderer::EndFrame()
 {
 	//mDisplay.FlushAndSwapBuffer();
 	mCamera = nullptr;
-	mFrameEntitiesCount = 0;
+	//mFrameEntitiesCount = 0;
 	//memset(&mFrameRenderableEntities, {}, sizeof(mFrameRenderableEntities));
 
 	ClearGeometriesInstances();
 }
 
-void Renderer::SortObjectByDepth()
-{
-	/// get all objects 
-	/// check camera cache prop diff
-	/// sort by z depth 
-}
+
 
 void Renderer::Destroy()
 {
 	Camera* mCamera = nullptr;
-
-	mMeshShader.Clear();
 
 	mBrickTexture->Destroy();
 //	delete mBrickTexture;
@@ -290,7 +230,7 @@ void Renderer::DrawPass()
 {
 	VX_VARIABLE_PROFILE_FUNCTION();
 	//Draw avaliable mesh geometry
-	DrawObjects(mMeshShader);
+	//DrawObjects(mMeshShader);
 
 
 
@@ -306,7 +246,7 @@ void Renderer::DrawPass()
 	//glViewport(0, 0, mWindow->GetWidth(), mWindow->GetHeight());
 	DisableDepth();
 	DepthWriteMask(false);
-	mFont.DrawFrame();
+	mFont->DrawFrame();
 	DepthWriteMask(true);
 	EnableDepth();
 
@@ -336,8 +276,8 @@ void Renderer::DrawPass()
 
 	//glDisable(GL_DEPTH_TEST);
 
-	mTex2ScreenShader.Bind();
-	mTex2ScreenShader.SetUniform1i("uTexture", 0);
+	//mTex2ScreenShader.Bind();
+	//mTex2ScreenShader.SetUniform1i("uTexture", 0);
 	mTestRt.BindAttachment(0, 0);
 	//mQuadPrimitive.DrawOutline();
 	//mQuadPrimitive.Draw();
@@ -452,8 +392,8 @@ void Renderer::SetCallbacks()
 void Renderer::DrawObjects(Shader& shader, bool only_depth)
 {
 	shader.Bind();
-	if (mFrameEntitiesCount <= 0)
-		return;
+	//if (mFrameEntitiesCount <= 0)
+	//	return;
 
 	if (!only_depth)
 	{
@@ -487,36 +427,36 @@ void Renderer::DrawObjects(Shader& shader, bool only_depth)
 	//	shader.SetUniformVec4("uColour", entt.colour);
 	//DrawGeometry(entt.transform, vx::Colour::sBlack, mBoxGeometry);
 
-	for (unsigned int i = 0; i < mFrameEntitiesCount; i++)
-	{
-		if (only_depth && !mFrameRenderableEntities[i].canCastShadow)
-			continue;
+	//for (unsigned int i = 0; i < mFrameEntitiesCount; i++)
+	//{
+	//	if (only_depth && !mFrameRenderableEntities[i].canCastShadow)
+	//		continue;
 
-		RenderableEntity entt = mFrameRenderableEntities[i];
-		shader.SetUniformMat4("uModel", entt.transform);
+	//	RenderableEntity entt = mFrameRenderableEntities[i];
+	//	shader.SetUniformMat4("uModel", entt.transform);
 
-		bool used_plain_texture = false;
-		if (!only_depth)
-		{
-			if (entt.plainTexture && mPlainTexture)
-			{
-				mPlainTexture->Bind();
-				used_plain_texture = true;
-			}
+	//	bool used_plain_texture = false;
+	//	if (!only_depth)
+	//	{
+	//		if (entt.plainTexture && mPlainTexture)
+	//		{
+	//			mPlainTexture->Bind();
+	//			used_plain_texture = true;
+	//		}
 
-			shader.SetUniformVec4("uColour", entt.colour);
-		}
-		
+	//		shader.SetUniformVec4("uColour", entt.colour);
+	//	}
+	//	
 
-		if (entt.solidRender)
-			entt.renderableMesh->Draw();
-		else
-			entt.renderableMesh->DrawOutline();
+	//	if (entt.solidRender)
+	//		entt.renderableMesh->Draw();
+	//	else
+	//		entt.renderableMesh->DrawOutline();
 
-		//reset texture
-		if (used_plain_texture && mCheckersTexture)
-			mCheckersTexture->Bind();
-	}
+	//	//reset texture
+	//	if (used_plain_texture && mCheckersTexture)
+	//		mCheckersTexture->Bind();
+	//}
 
 	if(!only_depth)
 		glDisable(GL_BLEND);
@@ -525,13 +465,13 @@ void Renderer::DrawObjects(Shader& shader, bool only_depth)
 
 }
 
-void Renderer::AddFrameRenderableEntity(const RenderableEntity entity)
-{
-	if (mFrameEntitiesCount < mMaxFrameEntity)
-	{
-		mFrameRenderableEntities[mFrameEntitiesCount++] = entity;
-	}
-}
+//void Renderer::AddFrameRenderableEntity(const RenderableEntity entity)
+//{
+//	if (mFrameEntitiesCount < mMaxFrameEntity)
+//	{
+//		mFrameRenderableEntities[mFrameEntitiesCount++] = entity;
+//	}
+//}
 
 void Renderer::RenderGeometriesInstances(bool only_depth)
 {

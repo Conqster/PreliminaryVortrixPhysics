@@ -92,48 +92,9 @@ namespace vx
 		VX_ASSERT(node.leafNodeIdx == -1, "Ensure Node is Detached from tree");
 
 		//later have a free list, since no multi threading no need for generation idx'ing
+		VX_ASSERT(node.id != kInvalidNode, "Trying to Delete an Invalid node");
+		mFreedIdxs.push_back(node.id);
 		node.Invalidate();
-
-		return;
-		//
-		//NodeID id = node.id;
-		//NodeID last_node_id = NodeID(mNodes.size() - 1);
-		////i.e Check if node is in the middle, so move the last node to this position
-		//if (id < last_node_id)
-		//{
-		//	NodeID new_id = id;
-
-		//	Node& last_node = GetNode(last_node_id);
-		//	///last node parent 
-		//	Node& last_node_parent = GetNode(last_node.parent);
-		//	//move this to a function, are we left or right child
-		//	NodeID* last_node_in_parent = nullptr;
-		//	if(last_node_parent.children[0] == last_node_id)
-		//		last_node_in_parent = &last_node_parent.children[0];
-		//	else if(last_node_parent.children[1] == last_node_id)
-		//		last_node_in_parent = &last_node_parent.children[1];
-		//	
-		//	if (last_node_in_parent)
-		//		*last_node_in_parent = new_id;
-
-		//	///if the old node is internal, then when need to update its children parent id
-		//	if (last_node.IsInternal())
-		//	{
-		//		last_node.children[0] = new_id;
-		//		last_node.children[1] = new_id;
-		//	}
-
-		//	//check tracking leaf node
-		//	//if (last_node.IsLeaf())
-
-
-		//	///now our new id
-		//	last_node.id = new_id;
-		//	std::swap(mNodes[id], mNodes[new_id]);
-		//}
-
-		////remove last node
-		//mNodes.pop_back();
 	}
 
 	template<typename BoundType>
@@ -143,8 +104,6 @@ namespace vx
 		Node& node = mNodes[id];
 		VX_ASSERT(node.IsLeaf(), "Deleting Node needs to be leaf");
 		RemoveTrackingNode(id);
-
-		VX_LOG_DEBUG("Deleting: ", id, "-", node.id, ", parent: ", node.parent);
 
 		//special case if parent is invalid, this is root
 		if (node.parent == kInvalidNode)
@@ -185,10 +144,6 @@ namespace vx
 		}
 		else if(node.parent == mRootID) //grand parent is invalid and parent was root
 			mRootID = sibling_id;
-
-		//if (sibling_node.parent == kInvalidNode && node.parent == mRootID) //was root
-
-		VX_LOG_DEBUG("Our sibling: ", sibling_id, "-", sibling_node.id, ", parent: ", sibling_node.parent);
 
 		DeleteNode(node);
 		DeleteNode(parent_node);
@@ -419,12 +374,31 @@ namespace vx
 	{
 		VX_ASSERT_WARN(mNodes.size() != mNodes.capacity(), "About to resize, which would cause pointer to miss align. Rebuild!!!!");
 
-		NodeID id = static_cast<NodeID>(mNodes.size());
+		NodeID id = kInvalidNode;
+		//check for free nodes 
+		if (!mFreedIdxs.empty())
+		{
+			id = mFreedIdxs[0];
+			std::swap(mFreedIdxs[0], mFreedIdxs.back());
+			mFreedIdxs.pop_back();
 
-		Node* node = &mNodes.emplace_back(parent, bounds, body);
+			//probe 
+			Node& n = GetNode2(id);
+			VX_ASSERT(n.IsInvalid(), "Probe node needs to be invalid, to prevent data collision");
 
-		//quick id for hashing
-		node->id = id;/*mNodes.size() - 1*/;
+			n = Node(parent, bounds, body);
+			n.id = id;
+		}
+		else
+		{
+			//allocate new
+			id = static_cast<uint32>(mNodes.size());
+			Node* node = &mNodes.emplace_back(parent, bounds, body);
+			node->id = id;
+		}
+
+
+		VX_ASSERT(id != kInvalidNode, "Unable to allocate node");
 		RefitNode(id, mLeafNodeMargin);
 
 #if defined(VX_PROFILE_BROAD)
@@ -723,6 +697,10 @@ namespace vx
 		ClearNodes();
 		for (auto& p : build_proxies)
 			AddBody(p.body, p.bounds);
+
+		/// since the tree is full build and swapped at this point
+		/// reset, FreedList
+		ResetFreedNodeIdxList();
 	}
 
 	template<typename BoundType>
@@ -1051,6 +1029,10 @@ namespace vx
 			delete[] mLeafNodeIDs;
 			mLeafNodeIDs = new_leaf_nodesID;
 			mLeafNodeCount = new_leaf_node_count;
+
+			/// since the tree is full build and swapped at this point
+			/// reset, FreedList
+			ResetFreedNodeIdxList();
 
 #if defined(VX_PROFILE_BROAD)
 			mStats.nodeCount = static_cast<int>(mNodes.size());

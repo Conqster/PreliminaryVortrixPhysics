@@ -195,7 +195,7 @@ void Scenario::PostPhysicsStep(float dt)
 	{
 		if (mBody.IsValid() && mMouseDragConstraint && mMouseEvent == EClickEvent::Held)
 		{
-
+			
 			vx::Vec3 cam_pos = mAppCamera->GetPosition();
 			vx::Vec3 cam_fwd = mAppCamera->GetForward();
 			vx::Vec2 mouse_cursor_pos = mAppWindow->MouseCursorPosition();

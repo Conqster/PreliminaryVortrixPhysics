@@ -150,6 +150,11 @@ namespace vx
 		void RemoveBody(const BodyID& id);
 		void DeleteNode(Node& node);
 		void DeleteAndUpdateParent(const NodeID id);
+
+		/// this need to be reset when a fresh tree is build
+		/// to avoid collision 
+		std::vector<uint32> mFreedIdxs;
+		VX_INLINE void ResetFreedNodeIdxList() { mFreedIdxs.clear(); }
 		
 		/// new to change this to allocate 
 		NodeID EmplaceNode(NodeID parent, const BoundType& bounds, Body* body);

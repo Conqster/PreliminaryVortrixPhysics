@@ -19,10 +19,12 @@ namespace vx{
 		
 		if(mSpring.mFrequency <= 0.0f)
 			mFlags |= EConstraintFlags::SolvePosition;
+
 	}
 	bool DistanceConstraint::PrepSolver(ConstraintSolver* solver, const PhysicsStepContext& ctx)
 	{
 		VX_PROFILE_FUNCTION();
+		
 		mFlags |= EConstraintFlags::Active;
 
 		bool active = (mBodyA->IsAwake() || mBodyB->IsAwake()) && (mBodyA->IsDynamic() || mBodyB->IsDynamic());
@@ -33,23 +35,26 @@ namespace vx{
 			return false;
 		}
 
-		Linear1DRow row = BuildDistanceJacobian(ctx.stepDeltaTime);
+		Linear1DRow* row = solver->AllocateLinear1DRow(1);
+		BuildDistanceJacobian(row, ctx.stepDeltaTime);
 
-		if (row.effMass == 0.0f)
+		if (row->effMass == 0.0f)
 		{
 			mFlags &= ~EConstraintFlags::Active;
 			return false;
 		}
 
-		row.bodyAidx = solver->GetOrCreateSolverBody(mBodyA->GetID(), ctx);
-		row.bodyBidx = solver->GetOrCreateSolverBody(mBodyB->GetID(), ctx);
+		row->bodyAidx = solver->GetOrCreateSolverBody(mBodyA->GetID(), ctx);
+		row->bodyBidx = solver->GetOrCreateSolverBody(mBodyB->GetID(), ctx);
 
 		if(RequiresPositionCorrection())
 			solver->AppendPositionCorrectionQueue(this);// Queue
 
-		row.user = this;
+		//quick hack 
+		//if warm start is disable, then no required accumulate lambda write back 
+		mAccumulatedLambda = {};
 
-		solver->AddLinearRow(row);
+		row->user = this;
 		return true;
 	}
 
@@ -72,16 +77,15 @@ namespace vx{
 		return dispW;
 	}
 
-	Linear1DRow DistanceConstraint::BuildDistanceJacobian(float dt)
+	void DistanceConstraint::BuildDistanceJacobian(Linear1DRow* o_row, float dt)
 	{
-		Linear1DRow row;
-
 		//lets take into consideration that 
 		// that the achor point is not COM
 		Vec3 rA, rB;
 		Vec3 dispW = ComputeConstraintPropertiesDisplacement(rA, rB);
+
 		Vec3 nor = dispW.Normalised();
-		nor.Store(row.axis);
+		nor.Store(o_row->axis);
 
 		bool bodyA_nonstatic = !mBodyA->IsStatic();
 		bool bodyB_nonstatic = !mBodyB->IsStatic();
@@ -93,8 +97,8 @@ namespace vx{
 			Vec3 rAXn = rA.Cross(nor);
 			Vec3 invIrAXn = mBodyA->ComputeInvInteriaWorld().Multiply3x3(rAXn);
 
-			rAXn.Store(row.rAXn);
-			invIrAXn.Store(row.invIrAXn);
+			rAXn.Store(o_row->rAXn);
+			invIrAXn.Store(o_row->invIrAXn);
 
 			inv_eff_mass += mBodyA->GetInverseMass() + invIrAXn.Dot(rAXn);
 		}
@@ -104,17 +108,17 @@ namespace vx{
 			Vec3 rBXn = rB.Cross(nor);
 			Vec3 invIrBXn = mBodyB->ComputeInvInteriaWorld().Multiply3x3(rBXn);
 
-			rBXn.Store(row.rBXn);
-			invIrBXn.Store(row.invIrBXn);
+			rBXn.Store(o_row->rBXn);
+			invIrBXn.Store(o_row->invIrBXn);
 
 			inv_eff_mass += mBodyB->GetInverseMass() + invIrBXn.Dot(rBXn);
 		}
 
 		if (!bodyA_nonstatic && !bodyB_nonstatic)
 		{
-			row.effMass = 0.0f;
-			row.lambda = 0.0f;
-			return row;
+			o_row->effMass = 0.0f;
+			o_row->lambda = 0.0f;
+			return;
 		}
 
 		float error = 0.0f;
@@ -123,36 +127,34 @@ namespace vx{
 		//bilateral propagation
 		if (mMinDistance == mMaxDistance)
 		{
-			error = curr_dist - mMaxDistance;
-			row.minLambda = -kMaxf;
-			row.maxLambda = kMaxf;
+			error = curr_dist - mMinDistance;
+			o_row->minLambda = -kMaxf;
+			o_row->maxLambda = kMaxf;
 		}
 		else if (curr_dist >= mMaxDistance)
 		{
 			///max limit breached 
 			error = curr_dist - mMaxDistance;
-			row.minLambda = -kMaxf;
-			row.maxLambda = 0.0f;
+			o_row->minLambda = -kMaxf;
+			o_row->maxLambda = 0.0f;
 		}
 		else if (curr_dist <= mMinDistance)
 		{
 			error = curr_dist - mMinDistance;
-			row.minLambda = 0.0f;
-			row.maxLambda = kMaxf;
+			o_row->minLambda = 0.0f;
+			o_row->maxLambda = kMaxf;
 		}
 		else
 		{
-			row.effMass = 0.0f;
-			row.lambda = 0.0f;
-			return row;
+			o_row->effMass = 0.0f;
+			o_row->lambda = 0.0f;
 		}
 
 
-		mSpring.ComputeProperties(dt, inv_eff_mass, error, 0.0f, row.effMass, row.bias, row.gamma);
+		mSpring.ComputeProperties(dt, inv_eff_mass, error, 0.0f, o_row->effMass, o_row->bias, o_row->gamma);
 
 		///later when figure out, caching implmentation for warm start etc
-		row.lambda = mAccumulatedLambda;
-		return row;
+		o_row->lambda = mAccumulatedLambda;
 	}
 
 
@@ -343,14 +345,14 @@ namespace vx{
 		}
 	}
 
-	void DistanceConstraint::QuickSolve(float dt)
+	void DistanceConstraint::QuickSolve(float dt, int velocity_iteration)
 	{
 		if (!mBodyA || !mBodyB)
 			return;
 
 
-		//Linear1DRow solver_row = SetupDistanceJacobian(dt);
-		Linear1DRow solver_row = BuildDistanceJacobian(dt);
+		Linear1DRow solver_row;
+		BuildDistanceJacobian(&solver_row, dt);
 
 		if (solver_row.effMass <= 0.0f)
 			return;
@@ -382,47 +384,38 @@ namespace vx{
 
 		Vec3 axis = Vec3::LoadFloat3Raw(solver_row.axis);
 
-		//jacobian 
-		float jv;
-		if (dyn_a && dyn_b) ///if constexpr (
-			jv = (lin_velA - lin_velB).Dot(axis);
-		else if (dyn_a)
-			jv = lin_velA.Dot(axis);
-		else if (dyn_b)
-			jv = (-lin_velB).Dot(axis);
-		else
+
+		for (int i = 0; i < velocity_iteration; ++i)
 		{
-			VX_LOG_ERROR("Static vs static this should not be possible");
-			jv = 0.0f;
+			float jv = axis.Dot(lin_velA - lin_velB) +
+				rAXn.Dot(ang_velA) -
+				rBXn.Dot(ang_velB);
+
+			float compliance =  solver_row.gamma * solver_row.lambda + solver_row.bias;
+			float lambda = (jv - compliance) * solver_row.effMass;
+
+			float old_lambda = solver_row.lambda;
+			//ensure non negative
+			//bilateral constraint
+			solver_row.lambda += lambda;
+			solver_row.lambda = VxClamp(old_lambda + lambda, solver_row.minLambda, solver_row.maxLambda);
+			//updated jn
+			float impluse = solver_row.lambda - old_lambda;
+
+			//store changes
+			if (dyn_a)
+			{
+				lin_velA -= impluse * inv_massA * axis;
+				ang_velA -= impluse * invIrAXn;
+			}
+			if (dyn_b)
+			{
+				lin_velB += impluse * inv_massB * axis;
+				ang_velB += impluse * invIrBXn;
+			}
 		}
 
-		if (dyn_a)
-			jv += rAXn.Dot(ang_velA);
-		if (dyn_b)
-			jv -= rBXn.Dot(ang_velB);
-
-
-		float lambda = (jv - solver_row.bias) * solver_row.effMass;
-
-		float old_lambda = solver_row.lambda;
-		//ensure non negative
-		//bilateral constraint
-		solver_row.lambda += lambda;
-		solver_row.lambda = VxClamp(old_lambda + lambda, solver_row.minLambda, solver_row.maxLambda);
-		//updated jn
-		float impluse = solver_row.lambda - old_lambda;
-
-		//store changes
-		if (dyn_a)
-		{
-			lin_velA -= impluse * inv_massA * axis;
-			ang_velA -= impluse * invIrAXn;
-		}
-		if (dyn_b)
-		{
-			lin_velB += impluse * inv_massB * axis;
-			ang_velB += impluse * invIrBXn;
-		}
+		mAccumulatedLambda = solver_row.lambda;
 
 		//write back to body 
 		bodyA.SetLinearVelocity(lin_velA);

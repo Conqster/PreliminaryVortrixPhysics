@@ -26,9 +26,8 @@ void FrictionScenario::Init(vx::PhysicsWorld* i_world)
 
 	//hack for now 
 	//this ensures that ground r = 1, then multiply 0.0f, 0.1, 0.2 yield 0.0, 0.1, 0.2....
-	mPhysicsWorld->GetSettings().solver.frictionCombineMode = vx::ECombineMode::Multiply;
-	mPhysicsWorld->GetSettings().solver.restitutionCombineMode = vx::ECombineMode::Minimum;
-	mPhysicsWorld->mSolverSettingDirty = true;
+	mPhysicsWorld->SetRestitutionCombineMode(vx::ECombineMode::Minimum);
+	mPhysicsWorld->SetFrictionCombineMode(vx::ECombineMode::Multiply);
 
 
 	vx::BodySettings dyn_bodies_settings = vx::BodySettings::DefaultDynamicConstruct();

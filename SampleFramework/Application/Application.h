@@ -178,16 +178,6 @@ private:
 	void Quit();
 
 private:
-	//test objects 
-	void CreateTestObjects();
-	vx::Vec3 mOrbitOrigin = vx::Vec3(0.0f, 15.0f, 0.0f);
-	vx::Vec3 mTwentyRndPos[70] = {};
-	bool mRndTrueOrFalse[70] = {};
-
-	vx::Mat44 mPlaneTransform = vx::Mat44(1.0f);
-	vx::Mat44 mSphereTransform = vx::Mat44(1.0f);
-
-
 	void OnRenderer();
 	void OnApplicationDebugDraw();
 	void SubmitRenderObjects();

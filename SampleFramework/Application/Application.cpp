@@ -181,9 +181,6 @@ Application::Application(const ApplicationSpecification& app_spec)
 		//mRenderer.SetDirectionalLightDir(vx::Vec3(-0.074, -0.519f, 0.852f));
 		mRenderer.SetDirectionalLightDir(vx::Vec3(0.398f, -0.581f, -0.710f));
 
-
-		CreateTestObjects();
-
 		mDebugGizmos = new DebugGizmosRenderer();
 		if (!mDebugGizmos->Init(&mWindow))
 		{
@@ -300,7 +297,6 @@ void Application::Run()
 			PhysicsStep(mFrameDeltaTime);
 			mDebugGizmos->EndCurrentDrawCommand();
 		}
-		(mPhysicsWorld) ? mPhysicsWorld->UpdateSystem() : void(); //<-- just for house keeping when sim is paused
 
 
 		//quick 
@@ -562,26 +558,6 @@ void Application::Quit()
 }
 
 
-void Application::CreateTestObjects()
-{
-
-
-	//mPlaneTransform = vx::Quat::FromAxisAngle(vx::Vec3::Right(), vx::DegToRad(90.0f)).GetRotationMat44().PostScaled(vx::Vec3(100.0f));
-	mPlaneTransform = vx::Quat::FromAxisAngle(-vx::Vec3::Right(), vx::DegToRad(90.0f)).GetRotationMat44().ScaledLocal(vx::Vec3(100.0f));
-		//glm::scale(glm::mat4(1.0f), glm::vec3(100.0f));
-
-	for (unsigned int i = 0; i < 70; i++)
-	{
-		mTwentyRndPos[i] = Util::Random::PointInSphere(10.0f);
-		mRndTrueOrFalse[i] = bool(rand() % 2);
-	}
-
-	//sphere_transform = glm::scale(glm::mat4(1.0f), glm::vec3(4.0f));
-
-
-
-
-}
 
 void Application::OnRenderer()
 {
@@ -636,15 +612,7 @@ void Application::OnRenderer()
 	//Framebuffer::Blit(blit_info);
 	//glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	////remove
-	GLCall(glViewport(0, 0, 256/2, 256/2));
-	//glViewport(0, 0, mWindow.GetWidth() * 0.4f, mWindow.GetHeight() * 0.4f);
-	mRenderer.Test().Bind();
 
-	GLCall(glDisable(GL_DEPTH_TEST));
-
-	//glEnable(GL_BLEND);
-	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	mRenderer.GetAQuickQuadPrimitive().Draw();
 	GLCall(glViewport(0, 0, mWindow.GetWidth(), mWindow.GetHeight()));
 
 	//glDisable(GL_BLEND);
@@ -858,9 +826,13 @@ void Application::SubmitRenderObjects()
 	//plane :-> mesh & tranform 
 
 	//ground
+
 	if(!mPhysicsWorld || !mPhysicsWorld->GetSettings().drawSettings.drawBodiesAsSolid)
-		mRenderer.SubmitQuadPrimitive({nullptr, mPlaneTransform,
+	{
+		vx::Mat44 trans = vx::Quat::FromAxisAngle(-vx::Vec3::Right(), vx::DegToRad(90.0f)).GetRotationMat44().ScaledLocal(vx::Vec3(100.0f));
+		mRenderer.SubmitQuadPrimitive({ nullptr, trans,
 			true, false, vx::Colour(0.7f, 0.7f, 0.7f, 1.0f), false }, vx::ERenderInstanceFlags::CastShadow | vx::ERenderInstanceFlags::ReceiveShadow);
+	}
 
 	//as particle
 	if (mParticleWorld)
@@ -1162,11 +1134,6 @@ void Application::OnDrawImGuiOverlays()
 
 			if (ImGui::BeginTabItem("Rendering"))
 			{
-				bool use_new_rendering = mRenderer.UsingNewRendering();
-
-				if (ImGui::Checkbox("Using new rendering", &use_new_rendering))
-					mRenderer.UseNewRendering(use_new_rendering);
-
 				if(mCurrScenario)
 				{
 					bool base_scenario_mouse_cast = mCurrScenario->GetAllowBaseScenarioMouseCast();
@@ -1600,7 +1567,7 @@ void Application::PhysicsSettingItemOverlays()
 			ImGui::Checkbox("Force BVH Rebuild", &phy_settings.forceBVHRebuild);
 			ImGui::Checkbox("Rebuild BVH SAH", &phy_settings.collision.BVH_rebuild_SAH);
 			if (ImGui::SliderFloat("Collision Bounds Margin (m)", &phy_settings.collision.boundsMargin, 0.01f, 0.6f))
-				mPhysicsWorld->mCollsionSettingDirty = true;
+				mPhysicsWorld->SetBroadphaseNodeBoundThreshold(phy_settings.collision.boundsMargin);
 			ImGui::SliderFloat("Imbalance ratio treshold rebuild", &phy_settings.collision.rebuildBVH_ImbalanceRatioTreshold, 0.0f, 1.0f);
 			ImGui::Checkbox("Use New Manifold pt", &vx::ManifoldPoint::kUseNewManifoldPt);
 			ImGui::Checkbox("Debug Box - Box contacts", &phy_settings.drawSettings.drawAABBContactManifoldInFrame);
@@ -1633,13 +1600,13 @@ void Application::PhysicsSettingItemOverlays()
 			if (ImGui::Combo("Restitution Combine Mode", &v, vx::CoefficientCombineModeNames))
 			{
 				phy_settings.solver.restitutionCombineMode = (vx::ECombineMode)v;
-				mPhysicsWorld->mSolverSettingDirty = true;
+				mPhysicsWorld->SetRestitutionCombineMode(phy_settings.solver.restitutionCombineMode);
 			}
 			v = (int)phy_settings.solver.frictionCombineMode;
 			if (ImGui::Combo("Friction Combine Mode", &v, vx::CoefficientCombineModeNames))
 			{
 				phy_settings.solver.frictionCombineMode = (vx::ECombineMode)v;
-				mPhysicsWorld->mSolverSettingDirty = true;
+				mPhysicsWorld->SetFrictionCombineMode(phy_settings.solver.frictionCombineMode);
 			}
 
 			ImGui::SliderFloat("Restitution Threshold", &phy_settings.solver.restitutionThreshold, 0.01f, 2.0f);

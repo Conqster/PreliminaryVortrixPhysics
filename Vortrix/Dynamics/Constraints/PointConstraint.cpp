@@ -42,18 +42,8 @@ namespace vx {
 			return false;
 		}
 
-
-		Linear1DRow rows[3];
+		Linear1DRow* rows = solver->AllocateLinear1DRow(3);
 		BuildSplit1DJacobians(rows, ctx.stepDeltaTime);
-
-		//for(int i = 0; i < 3; ++i)
-		//{
-		//	if (row[i].effMass == 0.0f)
-		//	{
-		//		mFlags &= ~EConstraintFlags::Active;
-		//		return false;
-		//	}
-		//}
 
 		SolverBodyIndex idxA = solver->GetOrCreateSolverBody(mBodyA->GetID(), ctx);
 		SolverBodyIndex idxB = solver->GetOrCreateSolverBody(mBodyB->GetID(), ctx);
@@ -65,13 +55,14 @@ namespace vx {
 			row.bodyBidx = idxB;
 			
 			row.user = this;
-		
-			solver->AddLinearRow(row);
 		}
 
 		//alway solve constraint position correction 
 		solver->AppendPositionCorrectionQueue(this);// Queue
 
+		//quick hack 
+		//if warm start is disable, then no required accumulate lambda write back 
+		mAccumulatedLambda = {};
 
 		return true;
 	}

@@ -258,10 +258,10 @@ void Texture::Destroy()
 	}
 }
 
-void Texture::ApplyGPUDebugName()
+void Texture::ApplyGPUDebugName(const std::string& name)
 {
-	if (!mName.empty() && mID != 0)
-		glObjectLabel(GL_TEXTURE, mID, mName.size(), mName.c_str());
+	if (!name.empty() && mID != 0)
+		glObjectLabel(GL_TEXTURE, mID, name.size(), name.c_str());
 }
 
 

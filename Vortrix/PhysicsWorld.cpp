@@ -382,7 +382,8 @@ namespace vx
 			}
 
 			//commit solver state to constraint
-			mConstraintSolver->CommitStateConstraint();
+			if (mSettings.solver.warmstart)
+				mConstraintSolver->CommitStateConstraint();
 
 			//write back bodies 
 			ConstraintSolver::WriteBackBodies(solver_bodies, mConstraintSolver->GetBodiesCount(), mBodyManager);
@@ -772,6 +773,8 @@ namespace vx
 		{
 			for (const auto& body : GetBodies())
 			{
+				if (!body.IsIDValid())
+					continue;
 
 				Colour c = ((mBodyManager.GetBodySimStats(body).phase & EBodySimphaseFlags::IsColliding) == EBodySimphaseFlags::IsColliding) ?
 						draw_settings.contactWireColour : draw_settings.shapeColliderWireColour;
@@ -976,24 +979,6 @@ namespace vx
 			debug_renderer->DrawWireTriangle(p0, p1, p2, col);
 			debug_renderer->DrawWireTriangle(p0, p2, p3, col);
 		}
-	}
-
-	void PhysicsWorld::UpdateSystem()
-	{
-		if (mCollsionSettingDirty)
-		{
-			mBroadphase->SetBoundThreshold(mSettings.collision.boundsMargin);
-			mCollsionSettingDirty = false;
-		}
-
-		/// for now only register combine mode
-		if (mSolverSettingDirty)
-		{
-			mContactConstraintSolver.SetFrictionCombineMode(mSettings.solver.frictionCombineMode);
-			mContactConstraintSolver.SetRestitutionCombineMode(mSettings.solver.restitutionCombineMode);
-			mSolverSettingDirty = false;
-		}
-
 	}
 
 	void PhysicsWorld::UpdateBodiesActivationState(float dt)

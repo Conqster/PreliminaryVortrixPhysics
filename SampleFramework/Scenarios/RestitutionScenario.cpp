@@ -33,9 +33,8 @@ void RestitutionScenario::Init(vx::PhysicsWorld* i_world)
 	//mCacheData.velocityIterations = phys_solver_settings.velocityIterations;
 
 	//this ensures that ground r = 1, then multiply 0.0f, 0.1, 0.2 yield 0.0, 0.1, 0.2....
-	phys_solver_settings.restitutionCombineMode = vx::ECombineMode::Multiply;
 	phys_solver_settings.velocityIterations = 15.0f;
-	mPhysicsWorld->mSolverSettingDirty = true;
+	mPhysicsWorld->SetRestitutionCombineMode(vx::ECombineMode::Multiply);
 
 	///cam 
 	/// -16.92, 11.09, 10.015

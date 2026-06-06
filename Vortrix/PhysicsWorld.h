@@ -77,6 +77,8 @@
 ///
 /// CONVERT MOUSE INTERACTION TO CONSTRAINT BASED
 /// MEMOPRY ALLOC
+// make body shape ref counted 
+
 
 
 
@@ -148,6 +150,18 @@ namespace vx
 		const ContactConstraintSolver::ContactConstraintSolverStat& GetContactConstraintSolverStats() const 
 		{ return mContactConstraintSolver.GetStats(); }
 
+		void SetBroadphaseNodeBoundThreshold(float treshold) { mBroadphase->SetBoundThreshold(treshold); }
+		void SetFrictionCombineMode(ECombineMode friction_combine_mode) 
+		{ 
+			mSettings.solver.frictionCombineMode = friction_combine_mode;
+			mContactConstraintSolver.SetFrictionCombineMode(friction_combine_mode); 
+		}
+		void SetRestitutionCombineMode(ECombineMode restitution_combine_mode) 
+		{
+			mContactConstraintSolver.SetRestitutionCombineMode(mSettings.solver.restitutionCombineMode); 
+			mSettings.solver.restitutionCombineMode = restitution_combine_mode;
+		}
+
 		//TODO(Jay): Later dont return broadphase only state
 		VX_INLINE Broadphase* GetBroadphase() { return mBroadphase; }
 		//VX_INLINE BVHBroadphase<AABB>* GetBVH_AABB_Broadphase() { return mBroadphase->AsBVH_AABB(); }
@@ -161,7 +175,6 @@ namespace vx
 
 		static uint32 GetCurrentSimStep() { return static_cast<uint32>(mFrameIdx); }
 
-		void UpdateSystem();
 
 		WorldQuery GetWorldQuery() const { return mWorldQuery; }
 
@@ -202,10 +215,5 @@ namespace vx
 		std::array<Colour, 32> mRandomColourInst;
 
 		WorldQuery mWorldQuery;
-
-	public:
-		//later convert this to a single flag
-		bool mCollsionSettingDirty = false;
-		bool mSolverSettingDirty = false;
 	};
 }

@@ -84,7 +84,7 @@ class Texture : public vx::NonCopyable
 public:
 	Texture()
 	{
-		TextureRegistry::Instance().Register(this);
+		mRegisterIdx = TextureRegistry::Instance().Register(this);
 	}
 	~Texture()
 	{
@@ -131,27 +131,29 @@ public:
 	inline bool IsValid() const { return mID != 0; }
 	void SetDebugName(const std::string& name)
 	{
-		mName = name;
-		ApplyGPUDebugName();
+		VX_ASSERT(mRegisterIdx != TextureRegistry::kInvalidIdx);
+		TextureRegistry::Instance().SetAssetName(mRegisterIdx, name);
+		ApplyGPUDebugName(name);
 	}
-	std::string_view GetDebugName() const { return mName; }
+	std::string_view GetDebugName() const { VX_ASSERT(mRegisterIdx != TextureRegistry::kInvalidIdx);  return TextureRegistry::Instance().GetAssetName(mRegisterIdx); }
 
 	void Destroy();
 
 private:
 	PixelFormat PixelFormat() const { return GetPixelFormat(mInternalFormat); }
 	PixelType PixelType() const { return PixelTypeFromFormat(mInternalFormat); }
-	void ApplyGPUDebugName();
+	void ApplyGPUDebugName(const std::string& name);
 
 private:
+	friend TextureRegistry;
 	unsigned int mID = 0;
+	TextureRegistry::Idx mRegisterIdx = TextureRegistry::kInvalidIdx;
 	uint32 mWidth = 0;
 	uint32 mHeight = 0;
 
+	uint64_t mBindlessHandle = 0;
 	TextureFormat mInternalFormat = TextureFormat::RGBA8;
 	bool bMipmaped = false;
-	std::string mName;
-	uint64_t mBindlessHandle = 0;
 };
 
 

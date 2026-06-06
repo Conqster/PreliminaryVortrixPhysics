@@ -36,7 +36,6 @@
 
 #include "GraphicsBuffer.h"
 
-
 class Texture;
 class Sampler;
 class Camera;
@@ -53,38 +52,32 @@ public:
 	//Helpers
 	void SubmitSpherePrimitive(const RenderableEntity entity, const vx::ERenderInstanceFlags flags) 
 	{
-		if(mUseNewRendering)
-			DrawGeometry(entity.transform, entity.colour, mSphereGeometry, (entity.plainTexture) ? mPlainTexSamplerBindless : mCheckersTexSamplerBindless, flags);
-		else
-			AddFrameRenderableEntity({&mSpherePrimitive, entity.transform, entity.solidRender, entity.canCastShadow, entity.colour, entity.plainTexture});
+		DrawGeometry(entity.transform, entity.colour, mSphereGeometry, (entity.plainTexture) ? mPlainTexSamplerBindless : mCheckersTexSamplerBindless, flags);
 	}
 	void SubmitCubePrimitive(const RenderableEntity entity, const vx::ERenderInstanceFlags flags)
 	{
-		if(mUseNewRendering)
-			DrawGeometry(entity.transform, entity.colour, mBoxGeometry, (entity.plainTexture) ? mPlainTexSamplerBindless : mCheckersTexSamplerBindless, flags);
-		else
-			AddFrameRenderableEntity({&mCubePrimitive, entity.transform, entity.solidRender, entity.canCastShadow, entity.colour, entity.plainTexture});
+		DrawGeometry(entity.transform, entity.colour, mBoxGeometry, (entity.plainTexture) ? mPlainTexSamplerBindless : mCheckersTexSamplerBindless, flags);
 	}
 	void SubmitQuadPrimitive(const RenderableEntity entity, const vx::ERenderInstanceFlags flags)
 	{
-		if(mUseNewRendering)
+		//if(mUseNewRendering)
 			DrawGeometry(entity.transform, entity.colour, mQuadGeometry, (entity.plainTexture) ? mPlainTexSamplerBindless : mCheckersTexSamplerBindless, flags);
-		else
-			AddFrameRenderableEntity({&mQuadPrimitive, entity.transform, entity.solidRender, entity.canCastShadow, entity.colour, entity.plainTexture});
+		//else
+			//AddFrameRenderableEntity({&mQuadPrimitive, entity.transform, entity.solidRender, entity.canCastShadow, entity.colour, entity.plainTexture});
 	}
 	void SubmitQuadXZPrimitive(const RenderableEntity entity, const vx::ERenderInstanceFlags flags)
 	{
-		if(mUseNewRendering)
+		//if(mUseNewRendering)
 			DrawGeometry(entity.transform, entity.colour, mQuadXZGeometry, (entity.plainTexture) ? mPlainTexSamplerBindless : mCheckersTexSamplerBindless, flags);
-		else
-			AddFrameRenderableEntity({ &mQuadXZPrimitive, entity.transform, entity.solidRender, entity.canCastShadow, entity.colour, entity.plainTexture });
+		//else
+//AddFrameRenderableEntity({ &mQuadXZPrimitive, entity.transform, entity.solidRender, entity.canCastShadow, entity.colour, entity.plainTexture });
 	}
 	void SubmitCapsulePrimitive(const RenderableEntity entity, const vx::ERenderInstanceFlags flags)
 	{
-		if(mUseNewRendering)
+		//if(mUseNewRendering)
 			DrawGeometry(entity.transform, entity.colour, mCapsuleGeometry, (entity.plainTexture) ? mPlainTexSamplerBindless : mCheckersTexSamplerBindless, flags);
-		else
-			AddFrameRenderableEntity({ &mCapsulePrimitive, entity.transform, entity.solidRender, entity.canCastShadow, entity.colour, entity.plainTexture });
+		//else
+			//AddFrameRenderableEntity({ &mCapsulePrimitive, entity.transform, entity.solidRender, entity.canCastShadow, entity.colour, entity.plainTexture });
 	}
 
 	void DrawText3D(const std::string_view& text,
@@ -111,8 +104,6 @@ public:
 	void DrawPass();
 	void EndFrame();
 
-
-	void SortObjectByDepth();
 
 
 	void EnableWireframe()
@@ -147,22 +138,19 @@ public:
 	auto* GetTestRTPtr() { return &mTestRt; }
 	auto* GetmDirLightDebugRTPtr() { return &mDirLightDebugRT; }
 	RenderableMesh& GetAQuickQuadPrimitive() { return mQuadPrimitive; }
-	Shader& Test() { return mTex2ScreenShader; }
 
-	bool UsingNewRendering() const { return mUseNewRendering; }
-	void UseNewRendering(bool v) { mUseNewRendering = v; }
+	//bool UsingNewRendering() const { return mUseNewRendering; }
+	//void UseNewRendering(bool v) { mUseNewRendering = v; }
 
 	void Destroy();
 
 	float mTime;
 
-	Font mFont;
+	vx::Ref<Font> mFont;
 	vx::Ref<Shader> mFontShader;
 private:
 	ApplicationWindow* mWindow;
 	Camera* mCamera = nullptr; 
-
-	bool mUseNewRendering = true;
 
 	ShadowData mShadowData;
 
@@ -177,11 +165,7 @@ private:
 	};
 	GPUShadowData mGPUShadowData{};
 
-	//vx::Mat44 mLightProjViewMat = vx::Mat44(1.0f);
 
-
-	Shader mWorldGridShader;
-	Shader mTex2ScreenShader;
 
 
 	///Callbacks 
@@ -192,19 +176,18 @@ private:
 	void DrawObjects(Shader& shader, bool only_depth = false);
 
 
-	Shader mMeshShader;
-	RenderableMesh mSpherePrimitive;
-	RenderableMesh mCubePrimitive;
+	//RenderableMesh mSpherePrimitive;
+	//RenderableMesh mCubePrimitive;
 	RenderableMesh mQuadPrimitive;
-	RenderableMesh mQuadXZPrimitive;
-	RenderableMesh mTrianglePrimitive;
-	RenderableMesh mCapsulePrimitive;
+	//RenderableMesh mQuadXZPrimitive;
+	//RenderableMesh mTrianglePrimitive;
+	//RenderableMesh mCapsulePrimitive;
 
 
-	unsigned int mMaxFrameEntity = 500;
-	std::array<RenderableEntity, 500> mFrameRenderableEntities;
-	unsigned int mFrameEntitiesCount = 0;
-	void AddFrameRenderableEntity(const RenderableEntity entity);
+	//unsigned int mMaxFrameEntity = 500;
+	//std::array<RenderableEntity, 500> mFrameRenderableEntities;
+	//unsigned int mFrameEntitiesCount = 0;
+	//void AddFrameRenderableEntity(const RenderableEntity entity);
 
 
 	vx::Ref<Texture> mBrickTexture = nullptr;

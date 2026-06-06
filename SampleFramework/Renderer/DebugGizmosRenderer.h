@@ -182,13 +182,6 @@ public:
 		mLineWidth = value;
 	}
 
-	void SetProjectionViewMatShaderHashName(std::string_view proj, std::string_view view)
-	{
-		if (!proj.empty())
-			mProjectionMatShaderName = proj;
-		if (!view.empty())
-			mProjectionMatShaderName = view;
-	}
 
 	void Destroy(bool flush = false)
 	{
@@ -257,9 +250,6 @@ public:
 
 private:
 	Shader* mShader = nullptr;
-	//hack 
-	std::string mProjectionMatShaderName = "uProj";
-	std::string mViewMatShaderName = "uView";
 	float mLineWidth = 1.0f;
 	ApplicationWindow* mActiveWindow = nullptr;
 #pragma region HelperStructure
@@ -272,6 +262,22 @@ private:
 		Triangles,
 		TriangleStrip
 	};
+
+	struct GPUVertexAttribute
+	{
+		uint32_t index = 0;
+		uint32_t size = 0;
+		GLenum type = GL_FLOAT;
+		bool normalised = false;
+		uint32_t offset = 0;
+	};
+
+	struct GPUVertexAttributeDivisor
+	{
+		uint32_t index = 0;
+		uint32_t divisor = 1;
+	};
+
 	template<EVertexPrimitiveMode VertexPrimitive>
 	struct VertexGroup
 	{
@@ -281,27 +287,8 @@ private:
 		unsigned int maxVertex = 1000;
 		unsigned int stride = 0;
 		bool bBufferDirty = false;
-
+		unsigned int attributeDivisorCount = 0;
 		vx::Ref<Shader> shader;
-
-
-		struct Attribute
-		{
-			uint32_t index = 0;
-			uint32_t size = 0;
-			GLenum type = GL_FLOAT;
-			bool normalised = false;
-			uint32_t offset = 0;
-		};
-
-		std::vector<Attribute> attributes;
-
-		struct AttributeDivisor
-		{
-			uint32_t index = 0;
-			uint32_t divisor = 1;
-		};
-		std::vector<AttributeDivisor> attributeDivisors;
 
 		void Generate(GLsizei _stride, Ref<Shader> _shader)
 		{
@@ -326,39 +313,27 @@ private:
 			glNamedBufferData(VBO, stride * maxVertex, data, usage);
 		}
 
-		void BindLayout()
+		void BindLayout(const GPUVertexAttribute* attrib, int attrib_count, const GPUVertexAttributeDivisor* attrib_divs, int attrib_div_count)
 		{
 			//also helps to link VAO to VBO
 			glBindVertexArray(VAO);
 			glBindBuffer(GL_ARRAY_BUFFER, VBO);
 
-			for (const auto& a : attributes)
+			for (const GPUVertexAttribute* att = attrib, *att_end = attrib + attrib_count;
+				att < att_end; ++att)
 			{
+				const auto& a = (*att);
 				glEnableVertexAttribArray(a.index);
 				glVertexAttribPointer(a.index, a.size,
 					a.type, a.normalised, stride,
 					(const void*)(uintptr_t)a.offset);
 			}
 
-			//vertex attributes divisor 
-			for(const auto& attri_div : attributeDivisors)
-				glVertexAttribDivisor(attri_div.index, attri_div.divisor);
-		}
+			for(const GPUVertexAttributeDivisor* att_div = attrib_divs, *att_div_end = attrib_divs + attrib_div_count;
+				att_div < att_div_end; ++att_div)
+				glVertexAttribDivisor((*att_div).index, (*att_div).divisor);
 
-		void BindLayout(const Attribute* attrib, int count)
-		{
-			//also helps to link VAO to VBO
-			glBindVertexArray(VAO);
-			glBindBuffer(GL_ARRAY_BUFFER, VBO);
-
-			for (uint32_t i = 0; i < count; ++i)
-			{
-				const auto& a = attrib[i];
-				glEnableVertexAttribArray(a.index);
-				glVertexAttribPointer(a.index, a.size,
-					a.type, a.normalised, stride,
-					(const void*)(uintptr_t)a.offset);
-			}
+			attributeDivisorCount = attrib_div_count;
 		}
 
 
@@ -378,7 +353,7 @@ private:
 				return GL_TRIANGLE_STRIP;
 		}
 
-		VX_INLINE size_t GetVertexCountDivisor() const { return attributeDivisors.size(); }
+		VX_INLINE size_t GetVertexCountDivisor() const { return attributeDivisorCount; }
 
 		void DrawArray(int first, size_t count)
 		{

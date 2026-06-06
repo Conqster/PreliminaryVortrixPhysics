@@ -95,7 +95,7 @@ namespace vx {
 		void DrawConstraintBounds(DebugGizmosRenderer* debug_renderer, const Vec3& rAw, const Vec3& rBw, Colour col) const;
 
 		virtual void DebugGizmos(DebugGizmosRenderer* debug_renderer, const NonContactConstraintDrawSettings& draw_settings) const override;
-		void QuickSolve(float dt);
+		void QuickSolve(float dt, int velocity_iteration = 8);
 
 	private:
 		/// lets say this are points in body local frame
@@ -125,7 +125,7 @@ namespace vx {
 		}
 
 		Vec3 ComputeConstraintPropertiesDisplacement(Vec3& o_rA, Vec3& o_rB);
-		Linear1DRow BuildDistanceJacobian(float dt);
+		void BuildDistanceJacobian(Linear1DRow* o_row, float dt);
 		Rigid1DConstraint BuildRigidConstraint();
 	};
 } //namespace vx

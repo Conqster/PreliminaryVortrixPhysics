@@ -37,8 +37,10 @@ bool DebugGizmosRenderer::Init(ApplicationWindow* window)
 	mCameraUBO.Generate(sizeof(CameraData));
 	mCameraUBO.Bind(0);
 
+
+	
 		//New Line Segment
-	mLineVertexGrp.attributes = {
+	std::vector<GPUVertexAttribute> line_vertex_attributes = {
 		{0, 3, GL_FLOAT, false, offsetof(Line, from)},
 		///using Colour (uint32_t underlying type)
 		/// size -> 4 (channel count) 4 
@@ -49,7 +51,8 @@ bool DebugGizmosRenderer::Init(ApplicationWindow* window)
 		{3, 4, GL_UNSIGNED_BYTE, true, offsetof(Line, toColour)},
 		{4, 1, GL_FLOAT, false, offsetof(Line, thickness)}
 	};
-	mLineVertexGrp.attributeDivisors =
+	
+	std::vector<GPUVertexAttributeDivisor> line_vertex_attribute_divisors =
 	{
 		{0, 1},
 		{1, 1},
@@ -59,15 +62,24 @@ bool DebugGizmosRenderer::Init(ApplicationWindow* window)
 	};
 
 	//New Triangle Segment
-	mTriVertexGrp.attributes = {
+	std::vector<GPUVertexAttribute> tri_vertex_attributes = {
 	{0, 3, GL_FLOAT, false, offsetof(VertexData, position)},
 	{1, 3, GL_FLOAT, false, offsetof(VertexData, normal)},
 	{2, 4, GL_UNSIGNED_BYTE, true, offsetof(VertexData, colour)},
 	};
 	
 
-	mLineVertexGrp.BindLayout();
-	mTriVertexGrp.BindLayout();
+	mLineVertexGrp.BindLayout(
+		line_vertex_attributes.data(), 
+		line_vertex_attributes.size(), 
+		line_vertex_attribute_divisors.data(),
+		line_vertex_attribute_divisors.size());
+
+	mTriVertexGrp.BindLayout(
+		tri_vertex_attributes.data(),
+		tri_vertex_attributes.size(),
+		nullptr, 0);
+
 
     return success;
 }
