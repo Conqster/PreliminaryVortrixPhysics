@@ -21,8 +21,12 @@ void RestitutionScenario::Init(vx::PhysicsWorld* i_world)
 	/// Ground plane
 	//CreateGroundPlane(100.0f);
 	vx::BodySettings bodies_settings = vx::BodySettings::DefaultStaticConstruct();
+
+	vx::PlaneShapeSettings plane_shape_settings(vx::Vec3::Up(), 100.0f);
+	plane_shape_settings.SetDensity(0.0f);
+
 	bodies_settings.debug_name = "ground";
-	bodies_settings.shape = new vx::PlaneShape(vx::Vec3::Up(), 100.0f);
+	bodies_settings.shape = vx::MakeRef<vx::PlaneShape>(plane_shape_settings);
 	bodies_settings.restitution = 1.0f;
 	mPhysicsWorld->CreateBody(bodies_settings);
 
@@ -56,9 +60,9 @@ void RestitutionScenario::Init(vx::PhysicsWorld* i_world)
 	float height_above_ground = 5.0f;
 	float z_lateral_offset = 4.0f;
 
-	vx::Shape* capsule_shape = new vx::CapsuleShape(0.5f, 0.5f);
-	vx::Shape* sphere_shape = new vx::SphereShape(1.0f);
-	vx::Shape* box_shape = new vx::BoxShape(1.0f);
+	vx::Ref<vx::Shape> capsule_shape = vx::MakeRef<vx::CapsuleShape>(0.5f, 0.5f);
+	vx::Ref<vx::Shape> sphere_shape = vx::MakeRef<vx::SphereShape>(1.0f);
+	vx::Ref<vx::Shape> box_shape = vx::MakeRef<vx::BoxShape>(1.0f);
 
 	float start_x = -15.0f;
 	float x_lateral_offset = 3.0f;

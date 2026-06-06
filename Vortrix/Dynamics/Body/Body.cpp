@@ -278,7 +278,7 @@ namespace vx
 		mOrientation.Normalise();
 		ComputeWorldSpaceBoundsInternal();
 	}
-	void Body::SetShape(Shape* type)
+	void Body::SetShape(const RefConst<Shape>& type)
 	{
 		VX_ASSERT_WARN_VOID(type != nullptr, "Trying to set body shape with null shape");
 		mShape = type;

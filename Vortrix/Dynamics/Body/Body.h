@@ -45,6 +45,8 @@ namespace vx
 		{
 			BodySettings t;
 			t.motionType = EMotionType::Static;
+			t.density = 0.0f;
+			t.mass = 0.0f; //infinte
 			return t;
 		}
 
@@ -53,7 +55,7 @@ namespace vx
 		float mass;
 		Vec3 impluse = Vec3(0.0f);
 		const char* debug_name = nullptr;
-		Shape* shape = nullptr;
+		RefConst<Shape> shape = nullptr;
 
 		Vec3 intialVelocity = Vec3(0.0f);
 		float linearDamping = 0.0f;
@@ -239,9 +241,9 @@ namespace vx
 		//for debugging
 		void SetWorldTransform(const Mat44& mat);
 
-		Shape* GetShape() const { return mShape; }
-		//EShapeType GetShapeType() const { return mShape->GetType(); }
-		void SetShape(Shape* type);
+		const Shape* GetShape() const { return mShape.get(); }
+
+		void SetShape(const RefConst<Shape>& type);
 
 		Mat44 TransformDiagonalInertiaTensor(const Vec3& inv_inertia_diagonal, const Quat& rot) const;
 		Mat44 ComputeInvInertiaTensorWorld();
@@ -338,7 +340,7 @@ namespace vx
 		/// as well as infos like friction & resition for static - dynamic constraint praticpation
 
 		//2nd cache line
-		Shape* mShape = nullptr;						//8 bytes
+		RefConst<Shape> mShape = nullptr;						//8 bytes
 		/// for now the state is used by broadphase, to notice is body as moved before 
 		/// updating BVH bound node
 		TransformState mMotionState{};						//8 bytes	[16 bytes]<-- fix 
@@ -353,7 +355,7 @@ namespace vx
 		/////////////////////////////////////////////////////////////////////////
 		////////////////////////////////hack padding/////////////////////////////
 		EDynamicsDofs mAllowedDynamicsDof; //1 bytes	[31 bytes] 
-		char padding[1];								//1 bytes	[32 bytes]
+		char padding[1 + 4*3];								//1 bytes	[32 bytes] //later sort this out when sleep time is removed padding will reduce
 		///World space linear velocity (m/s)
 		Vec3 mLinearVelocity = Vec3(0.0f);							//16 bytes	[48 bytes]
 		///World space angular velocity (rad/s)

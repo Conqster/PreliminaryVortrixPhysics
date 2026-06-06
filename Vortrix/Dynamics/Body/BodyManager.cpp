@@ -24,12 +24,12 @@ namespace vx
 		/// solve with set for now 
 		/// because multiple bodies might be sharing 
 		/// a shape
-		std::set<Shape*> shapes;
-		for (auto& b : mBodies)
-			shapes.insert(b.mShape);
-		
-		for(auto& s : shapes)
-				delete s;
+		//std::set<Shape*> shapes;
+		//for (auto& b : mBodies)
+		//	shapes.insert(b.mShape);
+		//
+		//for(auto& s : shapes)
+		//		delete s;
 	}
 	const BodyID BodyManager::AddBody(const BodySettings& body_setting)
 	{
@@ -46,13 +46,9 @@ namespace vx
 		body.mRestitution = body_setting.restitution;
 		body.mMotionType = body_setting.motionType;
 
-		float density = 0.0f;
 
 		if (body_setting.motionType == EMotionType::Dynamic)
 		{
-			if (body_setting.mass > 0.0f) //to support deprecated method
-				density = body_setting.density;
-		
 			body.mLinearVelocity = Vec3(0.0f);
 			body.mAngularVelocity = Vec3(0.0f);
 
@@ -70,9 +66,7 @@ namespace vx
 		}
 		else
 			body.mAwake = false;
-		
-
-		body_setting.shape->SetDensity(density);
+	
 		/// Set shape handles the bodies shape 
 		/// as well as bounds 
 		body.SetShape(body_setting.shape);

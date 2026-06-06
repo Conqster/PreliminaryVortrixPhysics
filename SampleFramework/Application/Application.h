@@ -222,7 +222,9 @@ private:
 	DebugAngularImpulse mDebugAngularImpulse;
 	bool bShowDebugRotation = false;
 
-	ShapeArena mShapeArena;
+
+	std::vector<vx::RefConst<vx::Shape>> mCreatedShape;
+	vx::RefConst<vx::Shape> TryGetCreatedShape(const vx::Float3& he, float density, const vx::EShapeType shape_type) const;
 
 	std::string mAppName = "";
 	DirectionDebugProperties mLightDebugProps;

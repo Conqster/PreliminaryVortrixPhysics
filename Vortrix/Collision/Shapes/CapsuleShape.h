@@ -5,11 +5,27 @@ namespace vx {
 
 	struct AABB;
 
+	class CapsuleShapeSettings final : public ShapeSettings
+	{
+	public:
+
+		explicit CapsuleShapeSettings(float radius, float cylinder_half_height) : mCylinderHalfHeight(cylinder_half_height), mRadius(radius) {}
+
+	public:
+		float mCylinderHalfHeight = 0.5f;
+		float mRadius = 0.5f;
+	};
+
+
 	class CapsuleShape : public Shape
 	{
 	public:
 		explicit CapsuleShape(float radius, float cylinder_half_height) :
 			Shape(EShapeType::Capsule), mCylinderHalfHeight(cylinder_half_height), mRadius(radius) {
+		}
+
+		explicit CapsuleShape(const CapsuleShapeSettings& settings) :
+			Shape(EShapeType::Capsule, settings), mCylinderHalfHeight(settings.mCylinderHalfHeight), mRadius(settings.mRadius) {
 		}
 
 		virtual Vec3 GetHalfExtents() const override

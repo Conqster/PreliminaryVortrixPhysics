@@ -6,11 +6,27 @@ namespace vx {
 
 	struct AABB;
 
+	class PlaneShapeSettings final : public ShapeSettings
+	{
+	public:
+		explicit PlaneShapeSettings(const Vec3& nor, float half_extent) : mNormal(nor), mHalfExtent(half_extent){}
+	public:
+		Vec3 mNormal;
+		float mHalfExtent = 0.0f;
+		float mConstant = 0.0f;
+	};
+
 	class PlaneShape : public Shape
 	{
 	public:
 		explicit PlaneShape(const Vec3& nor, float half_extent) :
 			Shape(EShapeType::Plane), mNormal(nor), mHalfExtent(half_extent)
+		{
+			ComputeLocalBounds();
+		}
+
+		explicit PlaneShape(const PlaneShapeSettings& settings) :
+			Shape(EShapeType::Plane, settings), mNormal(settings.mNormal), mHalfExtent(settings.mHalfExtent), mConstant(settings.mConstant)
 		{
 			ComputeLocalBounds();
 		}

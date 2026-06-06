@@ -30,7 +30,7 @@ void BoxPyramidStackScenario::Init(vx::PhysicsWorld* i_world)
 	vx::BodySettings body_setting = vx::BodySettings::DefaultDynamicConstruct();
 	body_setting.friction = 0.8f;
 	body_setting.restitution = 0.05f;
-	body_setting.shape = new vx::BoxShape(half_extents);
+	body_setting.shape = vx::MakeRef<vx::BoxShape>(half_extents);
 
 	//CreateBoxPyramidStack(body_setting, 12, 12, 20, 1.0f, vx::Vec3(0.0f, 0.5f, 0.0f));
 	//CreateBoxPyramidStack(body_setting, 12, 12, 20, half_extents, vx::Vec3(0.0f, 0.5f, 0.0f));
@@ -65,7 +65,7 @@ void BoxPyramidStackScenario::Init(vx::PhysicsWorld* i_world)
 			return vx::Vec2(c.X(), c.Z()) - vx::Vec2(0.0f, layer);
 		};
 	vx::BodySettings _body_settings = body_setting;
-	_body_settings.shape = new vx::BoxShape(pyramid1D.halfExtent);
+	_body_settings.shape = vx::MakeRef<vx::BoxShape>(pyramid1D.halfExtent);
 	CreateStructure(_body_settings, pyramid1D);
 
 

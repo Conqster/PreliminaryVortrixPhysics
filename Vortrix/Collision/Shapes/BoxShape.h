@@ -5,6 +5,23 @@
 
 namespace vx {
 
+
+
+	class BoxShapeSettings final : public ShapeSettings
+	{
+	public:
+		BoxShapeSettings() = default;
+		explicit BoxShapeSettings(float h_xyz) : mHalfExtent(h_xyz) { }
+
+		explicit BoxShapeSettings(float hx, float hy, float hz) :  mHalfExtent(hx, hy, hz) {}
+
+		explicit BoxShapeSettings(const Vec3& half_extents) :  mHalfExtent(half_extents) { }
+		
+		Vec3 mHalfExtent = Vec3(0.5f);
+	};
+
+
+
 	class BoxShape : public Shape
 	{
 	public:
@@ -17,6 +34,10 @@ namespace vx {
 
 		explicit BoxShape(const Vec3& half_extents) :
 			Shape(EShapeType::Box), mHalfExtent(half_extents) {
+		}
+
+		explicit BoxShape(const BoxShapeSettings& settings) :
+			Shape(EShapeType::Box, settings), mHalfExtent(settings.mHalfExtent) {
 		}
 
 		static constexpr const char* GetDebugName() { return "Box"; }

@@ -70,14 +70,14 @@ namespace vx
 		BodySettings static_bodies_settings = BodySettings::DefaultStaticConstruct();
 		if (create_boxes)
 		{
-			BoxShape* unit_box = new BoxShape(0.5f);
+			Ref<BoxShape> unit_box = MakeRef<BoxShape>(0.5f);
 			dyn_bodies_settings.position = Vec3(-2.0f, 5.5f, 0.0f);
 			dyn_bodies_settings.debug_name = "box";
-			dyn_bodies_settings.shape = new BoxShape(0.5f, 0.25f, 0.5f);
+			dyn_bodies_settings.shape = MakeRef<BoxShape>(0.5f, 0.25f, 0.5f);
 			io_world->CreateBody(dyn_bodies_settings);
 
 			dyn_bodies_settings.position = Vec3(2.0f, 3.0f, 0.0f);
-			dyn_bodies_settings.shape = new BoxShape(0.15f, 0.6f, 0.35f);
+			dyn_bodies_settings.shape = MakeRef<BoxShape>(0.15f, 0.6f, 0.35f);
 			io_world->CreateBody(dyn_bodies_settings);
 
 			dyn_bodies_settings.shape = unit_box;
@@ -91,15 +91,17 @@ namespace vx
 			io_world->CreateBody(dyn_bodies_settings);
 
 			dyn_bodies_settings.position = Vec3(0.0f, 12.5f, 0.0f);
-			dyn_bodies_settings.shape = new BoxShape(1.5f, 0.15f, 0.15f);
+			dyn_bodies_settings.shape = MakeRef<BoxShape>(1.5f, 0.15f, 0.15f);
 			io_world->CreateBody(dyn_bodies_settings);
 		}
 
-		SphereShape* unit_sphere = new SphereShape(0.5f);
+		vx::SphereShapeSettings shape_settings(0.5f);
+		shape_settings.SetDensity(0.0f);
+		Ref<SphereShape> static_unit_sphere = MakeRef<SphereShape>(shape_settings);
 		static_bodies_settings = BodySettings::DefaultStaticConstruct();
 		static_bodies_settings.position = Vec3(3.0f, 5.5f, 0.0f);
 		static_bodies_settings.debug_name = "sphere";
-		static_bodies_settings.shape = unit_sphere;
+		static_bodies_settings.shape = static_unit_sphere;
 		io_world->CreateBody(static_bodies_settings);
 
 		io_world->CreateBody(static_bodies_settings);
@@ -112,9 +114,11 @@ namespace vx
 
 
 		/// Ground plane
+		vx::PlaneShapeSettings plane_shape_settings(vx::Vec3::Up(), 100.0f);
+		plane_shape_settings.SetDensity(0.0f);
 		static_bodies_settings = BodySettings::DefaultStaticConstruct();
 		static_bodies_settings.debug_name = "ground";
-		static_bodies_settings.shape = new PlaneShape(Vec3::Up(), 100.0f);
+		static_bodies_settings.shape = MakeRef<PlaneShape>(plane_shape_settings);
 		io_world->CreateBody(static_bodies_settings);
 
 		/// Create side planes as well
@@ -126,7 +130,7 @@ namespace vx
 		/// front offset along z and face -z (rotate around -x)
 		BodySettings body_settings = BodySettings::DefaultStaticConstruct();
 		body_settings.debug_name = "front plane";
-		body_settings.shape = new PlaneShape(Vec3::Up(), 100.0f);
+		body_settings.shape = static_bodies_settings.shape;///*MakeRef<PlaneShape>(Vec3::Up(), 100.0f);*/
 		
 		float world_size = 100.0f;
 		body_settings.position = Vec3(0.0f, 0.0f, world_size);
@@ -155,7 +159,7 @@ namespace vx
 		{
 			dyn_bodies_settings = BodySettings::DefaultDynamicConstruct();
 			dyn_bodies_settings.debug_name = "Capsule";
-			dyn_bodies_settings.shape = new CapsuleShape(0.5f, 0.5f);
+			dyn_bodies_settings.shape = MakeRef<CapsuleShape>(0.5f, 0.5f);
 			dyn_bodies_settings.position = Vec3(4.0f, 10.0f, 0.0f);
 			io_world->CreateBody(dyn_bodies_settings);
 
@@ -178,30 +182,30 @@ namespace vx
 		{
 			dyn_bodies_settings.position = Vec3(-2.0f, 5.5f, 0.0f);
 			dyn_bodies_settings.debug_name = "box";
-			dyn_bodies_settings.shape = new BoxShape(0.5f, 0.25f, 0.5f);
+			dyn_bodies_settings.shape = MakeRef<BoxShape>(0.5f, 0.25f, 0.5f);
 			io_world->CreateBody(dyn_bodies_settings);
 
 
 			dyn_bodies_settings.position = Vec3(1.0f, 7.0f, 0.0f);
-			dyn_bodies_settings.shape = new BoxShape(0.15f, 0.6f, 0.35f);
+			dyn_bodies_settings.shape = MakeRef<BoxShape>(0.15f, 0.6f, 0.35f);
 			io_world->CreateBody(dyn_bodies_settings);
 
 			dyn_bodies_settings.position = Vec3(0.0f, 5.5f, 0.0f);
-			dyn_bodies_settings.shape = new BoxShape(0.25f, 0.125, 0.25f);
+			dyn_bodies_settings.shape = MakeRef<BoxShape>(0.25f, 0.125, 0.25f);
 			io_world->CreateBody(dyn_bodies_settings);
 
 
 			dyn_bodies_settings.position = Vec3(3.0f, 7.5f, 0.0f);
-			dyn_bodies_settings.shape = new BoxShape(1.0f, 0.25f, 0.25f);
+			dyn_bodies_settings.shape = MakeRef<BoxShape>(1.0f, 0.25f, 0.25f);
 			io_world->CreateBody(dyn_bodies_settings);
 
 
 			dyn_bodies_settings.position = Vec3(0.0f, 12.5f, 0.0f);
-			dyn_bodies_settings.shape = new BoxShape(1.5f, 0.15f, 0.15f);
+			dyn_bodies_settings.shape = MakeRef<BoxShape>(1.5f, 0.15f, 0.15f);
 			io_world->CreateBody(dyn_bodies_settings);
 
 			dyn_bodies_settings.position = Vec3(0.0f, 10.0f, 0.0f);
-			dyn_bodies_settings.shape = new BoxShape(1.0f, 0.25f, 1.0f);
+			dyn_bodies_settings.shape = MakeRef<BoxShape>(1.0f, 0.25f, 1.0f);
 			io_world->CreateBody(dyn_bodies_settings);
 		}
 
@@ -263,7 +267,10 @@ namespace vx
 	{
 		const BodyID body_id = mBodyManager.AddBody(body_setting);
 		if(body_id.IsValid() && body_setting.inBroadphase)
+		{
+			VX_ASSERT(mBroadphase);
 			mBroadphase->InsertBody(&mBodyManager.GetBody(body_id));
+		}
 		return (body_id.IsValid()) ? &mBodyManager.GetBody(body_id) : nullptr;
 	}
 

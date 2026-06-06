@@ -119,6 +119,10 @@ namespace vx
 {
 
 
+	/// using std smart pointer so now, 
+	/// which causes extra memory allocation for strong/weak ref, vtable pointer
+	/// and not fully thread safe for multithread 
+	/// later would create custom inspired by Jolt physics 
 	/// \brief safe and scoped pointer to an object. [Like unique_ptr]
 	template<typename T>
 	using Scope = std::unique_ptr<T>; 
@@ -128,6 +132,8 @@ namespace vx
 	/// \brief ref counted pointer to an object. [Usually used for resources]
 	template<typename T>
 	using Ref = std::shared_ptr<T>;
+	template<typename T>
+	using RefConst = std::shared_ptr<const T>;
 	template<typename T, typename... Args>
 	constexpr Ref<T> MakeRef(Args&& ...args) { return std::make_shared<T>(std::forward<Args>(args)...); }
 

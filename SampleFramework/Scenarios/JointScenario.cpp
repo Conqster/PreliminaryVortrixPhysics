@@ -52,13 +52,13 @@ void JointScenario::Init(vx::PhysicsWorld* i_world)
 
 
 
-	vx::SphereShape* unit_sphere = new vx::SphereShape(0.5f);
+	vx::Ref<vx::SphereShape> unit_sphere = vx::MakeRef<vx::SphereShape>(0.5f);
 	dyn_bodies_settings.position = vx::Vec3(3.0f, 5.5f, 0.0f);
 	dyn_bodies_settings.debug_name = "sphere";
 	dyn_bodies_settings.shape = unit_sphere;
 	mPhysicsWorld->CreateBody(dyn_bodies_settings);
 
-	vx::BoxShape* unit_box = new vx::BoxShape(0.5f);
+	vx::Ref<vx::BoxShape> unit_box = vx::MakeRef<vx::BoxShape>(0.5f);
 	dyn_bodies_settings.position = vx::Vec3(-2.0f, 5.5f, 0.0f);
 	dyn_bodies_settings.debug_name = "box";
 	dyn_bodies_settings.shape = unit_box;
@@ -78,7 +78,7 @@ void JointScenario::Init(vx::PhysicsWorld* i_world)
 	//mNotInPipelineJoints.reserve(25);
 	mPhysicsWorld->CreateConstraintT(joint);
 
-	vx::CapsuleShape* unit_capsule = new vx::CapsuleShape(0.5f, 0.5f);
+	vx::Ref<vx::CapsuleShape> unit_capsule = vx::MakeRef<vx::CapsuleShape>(0.5f, 0.5f);
 	dyn_bodies_settings.position = vx::Vec3(-2.0f, 5.5f, 0.0f);
 	dyn_bodies_settings.debug_name = "capsule";
 	dyn_bodies_settings.shape = unit_capsule;
@@ -143,7 +143,9 @@ void JointScenario::Init(vx::PhysicsWorld* i_world)
 	vx::BodySettings static_bodies_settings = vx::BodySettings::DefaultStaticConstruct();
 	static_bodies_settings.position = vx::Vec3(0.0f, 12.5f, 0.0f);
 	static_bodies_settings.debug_name = "box";
-	static_bodies_settings.shape = unit_box;
+	vx::BoxShapeSettings shape_settings(unit_box->GetHalfExtents());
+	shape_settings.SetDensity(0.0f);
+	static_bodies_settings.shape = vx::MakeRef<vx::BoxShape>(shape_settings);
 	static_bodies_settings.intialVelocity = vx::Vec3(1.0f);
 	uint32 static_body_idx = mPhysicsWorld->GetBodies().size();
 	mPhysicsWorld->CreateBody(static_bodies_settings);
@@ -151,7 +153,7 @@ void JointScenario::Init(vx::PhysicsWorld* i_world)
 	RopeSetting(rope_constraint_settings);
 
 	dyn_bodies_settings.position = vx::Vec3(0.0f, 12.5f, 0.0f);
-	dyn_bodies_settings.shape = new vx::CapsuleShape(0.5f, 0.5f);;
+	dyn_bodies_settings.shape = vx::MakeRef<vx::CapsuleShape>(0.5f, 0.5f);;
 	mPhysicsWorld->CreateBody(dyn_bodies_settings);
 	auto& new_joint3 = *mPhysicsWorld->CreateConstraintT(
 		vx::DistanceConstraint(&mPhysicsWorld->GetBodies()[static_body_idx],
@@ -268,8 +270,6 @@ void JointScenario::OnUI()
 
 void JointScenario::CreateLattice()
 {
-
-
 	float depth = -4.0f;
 	vx::uint32 first_body = mPhysicsWorld->GetBodies().size();
 
@@ -277,16 +277,16 @@ void JointScenario::CreateLattice()
 
 	dyn_bodies_settings.position = vx::Vec3(0.0f);
 	dyn_bodies_settings.debug_name = "capsule"; //"box";
-	dyn_bodies_settings.shape = new vx::CapsuleShape(0.5f, 0.5f);//vx::BoxShape(0.5f);
+	dyn_bodies_settings.shape = vx::MakeRef<vx::CapsuleShape>(0.5f, 0.5f);//vx::BoxShape(0.5f);
 	mPhysicsWorld->CreateBody(dyn_bodies_settings);
 	mPhysicsWorld->CreateBody(dyn_bodies_settings);
 	dyn_bodies_settings.debug_name = "box";
-	dyn_bodies_settings.shape = new vx::BoxShape(0.5f);
+	dyn_bodies_settings.shape = vx::MakeRef<vx::BoxShape>(0.5f);
 	mPhysicsWorld->CreateBody(dyn_bodies_settings);
 
 	dyn_bodies_settings.position = vx::Vec3(0.0f, 3.5f, depth);
 	dyn_bodies_settings.debug_name = "sphere"; //"box";
-	dyn_bodies_settings.shape = new vx::SphereShape(0.5f);//vx::BoxShape(0.5f);
+	dyn_bodies_settings.shape = vx::MakeRef<vx::SphereShape>(0.5f);//vx::BoxShape(0.5f);
 	mPhysicsWorld->CreateBody(dyn_bodies_settings);
 	dyn_bodies_settings.position = vx::Vec3(0.0f, 0.5f, depth);
 	mPhysicsWorld->CreateBody(dyn_bodies_settings);

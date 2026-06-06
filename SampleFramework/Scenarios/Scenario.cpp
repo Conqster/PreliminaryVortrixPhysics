@@ -169,7 +169,9 @@ void Scenario::Init(vx::PhysicsWorld* i_world)
 	mMouseDragConstraintSettings.localAnchorB = {};
 
 	mMouseDragBodySettings = vx::BodySettings::DefaultStaticConstruct();
-	mMouseDragBodySettings.shape = new vx::SphereShape(0.0625f);
+	vx::SphereShapeSettings sphere_settings(0.0625f);
+	sphere_settings.SetDensity(0.0f);
+	mMouseDragBodySettings.shape = vx::MakeRef<vx::SphereShape>(sphere_settings);
 	mMouseDragBodySettings.inBroadphase = false;
 
 	mHasMouseConstraint = true;
@@ -333,8 +335,10 @@ void Scenario::CreateGroundPlane(float half_size)
 	VX_ASSERT(mPhysicsWorld, "Physics World is null");
 
 	vx::BodySettings bodies_settings = vx::BodySettings::DefaultStaticConstruct();
+	vx::PlaneShapeSettings shape_settings(vx::Vec3::Up(), half_size);
+	shape_settings.SetDensity(0.0f);
 	bodies_settings.debug_name = "ground";
-	bodies_settings.shape = new vx::PlaneShape(vx::Vec3::Up(), half_size);
+	bodies_settings.shape = vx::MakeRef<vx::PlaneShape>(shape_settings);
 	mPhysicsWorld->CreateBody(bodies_settings);
 }
 
@@ -455,9 +459,9 @@ void Scenario::CreateJenga(vx::BodySettings body_setting, const vx::Vec3& half_e
 	//float block_width = 0.7f;
 	//float gap = 0.05f;
 
-	vx::BoxShape* xShape = new vx::BoxShape(half_extent.Swizzle<vx::kAxisZ, vx::kAxisY, vx::kAxisX>());
+	vx::Ref<vx::BoxShape> xShape = vx::MakeRef<vx::BoxShape>(half_extent.Swizzle<vx::kAxisZ, vx::kAxisY, vx::kAxisX>());
 
-	vx::BoxShape* zShape = new vx::BoxShape(half_extent);
+	vx::Ref<vx::BoxShape> zShape = vx::MakeRef<vx::BoxShape>(half_extent);
 
 	float width = (half_extent.X() * 2.0f);
 	float height = (half_extent.Y() * 2.0f);

@@ -29,9 +29,12 @@ void PersistentContactScenario::Init(vx::PhysicsWorld* i_world)
 
 	vx::BodySettings static_bodies_settings = vx::BodySettings::DefaultStaticConstruct();
 
+	vx::CapsuleShapeSettings capsule_settings(0.5f, 0.5f);
+	capsule_settings.SetDensity(0.0f);
+
 	static_bodies_settings.position = vx::Vec3(-2.0f, 5.5f, 0.0f);
 	static_bodies_settings.debug_name = "capsule";
-	static_bodies_settings.shape = new vx::CapsuleShape(0.5f, 0.5f); // new vx::BoxShape(0.5f);
+	static_bodies_settings.shape = vx::MakeRef<vx::CapsuleShape>(capsule_settings); // new vx::BoxShape(0.5f);
 	static_bodies_settings.orientation.SetAxisAngle(vx::Vec3::Forward(), vx::DegToRad(90.0f));
 	mPhysicsWorld->CreateBody(static_bodies_settings);
 
@@ -42,7 +45,7 @@ void PersistentContactScenario::Init(vx::PhysicsWorld* i_world)
 	//dyn_bodies_settings.position = vx::Vec3(2.0f, 5.5f, 0.0f);
 	//dyn_bodies_settings.orientation.SetAxisAngle(vx::Vec3::Forward(), vx::DegToRad(-90.0f));
 	dyn_bodies_settings.debug_name = "capsule";
-	dyn_bodies_settings.shape = new vx::CapsuleShape(0.5f, 0.5f);
+	dyn_bodies_settings.shape = vx::MakeRef<vx::CapsuleShape>(0.5f, 0.5f);
 	mPhysicsWorld->CreateBody(dyn_bodies_settings);
 
 
@@ -100,10 +103,10 @@ void PersistentContactScenario::Init(vx::PhysicsWorld* i_world)
 	//constraint between a cube and sphere 
 	dyn_bodies_settings.position += offset;
 	dyn_bodies_settings.debug_name = "box";
-	dyn_bodies_settings.shape = new vx::BoxShape(0.5f);
+	dyn_bodies_settings.shape = vx::MakeRef<vx::BoxShape>(0.5f);
 	mPhysicsWorld->CreateBody(dyn_bodies_settings);
 	dyn_bodies_settings.debug_name = "sphere";
-	dyn_bodies_settings.shape = new vx::SphereShape(0.5f);
+	dyn_bodies_settings.shape = vx::MakeRef<vx::SphereShape>(0.5f);
 	mPhysicsWorld->CreateBody(dyn_bodies_settings);
 	point_constraint_setting.anchorA = Vec3(0.0f, 1.0f, 0.0f);
 	point_constraint_setting.anchorB = Vec3(0.0f, 0.0f, 0.0f);

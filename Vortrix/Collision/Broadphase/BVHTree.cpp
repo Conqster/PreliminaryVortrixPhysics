@@ -147,6 +147,12 @@ namespace vx
 
 		DeleteNode(node);
 		DeleteNode(parent_node);
+
+		/// from the sibling down tree the bounds are still okay, 
+		/// but from the grand parent / new parent up node bound 
+		/// needs to be updated 
+		/// mark as dirty, next dirty gather could update
+		
 	}
 
 	template<typename BoundType>

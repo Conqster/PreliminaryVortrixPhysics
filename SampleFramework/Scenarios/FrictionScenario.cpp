@@ -17,8 +17,11 @@ void FrictionScenario::Init(vx::PhysicsWorld* i_world)
 	//CreateGroundPlane(100.0f);
 	float plane_half_size = 100.0f;
 	vx::BodySettings bodies_settings = vx::BodySettings::DefaultStaticConstruct();
+	vx::PlaneShapeSettings settings(vx::Vec3::Up(), plane_half_size);
+	settings.SetDensity(0.0f);
+
 	bodies_settings.debug_name = "ground";
-	bodies_settings.shape = new vx::PlaneShape(vx::Vec3::Up(), plane_half_size);
+	bodies_settings.shape = vx::MakeRef<vx::PlaneShape>(settings);
 	bodies_settings.orientation = orientation;
 	bodies_settings.friction = 1.0f;
 	bodies_settings.restitution = 0.0f;
@@ -34,8 +37,8 @@ void FrictionScenario::Init(vx::PhysicsWorld* i_world)
 	dyn_bodies_settings.debug_name = "shape";
 	dyn_bodies_settings.restitution = 0.0f;
 
-	vx::Shape* sphere_shape = new vx::SphereShape(1.0f);
-	vx::Shape* box_shape = new vx::BoxShape(1.0f);
+	vx::Ref<vx::Shape> sphere_shape = vx::MakeRef<vx::SphereShape>(1.0f);
+	vx::Ref<vx::Shape> box_shape = vx::MakeRef<vx::BoxShape>(1.0f);
 	
 	float offset_center_along_plane_sur_tan = plane_half_size * 0.7f;
 	vx::Vec2 shape_half_sizes = vx::Vec2(1.0f + 0.2f);//plus noise

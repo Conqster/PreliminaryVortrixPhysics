@@ -193,11 +193,6 @@ Application::Application(const ApplicationSpecification& app_spec)
 
 
 		mUI.Initialise(mWindow.GetWindow());
-
-		vx::uint32 shape_size = vx::VxMax(sizeof(vx::SphereShape), sizeof(vx::BoxShape));
-		shape_size = vx::VxMax(shape_size, uint32(sizeof(vx::CapsuleShape)));
-		size_t buff_size = shape_size * 1024;
-		mShapeArena.Init(buff_size);
 	}
 
 
@@ -366,8 +361,6 @@ void Application::ResetWorld(bool& reset_flag)
 					mPhysicsWorld->GetSettings() : vx::PhysicsWorldSettings();
 
 	delete mPhysicsWorld;
-
-	mShapeArena.Reset();
 
 	/// note this resets camera, 
 	/// but could be overwritten in Scenario if needed
@@ -2163,79 +2156,37 @@ void Application::DrawUI_ShadowPanel()
 		ImGui::TextColored(ImVec4(0.1f, 0.8f, 0.2, 1.0f), "Dynamic Origin, try modifing offset instead");
 }
 
+
+
+vx::RefConst<vx::Shape> Application::TryGetCreatedShape(const vx::Float3& he, float density, const vx::EShapeType shape_type) const
+{
+	auto CompareProp = [](const vx::RefConst<vx::Shape>& shape, const vx::Float3& he, float p, const vx::EShapeType shape_type)
+		{
+			if (!shape) return false;
+
+			vx::Float3 halfExtents;
+			shape->GetHalfExtents().Store(halfExtents);
+			float density = shape->GetDensity();
+			vx::EShapeType shapeType = shape->GetType();
+
+
+			return halfExtents == he &&
+				density == p &&
+				shapeType == shape_type;
+		};
+
+	for (const auto& c : mCreatedShape)
+		if (CompareProp(c, he, density, shape_type))
+			return c;
+	return nullptr;
+}
+
 void Application::PhysicsInteraction()
 {
 	if (!mPhysicsWorld && !mParticleWorld) return;
 
-	//static CreatePhysicsObjectSettings pending_phys_obj[256];
-	//static int pending_count = 0;
-
-	//ImGui::Begin("Experiment");
-	//ImGui::Text("Pending object creation");
-	//ImGui::End();
-
-
-	struct CacheData
-	{
-		vx::Float3 halfExtents{0.0f};
-		float density = 0;
-		vx::Shape* generatedShape = nullptr;
-		vx::EShapeType shapeType = vx::EShapeType::Box;
-		bool overrideMass = false;
-
-
-		bool CompareProp(const vx::Float3& he, float p, const vx::EShapeType shape_type, bool override_mass) const
-		{
-			return halfExtents == he &&
-				density == p &&
-				shapeType == shape_type &&
-				overrideMass == override_mass;
-		}
-
-		bool CompareProp(const CacheData& rhs) const
-		{
-			return CompareProp(rhs.halfExtents, rhs.density, rhs.shapeType, rhs.overrideMass);
-		}
-	};
-
-	static constexpr uint32 k_max_cache_data = 10;
- 	static CacheData cached_shape_data[k_max_cache_data] = {};
-	static uint cache_write_ptr = 0;
-
-	auto Find_CacheData = [&](const vx::Float3& he, float density, const vx::EShapeType shape_type, bool override_mass, CacheData& o_cache_data)
-		{
-			return false;
-			for (uint32 i = 0; i < k_max_cache_data; ++i)
-			{
-				if (cached_shape_data[i].CompareProp(he, density, shape_type, override_mass))
-				{
-					o_cache_data = cached_shape_data[i];
-					return (o_cache_data.generatedShape != nullptr);
-				}
-			}
-			return false;
-		};
-
-	auto Add_CacheData = [&](const vx::Float3& he, float density, const vx::EShapeType shape_type, bool override_mass, vx::Shape* shape_ptr)
-		{
-			if (shape_ptr == nullptr)
-				return;
-			auto& inst = cached_shape_data[cache_write_ptr];
-			inst.halfExtents = he;
-			inst.generatedShape = shape_ptr;
-			inst.density = density;
-			inst.shapeType = shape_type;
-			inst.overrideMass = override_mass;
-
-			cache_write_ptr = (cache_write_ptr + 1) % k_max_cache_data;
-		};
-
-
-	static vx::Shape* hack_shape = nullptr;
-
-
   	bool create_obj = Input::GetKeyDown(IKeyCode::Space) || (mNewPhyObjectSettings.allowKeyHeld && Input::GetKey(IKeyCode::Space));
-	//if (Input::GetKeyDown(IKeyCode::Space))
+	
 	if (create_obj)
 	{
 		vx::Vec3 dir = (mNewPhyObjectSettings.spawnFromView) ? mCamera.GetForward() : (mTestCanon.spawn - mTestCanon.back).Normalised();
@@ -2251,6 +2202,7 @@ void Application::PhysicsInteraction()
 			body_settings.position = position;
 			body_settings.overrideMasses = mNewPhyObjectSettings.overrideMasses;
 			body_settings.density = mNewPhyObjectSettings.density;
+
 			body_settings.mass = (mNewPhyObjectSettings.isDynamic && !mNewPhyObjectSettings.overrideMasses) ? mNewPhyObjectSettings.mass : 0.0f;
 			body_settings.impluse = impluse;
 			body_settings.intialVelocity = dir * mNewPhyObjectSettings.initialLinearVelocity;
@@ -2259,41 +2211,52 @@ void Application::PhysicsInteraction()
 			body_settings.friction = mNewPhyObjectSettings.friction;
 			body_settings.restitution = mNewPhyObjectSettings.restitution;
 
-			CacheData out_cache_data;
-			if (Find_CacheData(mNewPhyObjectSettings.halfExtents, 
-				mNewPhyObjectSettings.density, 
-				mNewPhyObjectSettings.bodyShape, 
-				mNewPhyObjectSettings.overrideMasses, out_cache_data))
-				body_settings.shape = out_cache_data.generatedShape;
+			
+
+			//CacheData out_cache_data;
+			vx::RefConst<Shape> shape = TryGetCreatedShape(mNewPhyObjectSettings.halfExtents,
+				mNewPhyObjectSettings.density, mNewPhyObjectSettings.bodyShape);
+
+
+			if (shape)
+				body_settings.shape = shape;
 			else
 			{
+
+				float density = 0.0f;
+				if (body_settings.motionType == EMotionType::Dynamic)
+					//for old deprecated
+					if (body_settings.mass > 0.0f) //to support deprecated method
+						density = body_settings.density;
+
 				if (mNewPhyObjectSettings.bodyShape == vx::EShapeType::Box)
 				{
-					body_settings.shape = new BoxShape(vx::Vec3::LoadFloat3Raw(mNewPhyObjectSettings.halfExtents));
-					//if(hack_shape == nullptr)
-					//{
-					//	body_settings.shape = mShapeArena.AllocateObject<BoxShape>(vx::Vec3::LoadFloat3Raw(mNewPhyObjectSettings.halfExtents));
-					//	hack_shape = body_settings.shape;
-					//}
-					//else
-					//	body_settings.shape = hack_shape;
+					vx::BoxShapeSettings settings(vx::Vec3::LoadFloat3Raw(mNewPhyObjectSettings.halfExtents));
+
+					//for old deprecated
+					//if (body_settings.mass > 0.0f) //to support deprecated method
+						settings.SetDensity(body_settings.density);
+					body_settings.shape = vx::MakeRef<BoxShape>(settings);
 				}
 				else if (mNewPhyObjectSettings.bodyShape == vx::EShapeType::Capsule)
 				{
 					auto& he = mNewPhyObjectSettings.halfExtents;
-					//body_settings.shape = mShapeArena.AllocateObject<CapsuleShape>(he.x, he.y);
-					body_settings.shape = new CapsuleShape(he.x, he.y);
+					float actual_half_height = he.y * 0.5f;
+					vx::CapsuleShapeSettings settings(he.x, actual_half_height);
+
+						settings.SetDensity(body_settings.density);
+					body_settings.shape = vx::MakeRef<CapsuleShape>(settings);
 				}
 				else
-					//body_settings.shape = mShapeArena.AllocateObject<SphereShape>(mNewPhyObjectSettings.halfExtents.x);
-					body_settings.shape = new SphereShape(mNewPhyObjectSettings.halfExtents.x);
+				{
+					vx::SphereShapeSettings settings(mNewPhyObjectSettings.halfExtents.x);
+					settings.SetDensity(body_settings.density);
+					body_settings.shape = vx::MakeRef<SphereShape>(settings);
+				}
 
 
 				//cache shape prop
-				Add_CacheData(mNewPhyObjectSettings.halfExtents, 
-					mNewPhyObjectSettings.density,
-					mNewPhyObjectSettings.bodyShape,
-					mNewPhyObjectSettings.overrideMasses, body_settings.shape);
+				mCreatedShape.push_back(body_settings.shape);
 			}
 			
 			body_settings.debug_name = body_settings.shape->GetShapeTypeName();
@@ -2850,6 +2813,10 @@ void Application::CreateNewPhysicsBodyWindow()
 				mNewPhyObjectSettings.bodyShape = static_cast<vx::EShapeType>(curr_sp_type);
 				///alway reset when shape type change to prevent bugs 
 				mNewPhyObjectSettings.halfExtents = Float3{ 0.5f };
+				if(mNewPhyObjectSettings.bodyShape != EShapeType::Capsule)
+					mNewPhyObjectSettings.halfExtents = Float3{ 0.5f };
+				else
+					mNewPhyObjectSettings.halfExtents = Float3{ 0.5f, 1.0f, 0.5f };// convert to the actual half extent along y
 			}
 
 			ImGui::SliderInt("Count", (int*)&mNewPhyObjectSettings.count, 1, 50);
@@ -2862,7 +2829,8 @@ void Application::CreateNewPhysicsBodyWindow()
 				break;
 			case vx::EShapeType::Capsule: 
 				ImGui::DragFloat("Radius (m)", &mNewPhyObjectSettings.halfExtents[0], 0.1f, 0.0f);
-				ImGui::DragFloat("Half Cylinder height (m)", &mNewPhyObjectSettings.halfExtents[1], 0.1f, 0.0f);
+				
+				ImGui::DragFloat("Half Capsule height (m)", &mNewPhyObjectSettings.halfExtents[1], 0.1f, 0.0f);
 				break;
 			default:
 				VX_LOG_WARN("UNKNOWN Create Shape type!!!");

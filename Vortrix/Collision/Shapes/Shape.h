@@ -38,9 +38,19 @@ namespace vx
 	};
 
 
-	class Shape
+	class ShapeSettings
 	{
 	public:
+
+		void SetDensity(float density) { mDensity = density; }
+		float mDensity = 1000.0f;
+	};
+
+
+	class Shape : public NonCopyable
+	{
+	public:
+
 		EShapeType GetType() const { return mType; }
 		constexpr const char* GetShapeTypeName() const { return GetEShapeTypeName(mType); }
 		virtual const char* GetName() const { return "Base"; }
@@ -49,7 +59,7 @@ namespace vx
 		virtual AABB GetWorldBounds(const Mat44& tranform, const Vec3& scale) const { return GetLocalBounds().Scaled(scale).Transformed(tranform); }
 
 		void SetDensity(float density) { mDensity = density; }
-		float GetDensity() { return mDensity; }
+		float GetDensity() const { return mDensity; }
 
 		virtual MassProperties GetMassProperties() const = 0; 
 
@@ -62,6 +72,7 @@ namespace vx
 
 		virtual ~Shape() {}
 	protected:
+		Shape(EShapeType type, const ShapeSettings& settings) : mType(type), mDensity(settings.mDensity) {}
 		Shape(EShapeType type) : mType(type) {}
 		EShapeType mType;
 

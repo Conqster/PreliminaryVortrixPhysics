@@ -36,14 +36,14 @@ void SimpleBasicScenario::Init(vx::PhysicsWorld* i_world)
 	vx::BodySettings static_bodies_settings = vx::BodySettings::DefaultStaticConstruct();
 	if (create_boxes)
 	{
-		vx::BoxShape* unit_box = new vx::BoxShape(0.5f);
+		vx::Ref<BoxShape> unit_box = vx::MakeRef<BoxShape>(0.5f);
 		dyn_bodies_settings.position = vx::Vec3(-2.0f, 5.5f, 0.0f);
 		dyn_bodies_settings.debug_name = "box";
-		dyn_bodies_settings.shape = new vx::BoxShape(0.5f, 0.25f, 0.5f);
+		dyn_bodies_settings.shape = vx::MakeRef<BoxShape>(0.5f, 0.25f, 0.5f);
 		mPhysicsWorld->CreateBody(dyn_bodies_settings);
 
 		dyn_bodies_settings.position = vx::Vec3(2.0f, 3.0f, 0.0f);
-		dyn_bodies_settings.shape = new vx::BoxShape(0.15f, 0.6f, 0.35f);
+		dyn_bodies_settings.shape = vx::MakeRef<BoxShape>(0.15f, 0.6f, 0.35f);
 		mPhysicsWorld->CreateBody(dyn_bodies_settings);
 
 		dyn_bodies_settings.shape = unit_box;
@@ -57,15 +57,17 @@ void SimpleBasicScenario::Init(vx::PhysicsWorld* i_world)
 		mPhysicsWorld->CreateBody(dyn_bodies_settings);
 
 		dyn_bodies_settings.position = vx::Vec3(0.0f, 12.5f, 0.0f);
-		dyn_bodies_settings.shape = new vx::BoxShape(1.5f, 0.15f, 0.15f);
+		dyn_bodies_settings.shape = vx::MakeRef<BoxShape>(1.5f, 0.15f, 0.15f);
 		mPhysicsWorld->CreateBody(dyn_bodies_settings);
 	}
 
-	vx::SphereShape* unit_sphere = new vx::SphereShape(0.5f);
+	vx::SphereShapeSettings shape_settings(0.5f);
+	shape_settings.SetDensity(0.0f);
+	vx::Ref<vx::SphereShape> static_unit_sphere = vx::MakeRef<vx::SphereShape>(shape_settings);
 	static_bodies_settings = vx::BodySettings::DefaultStaticConstruct();
 	static_bodies_settings.position = vx::Vec3(3.0f, 5.5f, 0.0f);
 	static_bodies_settings.debug_name = "sphere";
-	static_bodies_settings.shape = unit_sphere;
+	static_bodies_settings.shape = static_unit_sphere;
 	mPhysicsWorld->CreateBody(static_bodies_settings);
 
 	mPhysicsWorld->CreateBody(static_bodies_settings);
@@ -88,8 +90,12 @@ void SimpleBasicScenario::Init(vx::PhysicsWorld* i_world)
 	/// 
 	/// front offset along z and face -z (rotate around -x)
 	vx::BodySettings body_settings = vx::BodySettings::DefaultStaticConstruct();
+
+	vx::PlaneShapeSettings plane_shape_settings(vx::Vec3::Up(), 100.0f);
+	plane_shape_settings.SetDensity(0.0f);
+
 	body_settings.debug_name = "front plane";
-	body_settings.shape = new vx::PlaneShape(vx::Vec3::Up(), 100.0f);
+	body_settings.shape = vx::MakeRef<vx::PlaneShape>(plane_shape_settings);
 
 	float world_size = 100.0f;
 	body_settings.position = vx::Vec3(0.0f, 0.0f, world_size);
@@ -118,7 +124,7 @@ void SimpleBasicScenario::Init(vx::PhysicsWorld* i_world)
 	{
 		dyn_bodies_settings = vx::BodySettings::DefaultDynamicConstruct();
 		dyn_bodies_settings.debug_name = "Capsule";
-		dyn_bodies_settings.shape = new vx::CapsuleShape(0.5f, 0.5f);
+		dyn_bodies_settings.shape = vx::MakeRef<vx::CapsuleShape>(0.5f, 0.5f);
 		dyn_bodies_settings.position = vx::Vec3(4.0f, 10.0f, 0.0f);
 		mPhysicsWorld->CreateBody(dyn_bodies_settings);
 
@@ -141,30 +147,30 @@ void SimpleBasicScenario::Init(vx::PhysicsWorld* i_world)
 	{
 		dyn_bodies_settings.position = vx::Vec3(-2.0f, 5.5f, 0.0f);
 		dyn_bodies_settings.debug_name = "box";
-		dyn_bodies_settings.shape = new vx::BoxShape(0.5f, 0.25f, 0.5f);
+		dyn_bodies_settings.shape = vx::MakeRef<BoxShape>(0.5f, 0.25f, 0.5f);
 		mPhysicsWorld->CreateBody(dyn_bodies_settings);
 
 
 		dyn_bodies_settings.position = vx::Vec3(1.0f, 7.0f, 0.0f);
-		dyn_bodies_settings.shape = new vx::BoxShape(0.15f, 0.6f, 0.35f);
+		dyn_bodies_settings.shape = vx::MakeRef<BoxShape>(0.15f, 0.6f, 0.35f);
 		mPhysicsWorld->CreateBody(dyn_bodies_settings);
 
 		dyn_bodies_settings.position = vx::Vec3(0.0f, 5.5f, 0.0f);
-		dyn_bodies_settings.shape = new vx::BoxShape(0.25f, 0.125, 0.25f);
+		dyn_bodies_settings.shape = vx::MakeRef<BoxShape>(0.25f, 0.125, 0.25f);
 		mPhysicsWorld->CreateBody(dyn_bodies_settings);
 
 
 		dyn_bodies_settings.position = vx::Vec3(3.0f, 7.5f, 0.0f);
-		dyn_bodies_settings.shape = new vx::BoxShape(1.0f, 0.25f, 0.25f);
+		dyn_bodies_settings.shape = vx::MakeRef<BoxShape>(1.0f, 0.25f, 0.25f);
 		mPhysicsWorld->CreateBody(dyn_bodies_settings);
 
 
 		dyn_bodies_settings.position = vx::Vec3(0.0f, 12.5f, 0.0f);
-		dyn_bodies_settings.shape = new vx::BoxShape(1.5f, 0.15f, 0.15f);
+		dyn_bodies_settings.shape = vx::MakeRef<BoxShape>(1.5f, 0.15f, 0.15f);
 		mPhysicsWorld->CreateBody(dyn_bodies_settings);
 
 		dyn_bodies_settings.position = vx::Vec3(0.0f, 10.0f, 0.0f);
-		dyn_bodies_settings.shape = new vx::BoxShape(1.0f, 0.25f, 1.0f);
+		dyn_bodies_settings.shape = vx::MakeRef<BoxShape>(1.0f, 0.25f, 1.0f);
 		mPhysicsWorld->CreateBody(dyn_bodies_settings);
 	}
 }

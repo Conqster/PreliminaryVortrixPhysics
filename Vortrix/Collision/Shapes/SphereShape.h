@@ -3,11 +3,24 @@
 #include "Shape.h"
 
 namespace vx {
+
+	class SphereShapeSettings final : public ShapeSettings
+	{
+	public:
+		explicit SphereShapeSettings(float radius) : mRadius(radius){ }
+	public:
+		float mRadius = 0.5f;
+	};
+
 	class SphereShape : public Shape
 	{
 	public:
 		explicit SphereShape(float radius) :
 			Shape(EShapeType::Sphere), mRadius(radius) {
+		}
+
+		explicit SphereShape(const SphereShapeSettings& settings) :
+			Shape(EShapeType::Sphere, settings), mRadius(settings.mRadius) {
 		}
 
 		static constexpr const char* GetDebugName() { return "Sphere"; }

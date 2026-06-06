@@ -25,7 +25,7 @@ void WorldQueriesScenario::Init(vx::PhysicsWorld* i_world)
 
 	mExperimentRay = vx::RayCast(vx::Vec3(-15.0f, 0.5f, 0.0f), vx::Vec3(30.0f, 0.0f, 0.0f));
 
-	vx::SphereShape* unit_sphere = new vx::SphereShape(0.5f);
+	vx::Ref<vx::SphereShape> unit_sphere = vx::MakeRef<vx::SphereShape>(0.5f);
 	vx::BodySettings settings = vx::BodySettings::DefaultDynamicConstruct();
 	settings.position = vx::Vec3(-12.0f, 1.0f, 0.0f);
 	settings.debug_name = "sphere";
@@ -44,7 +44,7 @@ void WorldQueriesScenario::Init(vx::PhysicsWorld* i_world)
 
 
 	settings.debug_name = "Capsule";
-	settings.shape = new vx::CapsuleShape(0.5f, 0.5f);
+	settings.shape = vx::MakeRef<vx::CapsuleShape>(0.5f, 0.5f);
 	settings.orientation.SetAxisAngle(vx::Vec3::Right(), vx::DegToRad(90.0f));
 
 
