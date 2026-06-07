@@ -73,7 +73,6 @@ void PersistentContactScenario::Init(vx::PhysicsWorld* i_world)
 	//maybe every frame update worldanhor
 	//mPhysicsWorld->mBallJoint = new vx::PointConstraint(&mPhysicsWorld->GetBodies()[0], &mPhysicsWorld->GetBodies()[1], point_constraint_setting);
 	mTestConstraint = new vx::PointConstraint(&mPhysicsWorld->GetBodies()[0], &mPhysicsWorld->GetBodies()[1], point_constraint_setting);
-	//mPhysicsWorld->mBallJoint = new vx::PointConstraint(&mPhysicsWorld->GetBodies()[0], &mPhysicsWorld->GetBodies()[1], dyn_bodies_settings.position + Vec3(-1.0f, 0.0f, 0.0f));
 	mPhysicsWorld->AddConstraint(mTestConstraint);
 
 	point_constraint_setting.anchorA = Vec3(0.0f, 1.0f, 0.0f);
@@ -88,17 +87,10 @@ void PersistentContactScenario::Init(vx::PhysicsWorld* i_world)
 
 
 	mPhysicsWorld->CreateBody(dyn_bodies_settings);
-	mPhysicsWorld->mBallJoint2 = new vx::PointConstraint(&mPhysicsWorld->GetBodies()[2], &mPhysicsWorld->GetBodies()[3], point_constraint_setting);
-	//vx::PointConstraint pt_constraint2 = vx::PointConstraint(&mPhysicsWorld->GetBodies()[2], &mPhysicsWorld->GetBodies()[3], point_constraint_setting);
+	vx::PointConstraint pt_constraint2 = vx::PointConstraint(&mPhysicsWorld->GetBodies()[2], &mPhysicsWorld->GetBodies()[3], point_constraint_setting);
 
 	mPhysicsWorld->CreateBody(dyn_bodies_settings);
 	vx::PointConstraint pt_constraint3 = vx::PointConstraint(&mPhysicsWorld->GetBodies()[1], &mPhysicsWorld->GetBodies()[4], point_constraint_setting);
-
-
-	//mPhysicsWorld->CreateConstraintT(pt_constraint);
-	////mPhysicsWorld->CreateConstraintT(pt_constraint2);
-	//mPhysicsWorld->CreateConstraintT(pt_constraint3);
-
 
 	//constraint between a cube and sphere 
 	dyn_bodies_settings.position += offset;
@@ -113,11 +105,12 @@ void PersistentContactScenario::Init(vx::PhysicsWorld* i_world)
 
 	
 
-	vx::PointConstraint pt_joints[2] = {
+	vx::PointConstraint pt_joints[3] = {
+		pt_constraint2,
 		pt_constraint3,
 		vx::PointConstraint((&mPhysicsWorld->GetBodies().back())-1, &mPhysicsWorld->GetBodies().back(), point_constraint_setting)
 	};
-	mPhysicsWorld->CreateConstraintsT(pt_joints, 2);
+	mPhysicsWorld->CreateConstraintsT(pt_joints, 3);
 
 
 	/// Ground plane
@@ -132,14 +125,7 @@ void PersistentContactScenario::PostPhysicsStep(float dt)
 
 void PersistentContactScenario::OnClose()
 {
-	if(mPhysicsWorld)
-	{
-		if(mPhysicsWorld->mBallJoint2)
-		{
-			delete mPhysicsWorld->mBallJoint2;
-			mPhysicsWorld->mBallJoint2 = nullptr;
-		}
-	}
+	Scenario::OnClose();
 }
 
 PersistentContactScenario::~PersistentContactScenario()

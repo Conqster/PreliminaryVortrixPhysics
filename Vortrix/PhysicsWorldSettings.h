@@ -38,6 +38,8 @@ namespace vx
 		/// rebuild BVH, when imbalance ration grows
 		/// above treshold
 		float rebuildBVH_ImbalanceRatioTreshold = 0.6f;
+
+		class ScratchAllocator* mScratchAllocator;
 	};
 
 

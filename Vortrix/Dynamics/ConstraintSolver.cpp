@@ -1,5 +1,7 @@
 #include "ConstraintSolver.h"
 
+#include "Core/ScratchAllocator.h"
+
 namespace vx {
 
 	void ConstraintSolver::Init(const BodyManager& body_manager)
@@ -20,7 +22,7 @@ namespace vx {
 
 		//the remove the below in order 
 		mConstraintPositionSolveQueue.clear();
-		mLinear1DRows.clear();
+		//mLinear1DRows.clear();
 	}
 
 	SolverBodyIndex ConstraintSolver::GetOrCreateSolverBody(BodyID physics_body_id, const PhysicsStepContext& ctx)
@@ -104,9 +106,20 @@ namespace vx {
 		}
 	}
 
+	void ConstraintSolver::PrepareSolver(uint32 required_liner_row, const PhysicsStepContext& ctx)
+	{
+		mLinear1DRowBufferCount = required_liner_row;
+		mLinear1DRows = reinterpret_cast<Linear1DRow*>(ctx.mScratchAllocator->Allocate(sizeof(Linear1DRow) * required_liner_row));
+		//ensure mem is clean and defualt to Linear1DROw
+		std::memset(mLinear1DRows, {}, mLinear1DRowBufferCount * sizeof(Linear1DRow));
+	}
+
 	void ConstraintSolver::HackClear()
 	{
-		mLinear1DRows.clear();
+		//mLinear1DRows.clear();
+
+		mLinear1DRowsCounts = 0;
+		mLinear1DRowBufferCount = 0;
 
 		//quick hack, no caching pipeline and to prevent bugs 
 		mBodies.clear();
@@ -200,16 +213,23 @@ namespace vx {
 	void ConstraintSolver::SolverAll(const PhysicsStepContext& ctx, uint32 iterations)
 	{
 		VX_PROFILE_FUNCTION();
-		ConstraintSolver::WarmStart(mLinear1DRows.data(), 0, mLinear1DRows.size(), mBodies.data());
+		//ConstraintSolver::WarmStart(mLinear1DRows.data(), 0, mLinear1DRows.size(), mBodies.data());
+
+		//for (int i = 0; i < iterations; ++i)
+		//	ConstraintSolver::SolverVelocityLinear1DRows(mLinear1DRows.data(), 0, mLinear1DRows.size(), mBodies.data());
+		//{
+		//	VX_PROFILE_SCOPE("ConstraintSolver Solve all commit state");
+		//	for (const auto& r : mLinear1DRows)
+		//		if (r.user)
+		//			r.user->CommitSolverState(r);
+		//}
+
+		ConstraintSolver::WarmStart(mLinear1DRows, 0, mLinear1DRowsCounts, mBodies.data());
 
 		for (int i = 0; i < iterations; ++i)
-			ConstraintSolver::SolverVelocityLinear1DRows(mLinear1DRows.data(), 0, mLinear1DRows.size(), mBodies.data());
-		{
-			VX_PROFILE_SCOPE("ConstraintSolver Solve all commit state");
-			for (const auto& r : mLinear1DRows)
-				if (r.user)
-					r.user->CommitSolverState(r);
-		}
+			ConstraintSolver::SolverVelocityLinear1DRows(mLinear1DRows, 0, mLinear1DRowsCounts, mBodies.data());
+
+			CommitStateConstraint();
 
 		ConstraintSolver::WriteBackBodies(mBodies.data(), mBodies.size(), *ctx.bodyManager);
 	}

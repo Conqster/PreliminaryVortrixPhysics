@@ -12,7 +12,8 @@
 
 #define VX_DEBUG_DRAW 1
 #define VX_PROFILING 1
-//#define VX_DISABLE_FORCE_INLINE
+
+#define PROFILE_MEM_ALLOC 1
 
 
 #define VX_STRINGIFY(x) #x
@@ -160,6 +161,34 @@ namespace vx
 	using intptr = intptr_t; //<-- sweet for bitwise ops (address math, masking, hashing)
 	using uintptr = uintptr_t; //<-- sweet for numerical interpretation (differences, offsets).
 
+
+	template<typename T>
+	VX_INLINE T AlignUp(T value, size_t alignment)
+	{
+		return T((size_t(value) + (alignment - 1)) & ~(alignment - 1));
+	}
+
+	///Bytes -> kB
+	VX_INLINE double ToKilobyte(uint32_t bytes)
+	{
+		return static_cast<double>(bytes) / 1000;
+	}
+	///Bytes -> KiB
+	VX_INLINE double ToKibibyte(uint32_t bytes)
+	{
+		return static_cast<double>(bytes) / 1024;
+	}
+
+	///Bytes -> MB
+	VX_INLINE double ToMegabyte(uint32_t bytes)
+	{
+		return static_cast<double>(bytes) * 1e-6;
+	}
+	///Bytes -> MiB
+	VX_INLINE double ToMebibyte(uint32_t bytes)
+	{
+		return static_cast<double>(bytes) / (1024 * 1024);
+	}
 
 	//template<typename T>
 	//inline constexpr T Clamp(T value, T min_val, T max_val)  {  return std::min(std::max(value, min_val), max_val); }

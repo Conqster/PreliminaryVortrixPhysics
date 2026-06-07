@@ -2,7 +2,7 @@
 
 
 #include "Core/Core.h"
-
+#include "Core/VxMemory.h"
 #include "Core/NonCopyable.h"
 
 #include "Core/Logger.h"

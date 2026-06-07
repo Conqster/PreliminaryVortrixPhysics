@@ -233,6 +233,9 @@ void JointScenario::OnUI()
 	if (mPhysicsWorld == nullptr)
 		return;
 
+	if (mPhysicsWorld->GetConstraints().empty())
+		return;
+
 	if (ImGui::Begin("Joint Window"))
 	{
 		static bool use_new = true;

@@ -46,6 +46,9 @@ namespace vx {
 		/// idx in coordinate constraint vector
 		static constexpr Idx kInvalidIdx = 0xffffffff;
 		Idx ConstraintIdx()const { return mConstraintIdx; }
+
+
+		virtual void GetRowCounts(/*const PhysicsStepContext& ctx, */uint32& o_1D_rows, uint32& o_3D_rows) = 0;
 	protected:
 		/// could be used, in PrepSolver/BuildSolver or BuildIsland
 		/// or even SolverPositionConstraint

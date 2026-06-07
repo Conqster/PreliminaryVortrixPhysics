@@ -20,19 +20,19 @@ namespace vx {
 		float bias;
 
 		/// rAXn = rA.Cross(nor);
-		Float3 rAXn;	
+		Float3 rAXn{ 0 };
 		float lambda = 0.0f;
 		
 		///invIrAXn = mBodyA->ComputeInvInteriaWorld().Multiply3x3(rAXn);
-		Float3 invIrAXn;
+		Float3 invIrAXn{0};
 		float minLambda = -kMaxf;
 
 		/// rAXn = rA.Cross(nor);
-		Float3 rBXn;	/// rAXn = rA.Cross(nor);
+		Float3 rBXn{ 0 };	/// rAXn = rA.Cross(nor);
 		float maxLambda = kMaxf;
 		
 		///invIrBXn = mBodyA->ComputeInvInteriaWorld().Multiply3x3(rAXn
-		Float3 invIrBXn;
+		Float3 invIrBXn{ 0 };
 
 		//for now has hack 
 		class Constraint* user = nullptr;

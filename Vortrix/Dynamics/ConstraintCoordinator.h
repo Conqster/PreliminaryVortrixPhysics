@@ -45,13 +45,18 @@ namespace vx {
 			Add((Constraint**)c, count);
 		}
 
+
 		Constraints& GetConstraints() { return mConstraints; }
+		uint32 GetTotalPredicted1DRow() const { return mTotalPredicted1DRow; }
 		void PrepConstraintSolving(ConstraintSolver& solver, const PhysicsStepContext& ctx);
 		void DebugGizmos(DebugGizmosRenderer* debug_renderer, const NonContactConstraintDrawSettings& draw_settings);
 
 	private: 
 		//for now vector 
 		Constraints mConstraints;
+
+		uint32 mTotalPredicted1DRow = 0;
+		uint32 mTotalPredicted3DRow = 0;
 	};
 
 } //namespace vx

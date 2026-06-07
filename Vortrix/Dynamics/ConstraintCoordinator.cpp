@@ -3,7 +3,7 @@
 #include "PhysicsWorldSettings.h"
 #include "Core/Profiler.h"
 
-
+#include "ConstraintSolver.h"
 namespace vx{
 
 	ConstraintCoordinator::~ConstraintCoordinator()
@@ -18,6 +18,11 @@ namespace vx{
 		for (Constraint** c = constraints, **c_end = constraints + count; c < c_end; ++c)
 		{
 			(*c)->mConstraintIdx = mConstraints.size();
+
+			uint32 pred_1d_rows, pred_3d_rows;
+			(*c)->GetRowCounts(pred_1d_rows, pred_3d_rows);
+			mTotalPredicted1DRow += pred_1d_rows;
+
 			mConstraints.push_back((*c));
 		}
 	}
@@ -40,12 +45,16 @@ namespace vx{
 			}
 
 			(*c)->mConstraintIdx = Constraint::kInvalidIdx;
+			uint32 pred_1d_rows, pred_3d_rows;
+			(*c)->GetRowCounts(pred_1d_rows, pred_3d_rows);
+			mTotalPredicted1DRow -= pred_1d_rows;
 			mConstraints.pop_back();
 		}
 	}
 
 	void ConstraintCoordinator::PrepConstraintSolving(ConstraintSolver& solver, const PhysicsStepContext& ctx)
 	{
+		solver.PrepareSolver(mTotalPredicted1DRow, ctx);
 		VX_PROFILE_FUNCTION();
 		for (auto& c : mConstraints)
 			c->PrepSolver(&solver, ctx);

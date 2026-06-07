@@ -37,6 +37,9 @@
 
 #include "Dynamics/Constraints/PointConstraint.h"
 
+#include "Core/ScratchAllocator.h"
+
+
 namespace vx
 {
 
@@ -55,6 +58,8 @@ namespace vx
 		delete mBroadphase;
 
 		delete mConstraintSolver;
+
+		delete mScratchAllocator;
 	}
 
 	void PhysicsWorld::CreateSimpleWorld(PhysicsWorld* io_world)
@@ -245,14 +250,12 @@ namespace vx
 		mContactConstraintSolver.Init(max_contact_constraint);
 		mContactConstraintSolver.SetPhysicsContext(&mContext);
 
-
 		mConstraintSolver = new ConstraintSolver;
 		mConstraintSolver->Init(mBodyManager);
 
-		/// experiment
 		mWorldQuery.Init(mBroadphase);
-		//mExperimentRay = RayCast(Vec3(10.0f, 7.0f, 0.0f), Vec3(-10.0f, 0.0f, 0.0f) * 0.5f);
 
+		mScratchAllocator = new ScratchAllocator(10 * 1024 * 1024);
 
 		for (auto& col : mRandomColourInst)
 		{
@@ -293,6 +296,7 @@ namespace vx
 		mContext.forceBVHRebuild = mSettings.forceBVHRebuild;
 		mContext.BVH_rebuild_SAH = mSettings.collision.BVH_rebuild_SAH;
 		mContext.rebuildBVH_ImbalanceRatioTreshold = mSettings.collision.rebuildBVH_ImbalanceRatioTreshold;
+		mContext.mScratchAllocator = mScratchAllocator;
 
 		mWorldQuery.SetDebugRender(mHackDebugRenderer);
 		mWorldQuery.SetDrawBroadphaseNodesWalked(mSettings.drawSettings.drawWalkedTreeQuery);
@@ -336,12 +340,6 @@ namespace vx
 
 		mContactConstraintSolver.PreFrameSetup(mSettings); //for per frame transient allcation for now
 
-		//mContactConstraintSolver.WarmStart();
-		
-		//mConstraintSolver->HackClear();
-		//mConstraintCoordinator->PrepConstraintSolving(*mConstraintSolver, mContext);
-		//mConstraintSolver->SolverAll(mContext, mSettings.solver.velocityIterations);
-
 	
 		/// for now need to invalidate previous frame local bodies 
 		/// so the bodies could be update for use by narrowphase handshake 
@@ -368,8 +366,12 @@ namespace vx
 			mConstraintCoordinator.PrepConstraintSolving(*mConstraintSolver, mContext);
 
 			Linear1DRow* constraint_solver_rows = mConstraintSolver->GetLinearRowPtr();
-			uint32 constraint_solver_row_count = mConstraintSolver->LinearRowCount();
+			uint32 constraint_solver_row_count = mConstraintSolver->LinearRowCount(); 
 			SolverBody* solver_bodies = mConstraintSolver->GetBodiesPtr();
+
+
+		
+
 			
 			if (mSettings.solver.warmstart)
 			{
@@ -391,6 +393,10 @@ namespace vx
 			//commit solver state to constraint
 			if (mSettings.solver.warmstart)
 				mConstraintSolver->CommitStateConstraint();
+
+			if(mConstraintSolver->Linear1DRowBufferCount() > 0)
+				mScratchAllocator->Free(constraint_solver_rows, sizeof(Linear1DRow) * mConstraintSolver->Linear1DRowBufferCount());
+
 
 			//write back bodies 
 			ConstraintSolver::WriteBackBodies(solver_bodies, mConstraintSolver->GetBodiesCount(), mBodyManager);
@@ -419,25 +425,10 @@ namespace vx
 #endif // CONTACT_USE_SOLVERBODY
 
 
-
 			//commit contact constraint state to constraint
 			ContactConstraintSolver::WriteBackImplusesManifoldCache(
 				mContactConstraintSolver.ContactConstraintsPtr(), mContactConstraintSolver.NumContactConstraints());
 		}
-
-
-
-		auto& solver_settings = mSettings.solver;
-		if(mBallJoint)
-			mBallJoint->QuickSolveUnified3DJacobian(dt, 
-				solver_settings.velocityIterations, 
-				solver_settings.positionIterations, 
-				solver_settings.baumgarte);
-		if (mBallJoint2)
-			mBallJoint2->QuickSolveSplit1DJacobians(dt,
-				solver_settings.velocityIterations,
-				solver_settings.positionIterations,
-				solver_settings.baumgarte);
 
 
 		UpdateBodiesActivationState(dt);
@@ -656,12 +647,6 @@ namespace vx
 		mHackDebugRenderer = debug_renderer;
 #endif // VX_DEBUG_DRAW
 
-
-
-		if (mBallJoint)
-			mBallJoint->DebugGizmos(debug_renderer, mSettings.drawSettings.nonContactConstraintDrawSettings);
-		if (mBallJoint2)
-			mBallJoint2->DebugGizmos(debug_renderer, mSettings.drawSettings.nonContactConstraintDrawSettings);
 
 
 		if (mSettings.drawSettings.nonContactConstraintDrawSettings.drawConstraints)
@@ -933,59 +918,6 @@ namespace vx
 	const CollisionResolutionStat PhysicsWorld::GetNarrowphaseStats() const
 	{
 		return mNarrowphaseQuery.Stats();
-	}
-
-
-	//this was a test hack for Box Box constact
-	void PhysicsWorld::QuickBoxBoxDebug(DebugGizmosRenderer* debug_renderer)
-	{
-		BoxBoxContactDebug ci = sBoxBoxDebugInstance;
-		if (ci.active)
-		{
-			float hf_mag0 = ci.halfExtentA.Length();
-			float hf_mag1 = ci.halfExtentB.Length();
-
-			Vec3 averge_pt(0.0f);
-			for (int i = 0; i < ci.manifold.PointCount(); ++i)
-			{
-				const auto& pt = ci.manifold.Points()[i];
-				averge_pt += pt.pointA;
-			}
-
-			int count = static_cast<int>(ci.manifold.PointCount());
-			averge_pt = (count > 0) ? averge_pt / float(count) : (ci.transA.GetTranslation() + ci.transB.GetTranslation()) * 0.5f;
-
-			Vec3 pt = averge_pt - (ci.contactAxis * hf_mag0 * 2.0f);
-			Vec3 pt2 = averge_pt + (ci.contactAxis * hf_mag1 * 2.0f);
-
-			//Vec3 pt2 = pt + ((ci.halfExtentA + ci.halfExtentB) * 2.0f) * ci.contactAxis;
-			//Vec3 pt2 = pt + ((hf_mag0 + hf_mag1) * 2.0f) * ci.contactAxis;
-			debug_renderer->DrawLine(pt, pt2, Colour(1.0f, 0.0f, 0.0f));
-
-
-			Vec3 n = ci.contactAxis.Normalised();
-			Vec3 t = n.NormalisedPerpendicular();
-			Vec3 t1 = n.Cross(t);
-
-			float half_size = 0.5f * (hf_mag0 + hf_mag1);
-			Vec3 u = t * half_size;
-			Vec3 v = t1 * half_size;
-
-			Vec3 c = averge_pt;
-			Vec3 p0 = c - u - v;
-			Vec3 p1 = c + u - v;
-			Vec3 p2 = c + u + v;
-			Vec3 p3 = c - u + v;
-
-			Colour col(1.0f, 0.0f, 0.0f);
-			if (ci.bestAxisType == 1)
-				col = Colour(0.0f, 0.0f, 1.0f);
-			else if (ci.bestAxisType == 2)
-				col = Colour(1.0f, 1.0f, 0.0f);
-
-			debug_renderer->DrawWireTriangle(p0, p1, p2, col);
-			debug_renderer->DrawWireTriangle(p0, p2, p3, col);
-		}
 	}
 
 	void PhysicsWorld::UpdateBodiesActivationState(float dt)

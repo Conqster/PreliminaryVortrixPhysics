@@ -7,7 +7,7 @@ option(ENABLE_ALL_WARNINGS "Enable all warning" ON)
 # When turning this option on, the library will be compiled with debug symbols
 option(GENERATE_DEBUG_SYMBOLS "Generate debug symbols" ON)
 # When turning this on, the library will be compiled with C++ exceptions enabled.
-# This adds some overhead and Vortix doesn't use exceptions so by default it is off.
+# This adds some overhead and Vortrix doesn't use exceptions so by default it is off.
 option(CPP_EXCEPTIONS_ENABLED "Enable C++ exceptions" OFF)
 
 option(VX_PROFILE_SIM "Profile simulation informations" ON)
@@ -90,7 +90,8 @@ set(VX_SRC_DIR ${VX_DIR}/Vortrix)
 file(GLOB_RECURSE VX_PHY_FILES CONFIGURE_DEPENDS
 										${VX_SRC_DIR}/*.h
 										${VX_SRC_DIR}/*.inl
-										${VX_SRC_DIR}/*.cpp)
+										${VX_SRC_DIR}/*.cpp
+										${VX_SRC_DIR}/Vortrix.natvis)
 						  
 #for code organisation 
 source_group(TREE ${VX_SRC_DIR} PREFIX "Vortrix" FILES ${VX_PHY_FILES})

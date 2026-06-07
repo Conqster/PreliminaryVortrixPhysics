@@ -72,6 +72,7 @@ namespace vx {
 			/// iff ratio is not zero, 
 			/// freq needs to be zero
 			/// 
+			/// 
 			VX_ASSERT_WARN((mSpring.mFrequency != 0.0f) || (ratio == 0.0f), 
 				"Damping ratio is set but frequency is zero; value is ignored until spring frequncy > 0");
 			mSpring.mDampingRatio = ratio;
@@ -97,6 +98,11 @@ namespace vx {
 		virtual void DebugGizmos(DebugGizmosRenderer* debug_renderer, const NonContactConstraintDrawSettings& draw_settings) const override;
 		void QuickSolve(float dt, int velocity_iteration = 8);
 
+		virtual void GetRowCounts(/*const PhysicsStepContext& ctx, */uint32& o_1D_rows, uint32& o_3D_rows) override
+		{
+			o_1D_rows = 1;
+			o_3D_rows = 0;
+		}
 	private:
 		/// lets say this are points in body local frame
 		Vec3 mLocalAnchorA = Vec3(0.0f);

@@ -79,10 +79,6 @@
 /// MEMOPRY ALLOC
 // make body shape ref counted 
 
-
-
-
-
 class DebugGizmosRenderer;
 class Renderer;
 namespace vx
@@ -114,9 +110,6 @@ namespace vx
 
 		Body* CreateBody(const BodySettings& body_setting);
 		void RemoveBody(const BodyID& id);
-
-		class PointConstraint* mBallJoint = nullptr;
-		PointConstraint* mBallJoint2 = nullptr;
 
 		////////////////////////////////////////////////////////////////////////
 		/// Step Simulation
@@ -168,8 +161,6 @@ namespace vx
 		const std::vector<BroadphasePair>& GetBroadphasePairs() const { return mBroadphasePairs; }
 
 
-		void QuickBoxBoxDebug(DebugGizmosRenderer* debug_renderer);
-
 		const BodyManager& GetBodyManager() const { return mBodyManager; }
 		BodyManager& GetBodyManager() { return mBodyManager; }
 
@@ -215,5 +206,7 @@ namespace vx
 		std::array<Colour, 32> mRandomColourInst;
 
 		WorldQuery mWorldQuery;
+	public:
+		class ScratchAllocator* mScratchAllocator = nullptr;
 	};
 }

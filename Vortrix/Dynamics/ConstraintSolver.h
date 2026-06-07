@@ -72,10 +72,13 @@ namespace vx {
 
 		SolverBody& GetSolverBody(SolverBodyIndex local_idx) { return mBodies[local_idx.Value()]; }
 
+		void PrepareSolver(uint32 required_liner_row, const PhysicsStepContext& ctx);
+
 		SolverBody* GetBodiesPtr() { return mBodies.data(); }
 		size_t GetBodiesCount() { return mBodies.size(); }
-		Linear1DRow* GetLinearRowPtr() { return mLinear1DRows.data(); }
-		size_t LinearRowCount() const { return mLinear1DRows.size(); }
+		Linear1DRow* GetLinearRowPtr() { return mLinear1DRows; }
+		size_t LinearRowCount() const { return mLinear1DRowsCounts; }
+		size_t Linear1DRowBufferCount() const { return mLinear1DRowBufferCount; }
 
 		Constraint** GetConstraintResolvePositionQueuePtr() { return mConstraintPositionSolveQueue.data(); }
 		size_t ConstraintResolvePositionQueueCount() const { return mConstraintPositionSolveQueue.size(); }
@@ -84,10 +87,16 @@ namespace vx {
 
 		Linear1DRow* AllocateLinear1DRow(uint32 count)
 		{
+			//VX_ASSERT(count >= 1);
+			//for(int i = 0; i<count;++i)
+			//	mLinear1DRows.push_back({});
+			//return &mLinear1DRows.back() - (count -1);
+
 			VX_ASSERT(count >= 1);
-			for(int i = 0; i<count;++i)
-				mLinear1DRows.push_back({});
-			return &mLinear1DRows.back() - (count -1);
+			Linear1DRow* alloc = mLinear1DRows + mLinear1DRowsCounts;
+			mLinear1DRowsCounts += count;
+			VX_ASSERT(mLinear1DRowsCounts <= mLinear1DRowBufferCount);
+			return alloc;
 		}
 
 		void AppendPositionCorrectionQueue(Constraint* constraint)
@@ -110,16 +119,23 @@ namespace vx {
 		void CommitStateConstraint()
 		{
 			VX_PROFILE_FUNCTION();
-			for (const auto& r : mLinear1DRows)
-				if (r.user)
-					r.user->CommitSolverState(r);
+			//for (const auto& r : mLinear1DRows)
+			//	if (r.user)
+			//		r.user->CommitSolverState(r);
+
+			for (Linear1DRow* r = mLinear1DRows, *r_end = mLinear1DRows + mLinear1DRowsCounts; r < r_end; ++r)
+				if ((*r).user)
+					(*r).user->CommitSolverState(*r);
 		}
 
 
 		void SolverAll(const PhysicsStepContext& ctx, uint32 iterations);
 	private:
 		//vectot for now
-		std::vector<Linear1DRow> mLinear1DRows;
+		//std::vector<Linear1DRow> mLinear1DRows;
+		Linear1DRow* mLinear1DRows;
+		uint32 mLinear1DRowsCounts = 0;
+		uint32 mLinear1DRowBufferCount = 0;
 	};
 
 

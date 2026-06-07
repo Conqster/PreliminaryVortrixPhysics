@@ -82,7 +82,7 @@ void Scenario::MouseClickCheck()
 void Scenario::MouseCastRay()
 {
 	if (BlockedMouseCastRay()) return;
-	if (mAppCamera == nullptr || mAppWindow == nullptr) return;
+	if (mAppCamera == nullptr || mAppWindow == nullptr || mPhysicsWorld == nullptr) return;
 
 
 	if (mBody.IsValid() && mMouseEvent == EClickEvent::Held) return;
@@ -179,6 +179,8 @@ void Scenario::Init(vx::PhysicsWorld* i_world)
 
 void Scenario::OnClose()
 {
+	mPhysicsWorld = nullptr;
+
 	if (mPhysicsWorld && mMouseDragConstraint)
 	{
 		mPhysicsWorld->RemoveConstraint(mMouseDragConstraint);

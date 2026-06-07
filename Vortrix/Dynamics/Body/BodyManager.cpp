@@ -33,7 +33,7 @@ namespace vx
 	}
 	const BodyID BodyManager::AddBody(const BodySettings& body_setting)
 	{
-		if(mBodies.size() >= mMaxBodies - 1)
+		if(mBodies.size() >= mMaxBodies - 1 && mFreedIdxs.empty())
 		{
 			VX_LOG_WARN("Body manager body limit attained");
 			return BodyID();

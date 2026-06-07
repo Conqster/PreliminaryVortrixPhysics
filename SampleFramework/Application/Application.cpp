@@ -1,4 +1,4 @@
-#include "Core/VxMemory.h"
+#include "Core/HeapMemoryProfile.h"
 
 #include "Application.h"
 #include "Input/InputSystem.h"
@@ -48,6 +48,8 @@
 #include "Scenarios/WorldQueriesScenario.h"
 #include "Scenarios/JointScenario.h"
 #include "Scenarios/PersistentContactScenario.h"
+
+#include "Core/ScratchAllocator.h"
 
 Application* CreateApplication(const ApplicationSpecification& app_spec)
 {
@@ -375,6 +377,7 @@ void Application::ResetWorld(bool& reset_flag)
 	//PhysicsWorld::CreateSimpleWorld(mPhysicsWorld);
 	if (mCurrScenario != nullptr)
 	{
+		mCurrScenario->OnClose();
 		mCurrScenario->SetCamera(&mCamera);
 		mCurrScenario->SetDebugGizmos(mDebugGizmos);
 		mCurrScenario->SetWindow(&mWindow);
@@ -1255,6 +1258,7 @@ void Application::OnDrawImGuiOverlays()
 				ImGui::Text("Total Deallocated Bytes: %llu Bytes [%.2f MB | %.2f MiB].",
 					_bytes, vx::ToMegabyte(_bytes), vx::ToMegabyte(_bytes));
 
+
 		}
 		ImGui::End();
 	}
@@ -1510,6 +1514,16 @@ void Application::PhysicsSettingItemOverlays()
 		};
 
 	ImGui::SeparatorText("APP SETTING");
+
+	static float status_kB = vx::ToKibibyte(mPhysicsWorld->mScratchAllocator->Usage());
+	static float size_kB = vx::ToKibibyte(mPhysicsWorld->mScratchAllocator->Size());
+	vx::StackString<32> text;
+	text << status_kB << "/" << size_kB << " kB";
+	float ratio = status_kB / size_kB;
+	ImGui::ProgressBar(ratio, ImVec2(0.0f, 0.0f), text.Data());
+	ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+	ImGui::Text("Scratch Allocation");
+
 	static int freq_idx = (int)std::log2((float)mPhysicsAppSetting.Rate() / 30.0f);
 	if (ImGui::Combo("Physics Freq (Hz)", &freq_idx, "30 Hz\0""60 Hz\0""120 Hz\0""240 Hz\0"))
 		mPhysicsAppSetting.SetFrequency((30 * (1 << freq_idx)));

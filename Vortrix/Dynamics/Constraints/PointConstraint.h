@@ -79,6 +79,19 @@ namespace vx {
 
 
 
+		virtual void GetRowCounts(/*const PhysicsStepContext& ctx, */uint32& o_1D_rows, uint32& o_3D_rows) override
+		{
+			//if (ctx.unified3D) 
+			//{
+			//	o_1D_rows = 0;
+			//	o_3D_rows = 1;
+			//}
+			//else
+			//{
+			o_1D_rows = 3;
+			o_3D_rows = 0;
+			//}
+		}
 
 		
 	private:
