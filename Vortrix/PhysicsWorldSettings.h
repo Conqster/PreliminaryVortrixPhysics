@@ -39,6 +39,8 @@ namespace vx
 		/// above treshold
 		float rebuildBVH_ImbalanceRatioTreshold = 0.6f;
 
+		uint32 maxBroadphasePair = 10240;
+
 		class ScratchAllocator* mScratchAllocator;
 	};
 
@@ -135,6 +137,7 @@ namespace vx
 		bool drawActiveBounds = false;
 		bool drawVelocitySolveBounds = false;
 		bool drawPositionSolveBounds = false;
+		float anchorSize = 0.085f;
 	};
 
 

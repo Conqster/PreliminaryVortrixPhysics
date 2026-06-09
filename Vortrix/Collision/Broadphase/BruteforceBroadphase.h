@@ -24,7 +24,7 @@ namespace vx
 
 		void InsertBody(Body* body) override {}
 		void RemoveBody(const BodyID& id) override {}
-		void ComputeCollidingPair(PhysicsStepContext& physics_ctx, std::vector<BroadphasePair>& out_pairs) override
+		void ComputeCollidingPair(PhysicsStepContext& physics_ctx, BroadphasePair* io_pairs, uint32& io_count) override
 		{
 			VX_PROFILE_FUNCTION();
 			auto& bodies = physics_ctx.bodyManager->GetBodies();
@@ -32,7 +32,6 @@ namespace vx
 
 			mFrameAABBs.clear();
 			mFrameAABBs.reserve(bodies_count);
-			out_pairs.reserve(bodies_count * 2);
 
 			for (size_t i = 0; i < bodies_count; ++i)
 			{
@@ -53,7 +52,10 @@ namespace vx
 					bAABB.Grow(mBoundThreshold);
 
 					if (aAABB.Overlaps(bAABB))
-						out_pairs.push_back(BroadphasePair(&bodies[i], &bodies[j]));
+					{
+						VX_ASSERT(physics_ctx.maxBroadphasePair < io_count);
+						io_pairs[io_count++] = BroadphasePair(&bodies[i], &bodies[j]);
+					}
 				}
 			}
 

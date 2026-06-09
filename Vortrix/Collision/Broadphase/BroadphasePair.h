@@ -8,6 +8,7 @@ namespace vx {
 		Body* a = nullptr;
 		Body* b = nullptr;
 
+		BroadphasePair() = default;
 		BroadphasePair(Body* _a, Body* _b) :
 			a(_a), b(_b) {
 		}

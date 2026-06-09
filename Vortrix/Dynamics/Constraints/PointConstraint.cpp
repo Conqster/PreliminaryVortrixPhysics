@@ -152,11 +152,8 @@ namespace vx {
 		Vec3 rAw = rA + mBodyA->GetPosition();
 		Vec3 rBw = rB + mBodyB->GetPosition();
 
-		//debug_renderer->DrawAACross(rAw, &Colour(1.0f, 0.2f, 0.2f), 1, 0.085f);
-		//debug_renderer->DrawAACross(rBw, &Colour(0.2f, 1.0f, 0.4f), 1, 0.085f);
-
-		debug_renderer->DrawAACross(rAw, &Colour(1.0f, 0.2f, 0.2f), 1, 0.5f);
-		debug_renderer->DrawAACross(rBw, &Colour(0.2f, 1.0f, 0.4f), 1, 0.5f);
+		debug_renderer->DrawAACross(rAw, &Colour(1.0f, 0.2f, 0.2f), 1, draw_settings.anchorSize);
+		debug_renderer->DrawAACross(rBw, &Colour(0.2f, 1.0f, 0.4f), 1, draw_settings.anchorSize);
 
 		//error
 		if (!rAw.IsApprox(rBw))

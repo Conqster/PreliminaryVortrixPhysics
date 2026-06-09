@@ -23,7 +23,7 @@ namespace vx
 
 	struct Float3
 	{
-		Float3() : x(0), y(0), z(0) {}
+		Float3() = default;
 		explicit Float3(float v) : x(v), y(v), z(v) {}
 		Float3(const Float3& rhs) = default;
 		Float3& operator=(const Float3& rhs) = default;
@@ -75,6 +75,7 @@ namespace vx
 		float x, y, z;
 	};
 
+	static_assert(std::is_trivial<Float3>());
 	static_assert(std::is_standard_layout_v<Float3>);
 	static_assert(sizeof(Float3) == 12);
 	static_assert(alignof(Float3) == alignof(float));

@@ -26,7 +26,6 @@ namespace vx {
 	};
 
 
-
 	struct SolverBody
 	{
 		/// linear velocity

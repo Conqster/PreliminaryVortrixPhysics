@@ -158,7 +158,8 @@ namespace vx
 		//TODO(Jay): Later dont return broadphase only state
 		VX_INLINE Broadphase* GetBroadphase() { return mBroadphase; }
 		//VX_INLINE BVHBroadphase<AABB>* GetBVH_AABB_Broadphase() { return mBroadphase->AsBVH_AABB(); }
-		const std::vector<BroadphasePair>& GetBroadphasePairs() const { return mBroadphasePairs; }
+		const BroadphasePair* GetBroadphasePairsPtr() const { return mBroadphaseBuffer.data; }
+		const uint32 GetBroadphasePairsCount() const { return mBroadphaseBuffer.count; }
 
 
 		const BodyManager& GetBodyManager() const { return mBodyManager; }
@@ -186,7 +187,16 @@ namespace vx
 
 
 		Broadphase* mBroadphase = nullptr;
-		std::vector<BroadphasePair> mBroadphasePairs;
+		//std::vector<BroadphasePair> mBroadphasePairs;
+		//BroadphasePair* mBroadphasePairs;
+		//uint32 mBroadpairCount = 0;
+
+		struct BroadphaseBuffer
+		{
+			BroadphasePair* data;
+			uint32 count = 0;
+			uint32 maxPairs = 0;
+		}mBroadphaseBuffer;
 		std::vector<class ContactManifold> mStepManifolds;
 		NarrowphaseQuery mNarrowphaseQuery;
 
@@ -202,10 +212,9 @@ namespace vx
 
 		Colour GetBodySimphaseDebugColour(const Body& body) const;
 
-
-		std::array<Colour, 32> mRandomColourInst;
-
 		WorldQuery mWorldQuery;
+		void* testAllocation;
+		size_t testAllocationSize;
 	public:
 		class ScratchAllocator* mScratchAllocator = nullptr;
 	};

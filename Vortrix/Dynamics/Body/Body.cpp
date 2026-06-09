@@ -192,13 +192,6 @@ namespace vx
 			mOrientation = dq * mOrientation;
 		}
 		mOrientation.Normalise();
-
-
-		//Quat dq(disp.X(), disp.Y(), disp.Z(), 0.0f);
-		//dq = dq * mRotation;
-		//dq *= 0.5f;
-		//mRotation += dq;
-		//mRotation.Normalise();
 	}
 	bool Body::CanBodiesCollide(const Body& b0, const Body& b1)
 	{

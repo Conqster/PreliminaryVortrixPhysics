@@ -41,7 +41,6 @@ namespace vx {
 		uint32 hackIdx = 0;
 	};
 
-
 	struct Rigid1DConstraint
 	{
 		Vec3 axis;

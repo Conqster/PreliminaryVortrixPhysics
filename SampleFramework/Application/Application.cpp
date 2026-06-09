@@ -48,6 +48,7 @@
 #include "Scenarios/WorldQueriesScenario.h"
 #include "Scenarios/JointScenario.h"
 #include "Scenarios/PersistentContactScenario.h"
+#include "Scenarios/RagdollScenario.h"
 
 #include "Core/ScratchAllocator.h"
 
@@ -207,6 +208,7 @@ Application::Application(const ApplicationSpecification& app_spec)
 	mScenarioCatergoies.scenarios.push_back(vx::MakeScope<WorldQueriesScenario>());
 	mScenarioCatergoies.scenarios.push_back(vx::MakeScope<JointScenario>());
 	mScenarioCatergoies.scenarios.push_back(vx::MakeScope<PersistentContactScenario>());
+	mScenarioCatergoies.scenarios.push_back(vx::MakeScope<RagdollScenario>());
 	
 	ScenarioCatergory solver_scenarios;
 	solver_scenarios.name = "Solvers";
@@ -223,7 +225,7 @@ Application::Application(const ApplicationSpecification& app_spec)
 	mScenarioCatergoies.catergories.push_back(std::move(stacking_scenarios));
 
 
-	mCurrScenario = mScenarioCatergoies.scenarios.at(3).get();
+	mCurrScenario = mScenarioCatergoies.scenarios.at(4).get();
 }
 
 Application::~Application()
@@ -333,7 +335,6 @@ void Application::Run()
 		{
 			mMaxAttainedFrameDeltaTime = mFrameDeltaTime;
 			VX_LOG_DEBUG("Sim Time:", mMaxAttainedFrameDeltaTime, "ms");
-			VX_LOG_DEBUG("FPS: ", 1 / mMaxAttainedFrameDeltaTime);
 		}
 
 		OnRenderer();
@@ -1297,12 +1298,15 @@ void Application::OnDrawImGuiOverlays()
 				ImGui::Separator();
 				if (ImGui::TreeNodeEx("Broadphase Pair", ImGuiTreeNodeFlags_DefaultOpen))
 				{
-					ImGui::Text("Pair count: %llu", static_cast<uint>(mPhysicsWorld->GetBroadphasePairs().size()));
+					uint32 bp_count = mPhysicsWorld->GetBroadphasePairsCount();
+					ImGui::Text("Pair count: %llu", static_cast<uint>(bp_count));
 					int idx = 0;
 
 					const vx::BodyManager& body_manager = mPhysicsWorld->GetBodyManager();
-					for (const auto& [p_a, p_b] : mPhysicsWorld->GetBroadphasePairs())
+					const auto* bps = mPhysicsWorld->GetBroadphasePairsPtr();
+					for (const BroadphasePair* bp = bps, *bp_end = bps + bp_count; bp < bp_end; ++bp)
 					{
+						const auto& p_a = (*bp).a, p_b = (*bp).b;
 						ImGui::PushID(idx);
 						//ImGui::Text("Pair %d: [%s] with [%s].", idx++, p_a->mDebugName.c_str(), p_b->mDebugName.c_str());
 						ImGui::Text("Pair %d: [%s] with [%s].", idx++, 
@@ -1515,14 +1519,18 @@ void Application::PhysicsSettingItemOverlays()
 
 	ImGui::SeparatorText("APP SETTING");
 
-	static float status_kB = vx::ToKibibyte(mPhysicsWorld->mScratchAllocator->Usage());
-	static float size_kB = vx::ToKibibyte(mPhysicsWorld->mScratchAllocator->Size());
+	static bool format_KiB = true;
+	float status_kB = (format_KiB) ? vx::ToKibibyte(mPhysicsWorld->mScratchAllocator->Usage()) :
+									 vx::ToMebibyte(mPhysicsWorld->mScratchAllocator->Usage());
+	float size_kB = (format_KiB) ? vx::ToKibibyte(mPhysicsWorld->mScratchAllocator->Size()) :
+											vx::ToMebibyte(mPhysicsWorld->mScratchAllocator->Size());
 	vx::StackString<32> text;
-	text << status_kB << "/" << size_kB << " kB";
+	text << status_kB << "/" << size_kB << ((format_KiB) ? " KiB" : " MiB");
 	float ratio = status_kB / size_kB;
 	ImGui::ProgressBar(ratio, ImVec2(0.0f, 0.0f), text.Data());
 	ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
 	ImGui::Text("Scratch Allocation");
+	ImGui::Checkbox("Format KiB", &format_KiB);
 
 	static int freq_idx = (int)std::log2((float)mPhysicsAppSetting.Rate() / 30.0f);
 	if (ImGui::Combo("Physics Freq (Hz)", &freq_idx, "30 Hz\0""60 Hz\0""120 Hz\0""240 Hz\0"))
@@ -1677,6 +1685,7 @@ void Application::PhysicsSettingItemOverlays()
 		{
 			NonContactConstraintDrawSettings& constraint_draw = draw_settings.nonContactConstraintDrawSettings;
 			ImGui::Checkbox("draw constraints", &constraint_draw.drawConstraints);
+			ImGui::SliderFloat("draw anchor size", &constraint_draw.anchorSize, 0.01f, 2.0f);
 			ImGui::Checkbox("draw constraint bounds", &constraint_draw.drawConstraintBounds);
 			ImGui::Checkbox("draw active bounds", &constraint_draw.drawActiveBounds);
 			ImGui::Checkbox("draw velocity solve bounds", &constraint_draw.drawVelocitySolveBounds);

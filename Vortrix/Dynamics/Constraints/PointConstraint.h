@@ -17,6 +17,10 @@ namespace vx {
 
 	struct PointConstraintSettings
 	{
+		PointConstraintSettings() = default;
+		PointConstraintSettings(const Vec3& _anchorA, const Vec3& _anchorB, EConstraintFrame frame) :
+			anchorA(_anchorA), anchorB(_anchorB), anchorPointFrame(frame) {}
+
 		Vec3 anchorA;
 		Vec3 anchorB;
 		EConstraintFrame anchorPointFrame = EConstraintFrame::World;

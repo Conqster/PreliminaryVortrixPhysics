@@ -48,7 +48,7 @@ namespace vx {
 		mBodyManager = in_body_manager;
 	}
 
-	void NarrowphaseQuery::ProcessPairs(const std::vector<BroadphasePair>& pairs, std::vector<ContactManifold>& out_manifolds, ContactConstraintSolver& contact_solver , const CollisionContext& ctx)
+	void NarrowphaseQuery::ProcessPairs(BroadphasePair* in_pairs, std::vector<ContactManifold>& out_manifolds, ContactConstraintSolver& contact_solver, const CollisionContext& ctx)
 	{
 		VX_PROFILE_FUNCTION();
 
@@ -58,12 +58,13 @@ namespace vx {
 		out_manifolds.reserve(pairs.size());
 #endif // NEED_REMOVE
 
-		mStats.numPairReceived = pairs.size();
+		mStats.numPairReceived = ctx.broadphasePairCount;
 
-		for (auto& pair : pairs)
+		for (BroadphasePair* bp = in_pairs, *bp_end = in_pairs+ctx.broadphasePairCount; 
+			bp < bp_end; ++bp)
 		{
-			Body* a = pair.a;
-			Body* b = pair.b;
+			Body* a = (*bp).a;
+			Body* b = (*bp).b;
 
 			BodySimStats& body_a_stat = mBodyManager->GetBodySimStats(*a); 
 			BodySimStats& body_b_stat = mBodyManager->GetBodySimStats(*b); 
@@ -79,7 +80,7 @@ namespace vx {
 				const auto& shape_b = b->GetShape();
 				const auto& collision_fn = mDispatcher.Get(shape_a->GetType(), shape_b->GetType());
 
-				ContactManifold manifold{ pair.a, pair.b };
+				ContactManifold manifold{ (*bp).a, (*bp).b };
 				if (collision_fn(shape_a, a->GetPosition(), a->GetOrientation(),
 					shape_b, b->GetPosition(), b->GetOrientation(),
 					manifold))

@@ -41,6 +41,8 @@ namespace vx
 	class ShapeSettings
 	{
 	public:
+		ShapeSettings() = default;
+		explicit ShapeSettings(float density) : mDensity(density) {}
 
 		void SetDensity(float density) { mDensity = density; }
 		float mDensity = 1000.0f;

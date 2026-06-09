@@ -309,7 +309,6 @@ private:
 
 		const VertexBatch GetBatch() const { return mBatch; }
 
-		//void AssignGPULabel(const std::string& name)
 		void AssignGPULabel(const char* name)
 		{
 			//int count = name.size() + 4;
@@ -318,9 +317,6 @@ private:
 				vx::StackString<32> _name;
 				_name << name << " VAO";
 				glObjectLabel(GL_VERTEX_ARRAY, mBatch->VAO, _name.Length(), _name.Data());
-				VX_LOG_DEBUG("Assigned GPU Label ", _name, " ", mBatch->VAO);
-				//glObjectLabel(GL_VERTEX_ARRAY, mBatch->VAO, count, (name + " VAO").c_str());
-				//VX_INFO("Assigned GPU Label ", name, " VAO ", mBatch->VAO);
 			}
 			if (mBatch->vertexBuffer.IsValid())
 				mBatch->vertexBuffer.AssignGPULabel(name);

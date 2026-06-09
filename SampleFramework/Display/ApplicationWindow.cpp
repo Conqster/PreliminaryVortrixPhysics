@@ -151,12 +151,7 @@ bool ApplicationWindow::Init(const char* base_name, const WindowSpecification& w
 	if (!CreateDisplayWindow((std::string(base_name) + name_detail).c_str(), full_screen))
 		return false;
 
-	//InitGraphicsInterface();
-
-	const unsigned char* gl_ver = glGetString(GL_VERSION);
-	printf("OpenGL version supported: %s\n", glGetString(GL_VERSION));
-	//std::cout << "Check avaliable/supported open gl verion: " << gl_ver << "\n";
-
+	VX_LOG_INFO("OpenGL version supported: ", (const char*)(glGetString(GL_VERSION)));
 
 	GLenum GlewInitResult = glewInit();
 	if (GlewInitResult != GLEW_OK)

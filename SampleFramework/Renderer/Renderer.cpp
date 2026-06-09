@@ -32,19 +32,6 @@ void Renderer::Initialise(ApplicationWindow* display_window)
 	//success &= mTex2ScreenShader.Create("texture_screen", "assets/shaders/TextureToScreen.vert", "assets/shaders/TextureToScreen.frag");
 
 	VX_ASSERT_WARN(success, "Failed create a shaders!!!");
-	VX_LOG_DEBUG("Successfully create a shaders!!!");
-	//if (success)
-	//	VX_ASSERT_WARN(success, "Successfully create a shaders!!!!!!\n");
-	//else
-	//{
-	//	printf("Failed create a shaders!!!!!!\n");
-	//	exit(-1);
-	//}
-
-
-	//GLint max_vertices;
-	//glGetIntegerv(GL_MAX_GEOMETRY_OUTPUT_VERTICES, &max_vertices);
-	//VX_LOG_DEBUG("maximum vertices: ", int(max_vertices));
 
 
 	mBrickTexture =  TextureFactory::CreateFromFile("assets/textures/floor_brick/patterned_brick_floor_diff.jpg", true, "Brick");
@@ -87,11 +74,6 @@ void Renderer::Initialise(ApplicationWindow* display_window)
 	ci.pxType = PixelType::UByte;
 	ci.name = "Directional Light Debug RT";
 	mDirLightDebugRT.Create({ci}, {ci.width, ci.height, TextureFormat::Depth24Stencil8});
-
-
-	vx::Vec3 test_right_hand = vx::Vec3::Cross(vx::Vec3::Right(), vx::Vec3::Up());
-	VX_LOG_DEBUG("the forward test is: ", test_right_hand);
-
 
 
 	SetCallbacks();

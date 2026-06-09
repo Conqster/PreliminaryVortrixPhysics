@@ -54,7 +54,9 @@ namespace vx{
 
 	void ConstraintCoordinator::PrepConstraintSolving(ConstraintSolver& solver, const PhysicsStepContext& ctx)
 	{
-		solver.PrepareSolver(mTotalPredicted1DRow, ctx);
+		//for now just all constraint might need position correction 
+		uint32 req_position_correction = mConstraints.size();
+		solver.PrepareSolver(mTotalPredicted1DRow, req_position_correction, ctx);
 		VX_PROFILE_FUNCTION();
 		for (auto& c : mConstraints)
 			c->PrepSolver(&solver, ctx);

@@ -38,7 +38,7 @@ namespace vx {
 		/// while thread1 works on next few cache line bodies etc 
 		std::vector <SolverBody> mBodies;
 		std::vector<SolverBodyIndex> mBodyToSolverBody;
-		std::vector<Constraint*> mConstraintPositionSolveQueue;
+		
 
 	public:
 
@@ -72,7 +72,9 @@ namespace vx {
 
 		SolverBody& GetSolverBody(SolverBodyIndex local_idx) { return mBodies[local_idx.Value()]; }
 
-		void PrepareSolver(uint32 required_liner_row, const PhysicsStepContext& ctx);
+		void PrepareSolver(uint32 required_liner_row, uint32 required_position_correct_constraint, const PhysicsStepContext& ctx);
+
+		void ReleaseAllocation(ScratchAllocator* scratchAllocator);
 
 		SolverBody* GetBodiesPtr() { return mBodies.data(); }
 		size_t GetBodiesCount() { return mBodies.size(); }
@@ -80,8 +82,8 @@ namespace vx {
 		size_t LinearRowCount() const { return mLinear1DRowsCounts; }
 		size_t Linear1DRowBufferCount() const { return mLinear1DRowBufferCount; }
 
-		Constraint** GetConstraintResolvePositionQueuePtr() { return mConstraintPositionSolveQueue.data(); }
-		size_t ConstraintResolvePositionQueueCount() const { return mConstraintPositionSolveQueue.size(); }
+		Constraint** GetConstraintResolvePositionQueuePtr() { return mConstraintPositionSolveQueue; }
+		size_t ConstraintResolvePositionQueueCount() const { return mConstraintPositionSolveQueueCounts; }
 
 		void HackClear();
 
@@ -101,7 +103,10 @@ namespace vx {
 
 		void AppendPositionCorrectionQueue(Constraint* constraint)
 		{
-			mConstraintPositionSolveQueue.push_back(constraint);
+			//mConstraintPositionSolveQueue.push_back(constraint);
+
+			mConstraintPositionSolveQueue[mConstraintPositionSolveQueueCounts++] = constraint;
+			VX_ASSERT(mConstraintPositionSolveQueueCounts <= mConstraintPositionSolveQueueBufferCount);
 		}
 
 		static void SolverVelocityLinear1DRow(Linear1DRow& row, SolverBody* bodies);
@@ -136,6 +141,10 @@ namespace vx {
 		Linear1DRow* mLinear1DRows;
 		uint32 mLinear1DRowsCounts = 0;
 		uint32 mLinear1DRowBufferCount = 0;
+
+		Constraint** mConstraintPositionSolveQueue;
+		uint32 mConstraintPositionSolveQueueCounts = 0;
+		uint32 mConstraintPositionSolveQueueBufferCount = 0;
 	};
 
 

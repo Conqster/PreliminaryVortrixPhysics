@@ -139,9 +139,7 @@ struct BodyEulerAngle
 template<vx::EMotionType Type>
 void EditorImGui::DrawBodyOverlayDetails(vx::Body& body, vx::BodyDebug& body_debug_info)
 {
-	Vec3 p = body.GetPosition();
-	if (ImGui::DragFloat3("Position: ", &p[0], 0.01f))
-		body.SetPosition(p);
+
 
 	
 	static std::vector<BodyEulerAngle> cache_body_euler;
@@ -154,34 +152,51 @@ void EditorImGui::DrawBodyOverlayDetails(vx::Body& body, vx::BodyDebug& body_deb
 	}
 
 	auto& euler = cache_body_euler[body.GetID().Idx()];
+
+	Vec3 p = body.GetPosition();
+	if (ImGui::DragFloat3("Position: ", &p[0], 0.01f))
+	{
+		///world -space
+		if (!euler.localSpace)
+			body.SetPosition(p);
+		else
+		{
+			vx::Vec3 old_pos = body.GetPosition();
+			vx::Vec3 delta = p - old_pos;
+			delta = body.GetOrientation().InverseRotate(delta);
+			body.SetPosition(old_pos + delta);
+			//ImGui::TextColored(ImVec4(1, 0, 0, 1), "This causes position ui output missmatch in Local space");
+		}
+	}
+
+	if (body.IsAwake())
+	{
+		vx::Vec3 angle = vx::RadToDeg(body.GetOrientation().GetEulerAngles());
+		euler.FromVec3(angle);
+	}
+
+	ImGui::Checkbox("Local Space", &euler.localSpace);
+	BodyEulerAngle old_angle = euler;
+	bool change = ImGui::DragFloat3("Euler", &euler[0], 0.25f);
+	if (change)
+	{
+		vx::Vec3 angle_dt = euler.ToVec3() - old_angle.ToVec3();
+
+		for (uint32_t i = 0; i < 3; ++i)
+			angle_dt[i] = fmod(angle_dt[i] + 180.0f, 360.0f) - 180.0f;
+
+		vx::Quat dq = vx::Quat::FromEulerAngle(vx::DegToRad(angle_dt));
+
+		//local - space 
+		if (euler.localSpace)
+			body.SetOrientation((body.GetOrientation() * dq).Normalised());
+		//world - space 
+		else
+			body.SetOrientation((dq * body.GetOrientation()).Normalised());
+	}
+
 	if constexpr (Type == EMotionType::Dynamic)
 	{
-		if (body.IsAwake())
-		{
-			vx::Vec3 angle = vx::RadToDeg(body.GetOrientation().GetEulerAngles());
-			euler.FromVec3(angle);
-		}
-
-		ImGui::Checkbox("Local Space", &euler.localSpace);
-		BodyEulerAngle old_angle = euler;
-		bool change = ImGui::DragFloat3("Euler", &euler[0], 0.25f);
-		if (change)
-		{
-			vx::Vec3 angle_dt = euler.ToVec3() - old_angle.ToVec3();
-
-			for (uint32_t i = 0; i < 3; ++i)
-				angle_dt[i] = fmod(angle_dt[i] + 180.0f, 360.0f) - 180.0f;
-
-			vx::Quat dq = vx::Quat::FromEulerAngle(vx::DegToRad(angle_dt));
-
-			//local - space 
-			if (euler.localSpace)
-				body.SetOrientation((body.GetOrientation() * dq).Normalised());
-			//world - space 
-			else
-				body.SetOrientation((dq * body.GetOrientation()).Normalised());
-		}
-
 		ImGui::SliderFloat("Linear Damping", &body.mLinearDamping, 0.0f, 1.0f);
 		ImGui::SliderFloat("Angular Damping", &body.mAngularDamping, 0.0f, 1.0f);
 	}

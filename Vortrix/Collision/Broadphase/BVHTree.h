@@ -258,7 +258,7 @@ namespace vx
 			return (static_cast<float>(total_jump) / count);
 		}
 
-		void ComputeCollidingPairs(std::vector<BroadphasePair>& potential_pair);
+		void ComputeCollidingPairs(PhysicsStepContext& physics_ctx, BroadphasePair* io_pairs, uint32& io_count);
 
 		void UpdateDirtyNodes(const NodeID* dirty_leave_nodes, uint32 dirty_node_count/*uint32 last_broadphase_step*/);
 		void RebuildBruteforceInsertion();

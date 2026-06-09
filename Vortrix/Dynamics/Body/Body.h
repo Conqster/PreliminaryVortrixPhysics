@@ -177,7 +177,15 @@ namespace vx
 			return GetPointVelocityRelCOM(world_offset);
 		}
 
+		/// Beware this is good to be used during position correction 
+		/// to apply little nudge over iteration to bodies, and would not 
+		/// compute internal bounds and mark position changes. but sure to update 
+		/// Internal after correction.
 		void ApplyAngularDisplacement(const Vec3& disp);
+		/// Beware this is good to be used during position correction 
+		/// to apply little nudge over iteration to bodies, and would not 
+		/// compute internal bounds and mark position changes. but sure to update 
+		/// Internal after correction.
 		VX_INLINE void ApplyLinearDisplacement(const Vec3& disp) { mPosition += disp; }
 
 

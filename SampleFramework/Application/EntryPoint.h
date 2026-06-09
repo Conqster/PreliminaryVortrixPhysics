@@ -44,7 +44,6 @@ int main(int argc, char** argv)
 	for (int arg_idx = 0; arg_idx < argc; ++arg_idx)
 	{
 		const char* arg = argv[arg_idx];
-		std::cout << arg << "\n";
 
 		if (strncmp(arg, "--full_screen", 14) == 0)
 		{
@@ -89,7 +88,6 @@ int main(int argc, char** argv)
 
 	auto app = CreateApplication(app_spec);
 
-	VX_LOG_DEBUG("Size of Application: ", int(sizeof(Application)), " bytes");
 
 	try
 	{

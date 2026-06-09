@@ -292,8 +292,8 @@ namespace vx{
 			////if(Contains(EConstraintFlags::SolvePosition, mFlags))
 			//	DrawConstraintBounds(debug_renderer, rAw, rBw);
 
-			debug_renderer->DrawSphere<4, 4>(rAw, 0.085f, Colour(1.0f, 0.2f, 0.2f));
-			debug_renderer->DrawSphere<4, 4>(rBw, 0.085f, Colour(0.2f, 1.0f, 0.6f));
+			debug_renderer->DrawSphere<4, 4>(rAw, draw_settings.anchorSize, Colour(1.0f, 0.2f, 0.2f));
+			debug_renderer->DrawSphere<4, 4>(rBw, draw_settings.anchorSize, Colour(0.2f, 1.0f, 0.6f));
 
 			//boundaries
 			if (mMinDistance == mMaxDistance)

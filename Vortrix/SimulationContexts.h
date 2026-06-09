@@ -10,6 +10,8 @@ namespace vx {
 		bool drawContactTBNs = false;
 		uint32 physicsFrameIdx = 0;
 
+		uint32 broadphasePairCount = 0;
+
 		//might become island builder/coordinator
 		class ConstraintSolver* constraintSolver = nullptr;
 	};

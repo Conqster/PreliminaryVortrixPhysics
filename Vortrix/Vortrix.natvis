@@ -67,5 +67,15 @@
 	</Type>
 
 
+	<Type Name="vx::PhysicsWorld::BroadphaseBuffer">
+		<DisplayString> count={count}</DisplayString>
+		<Expand>
+			<Item Name="[count]">count</Item>
+			<ArrayItems>
+				<Size>count</Size>
+				<ValuePointer>data</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
 
 </AutoVisualizer>

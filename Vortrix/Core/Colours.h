@@ -92,6 +92,7 @@ namespace vx
 		/*explicit*/ Colour(float _r, float _g, float _b, float _a = 1.0f) : value(PackRGBA(_r, _g, _b, _a)) {}
 		explicit Colour(uint8 red_channel, uint8 green_channel, uint8 blue_channel, uint8 alpha_channel = 255) : 
 			r(red_channel), g(green_channel), b(blue_channel), a(alpha_channel) {}
+
 		explicit Colour(uint32 v_col) : value(v_col) {}
 		explicit Colour(const Vec3& rgb, float _a = 1.0f) : value(PackRGBA(rgb, _a)) {}
 		explicit Colour(const Vec4& rgba) : value(PackRGBA(rgba)) {}
@@ -100,6 +101,8 @@ namespace vx
 		[[nodiscard]] Vec3 ToVec3() const { return RGBAsVec3(r, g, b); }
 		[[nodiscard]] Vec4 ToVec4() const { return RGBAAsVec4(r, g, b, a); }
 
+
+		static Colour GetRandomColour(int idx);
 
 
 		//implicit conversions

@@ -9,7 +9,7 @@ namespace vx {
 		uint32 max_bodies = body_manager.MaxBodies();
 		mBodies.reserve(max_bodies);
 		mBodyToSolverBody.resize(max_bodies);
-		mConstraintPositionSolveQueue.reserve(100);
+		//mConstraintPositionSolveQueue.reserve(100);
 
 		//Frame init for linear 1D row with scrachAllocator
 	}
@@ -21,7 +21,7 @@ namespace vx {
 
 
 		//the remove the below in order 
-		mConstraintPositionSolveQueue.clear();
+		//mConstraintPositionSolveQueue.clear();
 		//mLinear1DRows.clear();
 	}
 
@@ -106,12 +106,34 @@ namespace vx {
 		}
 	}
 
-	void ConstraintSolver::PrepareSolver(uint32 required_liner_row, const PhysicsStepContext& ctx)
+	void ConstraintSolver::PrepareSolver(uint32 required_liner_row, uint32 required_position_correct_constraint, const PhysicsStepContext& ctx)
 	{
 		mLinear1DRowBufferCount = required_liner_row;
 		mLinear1DRows = reinterpret_cast<Linear1DRow*>(ctx.mScratchAllocator->Allocate(sizeof(Linear1DRow) * required_liner_row));
-		//ensure mem is clean and defualt to Linear1DROw
-		std::memset(mLinear1DRows, {}, mLinear1DRowBufferCount * sizeof(Linear1DRow));
+		mConstraintPositionSolveQueueBufferCount = required_position_correct_constraint;
+		mConstraintPositionSolveQueue = reinterpret_cast<Constraint**>(ctx.mScratchAllocator->Allocate(sizeof(Constraint*) * required_position_correct_constraint));
+
+
+		////ensure mem is clean and defualt to Linear1DROw
+		//std::memset(mLinear1DRows, {}, mLinear1DRowBufferCount * sizeof(Linear1DRow));
+		//std::memset(mConstraintPositionSolveQueue, {}, mConstraintPositionSolveQueueBufferCount * sizeof(Constraint*));
+
+		std::memset(mLinear1DRows, {}, mLinear1DRowBufferCount * sizeof(Linear1DRow) + mConstraintPositionSolveQueueBufferCount * sizeof(Constraint*));
+	}
+
+	void ConstraintSolver::ReleaseAllocation(ScratchAllocator* scratchAllocator)
+	{
+		if (mConstraintPositionSolveQueueBufferCount > 0)
+		{
+			scratchAllocator->Free(mConstraintPositionSolveQueue, sizeof(Constraint*) * mConstraintPositionSolveQueueBufferCount);
+			mConstraintPositionSolveQueue = nullptr;
+		}
+
+		if (mLinear1DRowBufferCount > 0)
+		{
+			scratchAllocator->Free(mLinear1DRows, sizeof(Linear1DRow) * mLinear1DRowBufferCount);
+			mLinear1DRows = nullptr;
+		}
 	}
 
 	void ConstraintSolver::HackClear()
@@ -121,10 +143,13 @@ namespace vx {
 		mLinear1DRowsCounts = 0;
 		mLinear1DRowBufferCount = 0;
 
+		mConstraintPositionSolveQueueCounts = 0;
+		mConstraintPositionSolveQueueBufferCount = 0;
+
 		//quick hack, no caching pipeline and to prevent bugs 
 		mBodies.clear();
 		std::fill(mBodyToSolverBody.begin(), mBodyToSolverBody.end(), SolverBodyIndex{});
-		mConstraintPositionSolveQueue.clear();
+		//mConstraintPositionSolveQueue.clear();
 	}
 
 	void ConstraintSolver::SolverVelocityLinear1DRow(Linear1DRow& row, SolverBody* bodies)

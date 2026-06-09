@@ -59,6 +59,7 @@ namespace vx
 
 		delete mConstraintSolver;
 
+		mScratchAllocator->Free(testAllocation, testAllocationSize);
 		delete mScratchAllocator;
 	}
 
@@ -242,7 +243,9 @@ namespace vx
 		mBroadphase->SetBoundThreshold(mSettings.collision.boundsMargin);
 		mBroadphase->Init(&mBodyManager, broad_init);
 
-		mBroadphasePairs.reserve(max_body_pairs);
+		//mBroadphasePairs.reserve(max_body_pairs);
+		//mBroadphaseBuffer.data = new BroadphasePair[max_body_pairs];
+		mBroadphaseBuffer.maxPairs = max_body_pairs;
 
 		///later pass body manager as via ctx
 		mNarrowphaseQuery.Init(&mBodyManager);
@@ -255,15 +258,13 @@ namespace vx
 
 		mWorldQuery.Init(mBroadphase);
 
-		mScratchAllocator = new ScratchAllocator(10 * 1024 * 1024);
+		mScratchAllocator = new ScratchAllocator(1 * 1024 * 1024);
 
-		for (auto& col : mRandomColourInst)
-		{
-			float r = Random::Float(0.1f, 1.0f);
-			float g = Random::Float(0.1f, 1.0f);
-			float b = Random::Float(0.1f, 1.0f);
-			col = Colour(r, g, b);
-		}
+		testAllocationSize =
+			sizeof(Linear1DRow) * 2000 +
+			//sizeof(BroadphasePair) * max_body_pairs +
+			sizeof(Constraint*) * 250;
+		testAllocation = mScratchAllocator->Allocate(testAllocationSize);
 	}
 
 	Body* PhysicsWorld::CreateBody(const BodySettings& body_setting)
@@ -333,14 +334,18 @@ namespace vx
 			}
 		}
 
+		mBroadphaseBuffer.data = reinterpret_cast<BroadphasePair*>(mScratchAllocator->Allocate(sizeof(BroadphasePair) * mBroadphaseBuffer.maxPairs));
+		auto& mBroadpairCount = mBroadphaseBuffer.count;
+		mBroadpairCount = 0;
+		//uint32& broadpair_count = 0; later wrap in pointer
 		/// Broadphase collsion
 		//VX_ASSERT_WARN(mBroadphase, "Broadphase is null.");
 		if (mBroadphase != nullptr)
-			mBroadphase->ComputeCollidingPair(mContext, mBroadphasePairs);
+			mBroadphase->ComputeCollidingPair(mContext, mBroadphaseBuffer.data, mBroadpairCount);
 
 		mContactConstraintSolver.PreFrameSetup(mSettings); //for per frame transient allcation for now
 
-	
+
 		/// for now need to invalidate previous frame local bodies 
 		/// so the bodies could be update for use by narrowphase handshake 
 		/// with contact constraint, fix later 
@@ -349,12 +354,14 @@ namespace vx
 		{
 			mSettings.collision, mHackDebugRenderer,
 			mSettings.drawSettings.drawContactConstraintSolverTBNs,
-			mFrameIdx, mConstraintSolver
+			mFrameIdx, mBroadpairCount, mConstraintSolver
 		};
 		//Narrowphase: collision detection & contact generations
 		
-		mNarrowphaseQuery.ProcessPairs(mBroadphasePairs, mStepManifolds, mContactConstraintSolver, collision_ctx);
+		mNarrowphaseQuery.ProcessPairs(mBroadphaseBuffer.data, mStepManifolds, mContactConstraintSolver, collision_ctx);
 
+		mScratchAllocator->Free(mBroadphaseBuffer.data, sizeof(BroadphasePair) * mBroadphaseBuffer.maxPairs);
+		mBroadphaseBuffer.data = nullptr;
 
 		if (mSettings.solver.enable)
 		{
@@ -393,10 +400,6 @@ namespace vx
 			//commit solver state to constraint
 			if (mSettings.solver.warmstart)
 				mConstraintSolver->CommitStateConstraint();
-
-			if(mConstraintSolver->Linear1DRowBufferCount() > 0)
-				mScratchAllocator->Free(constraint_solver_rows, sizeof(Linear1DRow) * mConstraintSolver->Linear1DRowBufferCount());
-
 
 			//write back bodies 
 			ConstraintSolver::WriteBackBodies(solver_bodies, mConstraintSolver->GetBodiesCount(), mBodyManager);
@@ -477,10 +480,7 @@ namespace vx
 
 		}
 
-
-		//if (mTestJoint)
-		//	mTestJoint->Solve(dt);
-
+		mConstraintSolver->ReleaseAllocation(mScratchAllocator);
 
 		mContactConstraintSolver.FinaliseStepManifoldCache(mBodyManager);
 
@@ -601,7 +601,7 @@ namespace vx
 			Colour c = Colour::sMagenta;
 
 			if (draw_settings.bodyColourMode == vx::EBodyColourMode::Instances)
-				c = mRandomColourInst[it->GetID().ID() % mRandomColourInst.size()]; //quick hack 
+				c = Colour::GetRandomColour(it->GetID().ID());
 			else if (draw_settings.bodyColourMode == vx::EBodyColourMode::MotionType)
 				c = it->IsDynamic() ? draw_settings.dynamicColour : draw_settings.staticColour;
 			else if (draw_settings.bodyColourMode == vx::EBodyColourMode::MotionState)

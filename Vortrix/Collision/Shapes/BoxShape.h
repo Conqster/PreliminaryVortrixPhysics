@@ -12,10 +12,10 @@ namespace vx {
 	public:
 		BoxShapeSettings() = default;
 		explicit BoxShapeSettings(float h_xyz) : mHalfExtent(h_xyz) { }
-
-		explicit BoxShapeSettings(float hx, float hy, float hz) :  mHalfExtent(hx, hy, hz) {}
+		explicit BoxShapeSettings(float h_xyz, float density) : ShapeSettings(density), mHalfExtent(h_xyz) { }
 
 		explicit BoxShapeSettings(const Vec3& half_extents) :  mHalfExtent(half_extents) { }
+		explicit BoxShapeSettings(const Vec3& half_extents, float density) :  ShapeSettings(density), mHalfExtent(half_extents) { }
 		
 		Vec3 mHalfExtent = Vec3(0.5f);
 	};

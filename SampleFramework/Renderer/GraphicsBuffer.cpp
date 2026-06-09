@@ -147,27 +147,18 @@ void GraphicsBuffer::AssignGPULabel(const char* name)
 		{
 		case BufferUsage::Vertex:
 			_name << " VBO";
-			//glObjectLabel(GL_BUFFER, iD, _name.Length(), _name.Data());
-			//VX_INFO("Assigned GPU Label ", name, " VBO ", iD);
 			break;
 		case BufferUsage::Index:
 			_name << " EBO";
-			//glObjectLabel(GL_BUFFER, iD, (name.size() + 4), (name + " EBO").c_str());
-			//VX_INFO("Assigned GPU Label ", name, " EBO ", iD);
 			break;
-		case /*Renderer::*/BufferUsage::Uniform:
+		case BufferUsage::Uniform:
 			_name << " UBO";
-			//glObjectLabel(GL_BUFFER, iD, (name.size() + 4), (name + " UBO").c_str());
-			//VX_INFO("Assigned GPU Label ", name, " UBO ", iD);
 			break;
 		case BufferUsage::Storage:
 			_name << " SSBO";
-			//glObjectLabel(GL_BUFFER, iD, (name.size() + 5), (name + " SSBO").c_str());
-			//VX_INFO("Assigned GPU Label ", name, " SSBO ", iD);
 			break;
 		}
 
 		glObjectLabel(GL_BUFFER, iD, _name.Length(), _name.Data());
-		VX_LOG_DEBUG("Assigned GPU Label ", _name.Data(), " with ID: ", iD);
 	}
 }

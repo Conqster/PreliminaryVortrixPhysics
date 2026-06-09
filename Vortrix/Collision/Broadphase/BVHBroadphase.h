@@ -45,7 +45,7 @@ namespace vx
 		void RemoveBody(const BodyID& id) override;
 
 		BVHTree<AABB>::BVHContext GetTreeStat() { return mTree.GetContext(); }
-		void ComputeCollidingPair(struct PhysicsStepContext& physics_ctx, std::vector<BroadphasePair>& out_pairs) override;
+		void ComputeCollidingPair(struct PhysicsStepContext& physics_ctx, BroadphasePair* io_pairs, uint32& io_count) override;
 
 		void SetBoundThreshold(float v) override
 		{

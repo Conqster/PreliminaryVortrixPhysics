@@ -17,7 +17,7 @@ namespace vx {
 
 		const CollisionResolutionStat& Stats() const { return mStats; }
 
-		void ProcessPairs(const std::vector<struct BroadphasePair>& pairs, std::vector<ContactManifold>& out_manifolds, class ContactConstraintSolver& contact_solver, const struct CollisionContext& ctx);
+		void ProcessPairs(struct BroadphasePair* in_pairs, std::vector<ContactManifold>& out_manifolds, class ContactConstraintSolver& contact_solver, const struct CollisionContext& ctx);
 
 	private:
 		CollisionDispatcher mDispatcher;
