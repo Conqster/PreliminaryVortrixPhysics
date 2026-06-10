@@ -20,26 +20,27 @@ namespace vx {
 		float bias;
 
 		/// rAXn = rA.Cross(nor);
-		Float3 rAXn{ 0 };
-		float lambda = 0.0f;
+		Float3 rAXn;
+		float lambda;
 		
 		///invIrAXn = mBodyA->ComputeInvInteriaWorld().Multiply3x3(rAXn);
-		Float3 invIrAXn{0};
-		float minLambda = -kMaxf;
+		Float3 invIrAXn;
+		float minLambda;
 
 		/// rAXn = rA.Cross(nor);
-		Float3 rBXn{ 0 };	/// rAXn = rA.Cross(nor);
-		float maxLambda = kMaxf;
+		Float3 rBXn;	/// rAXn = rA.Cross(nor);
+		float maxLambda;
 		
 		///invIrBXn = mBodyA->ComputeInvInteriaWorld().Multiply3x3(rAXn
-		Float3 invIrBXn{ 0 };
+		Float3 invIrBXn;
 
 		//for now has hack 
-		class Constraint* user = nullptr;
+		class Constraint* user;
 
 		//later have idx part as a single constraint have multiple rows 
-		uint32 hackIdx = 0;
+		uint32 hackIdx;
 	};
+	static_assert(std::is_trivial_v<Linear1DRow>, "Linear1DRow Must be a trivial type!");
 
 	struct Rigid1DConstraint
 	{

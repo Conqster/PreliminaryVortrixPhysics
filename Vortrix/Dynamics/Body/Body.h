@@ -374,11 +374,11 @@ namespace vx
 		/// static bodies does not try get masses, not a hard requirement
 		
 		//3rd cache line 
-		Vec3 mInvInertiaTensorDiagonal;					//16 bytes	[16 bytes] 
+		Vec3 mInvInertiaTensorDiagonal = Vec3(0.0f);					//16 bytes	[16 bytes] 
 		//4 bytes alignment, float3 is 4 bytes aligned compared to Vec3 which is 16 bytes align
 		float mInverseMass;								//4 bytes	[20 bytes]
-		Float3 mForceAccumulated;						//12 bytes	[32 bytes]
-		Float3 mTorqueAccumulated;						//12 bytes	[44 bytes]
+		Float3 mForceAccumulated{ 0 };						//12 bytes	[32 bytes]
+		Float3 mTorqueAccumulated{ 0 };						//12 bytes	[44 bytes]
 		float mLinearDamping = 1.0f;							//4 bytes	[48 bytes]
 		float mAngularDamping = 1.0f;							//4 bytes	[52 bytes]
 		float mMaxLinearVelocity;						//4 bytes	[56 bytes] // 100.0f;// 500.0f;too high at 60hz and no CCD 

@@ -102,6 +102,11 @@ namespace vx{
 
 			inv_eff_mass += mBodyA->GetInverseMass() + invIrAXn.Dot(rAXn);
 		}
+		else
+		{
+			o_row->rAXn = Float3(0.0f);
+			o_row->invIrAXn = Float3(0.0f);
+		}
 
 		if (bodyB_nonstatic)
 		{
@@ -113,7 +118,14 @@ namespace vx{
 
 			inv_eff_mass += mBodyB->GetInverseMass() + invIrBXn.Dot(rBXn);
 		}
+		else
+		{
+			o_row->rBXn = Float3(0.0f);
+			o_row->invIrBXn = Float3(0.0f);
+		}
 
+		
+		VX_ASSERT(bodyA_nonstatic || bodyB_nonstatic);
 		if (!bodyA_nonstatic && !bodyB_nonstatic)
 		{
 			o_row->effMass = 0.0f;

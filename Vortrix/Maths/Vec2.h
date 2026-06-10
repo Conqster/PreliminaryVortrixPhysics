@@ -249,5 +249,8 @@ namespace vx
 			float mFloats[2];
 		};
 	};
+
+	static_assert(std::is_trivial_v<Vec2>);
+
 }
 #include "Vec2.inl"

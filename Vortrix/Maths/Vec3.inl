@@ -5,15 +5,7 @@
 
 namespace vx
 {
-	inline Vec3::Vec3()
-	{
-#ifdef VX_SIMD_SSE
-		mValue = _mm_setzero_ps();
-#else
-		for (int i = 0; i < 4; i++)
-			mFloats[i] = 0;
-#endif // USE_SIMD_SSE
-	}
+
 	inline Vec3::Vec3(float x, float y, float z)
 	{
 #ifdef VX_SIMD_SSE
@@ -36,7 +28,9 @@ namespace vx
 	}
 
 	inline Vec3::Vec3(const Vec4& rhs) :
-		Vec3(rhs.XYZ()) {}
+		//Vec3(rhs.XYZ()) : 
+		mValue(rhs.Swizzle<Axis::X, Axis::Y, Axis::Z, Axis::Z>().Value())
+	{}
 
 	inline Vec3::Vec3(__m128 vec) : 
 		mValue(_mm_shuffle_ps(vec, vec, _MM_SHUFFLE(2, 2, 1, 0)))

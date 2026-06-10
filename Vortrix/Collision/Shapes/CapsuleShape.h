@@ -57,7 +57,7 @@ namespace vx {
 
 			const CapsuleShape* capsule_rhs = static_cast<const CapsuleShape*>(rhs);
 
-			return mDensity, capsule_rhs->mDensity &&
+			return mDensity == capsule_rhs->mDensity &&
 				mRadius == capsule_rhs->mRadius &&
 				mCylinderHalfHeight == capsule_rhs->mCylinderHalfHeight;
 		}

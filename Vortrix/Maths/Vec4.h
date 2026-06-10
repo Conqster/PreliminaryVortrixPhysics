@@ -246,9 +246,8 @@ namespace vx
 			float mFloats[4];
 			__m128 mValue;
 		};
-
-
 	};
+	static_assert(std::is_trivial_v<Vec4>);
 
 }
 

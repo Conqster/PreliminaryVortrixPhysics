@@ -22,7 +22,7 @@ namespace vx
 	{
 	public:
 
-		Vec3();
+		Vec3() = default;
 		Vec3(float x, float y, float z);
 		explicit Vec3(float scalar);
 		Vec3(const Vec3& rhs) = default;
@@ -374,6 +374,8 @@ namespace vx
 			__m128 mValue;
 		};
 	};
+
+	static_assert(std::is_trivial_v<Vec3>, "Vec3 Must be a trivial type!");
 }
 
 #include "Vec3.inl"

@@ -50,7 +50,7 @@ namespace vx{
 #endif // !PROFILE_MEM_ALLOC
 
 
-VX_INLINE void* operator new(size_t size) { return VX_ALLOC(size); }
+VX_INLINE void* operator new (size_t size) { return VX_ALLOC(size); }
 VX_INLINE void operator delete (void* pointer) noexcept { VX_FREE(pointer); }
 VX_INLINE void operator delete(void* pointer, [[maybe_unused]] size_t size) noexcept { VX_FREE(pointer); }
 

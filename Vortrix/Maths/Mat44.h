@@ -494,6 +494,7 @@ namespace vx
 			float mFloats[16];
 		};
 	};
+	static_assert(std::is_trivial_v<Mat44>, "Mat44 Must be a trivial type!");
 }
 
 #include "Mat44.inl"

@@ -50,14 +50,6 @@ namespace vx
 
 		bool operator !=(const Float3& rhs) const { return !(*this == rhs); }
 
-		///// Approximate equality check
-		///// @return rhs Vector to compare
-		///// @param tolerance_sq Square tolerance
-		//bool IsApprox(const Float3& rhs, float tolerance_sq = 1e-12f) const
-		//{
-		//	return (Vec3::Load(&rhs.x) - Vec3::Load(&x)).LengthSq() <= tolerance_sq;
-		//}
-
 		VX_INLINE std::string ToString() const
 		{
 			char buffer[64];
@@ -75,7 +67,7 @@ namespace vx
 		float x, y, z;
 	};
 
-	static_assert(std::is_trivial<Float3>());
+	static_assert(std::is_trivial_v<Float3>);
 	static_assert(std::is_standard_layout_v<Float3>);
 	static_assert(sizeof(Float3) == 12);
 	static_assert(alignof(Float3) == alignof(float));

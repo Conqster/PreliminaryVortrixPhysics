@@ -113,11 +113,6 @@ namespace vx {
 		mConstraintPositionSolveQueueBufferCount = required_position_correct_constraint;
 		mConstraintPositionSolveQueue = reinterpret_cast<Constraint**>(ctx.mScratchAllocator->Allocate(sizeof(Constraint*) * required_position_correct_constraint));
 
-
-		////ensure mem is clean and defualt to Linear1DROw
-		//std::memset(mLinear1DRows, {}, mLinear1DRowBufferCount * sizeof(Linear1DRow));
-		//std::memset(mConstraintPositionSolveQueue, {}, mConstraintPositionSolveQueueBufferCount * sizeof(Constraint*));
-
 		std::memset(mLinear1DRows, {}, mLinear1DRowBufferCount * sizeof(Linear1DRow) + mConstraintPositionSolveQueueBufferCount * sizeof(Constraint*));
 	}
 
@@ -148,7 +143,7 @@ namespace vx {
 
 		//quick hack, no caching pipeline and to prevent bugs 
 		mBodies.clear();
-		std::fill(mBodyToSolverBody.begin(), mBodyToSolverBody.end(), SolverBodyIndex{});
+		std::memset(mBodyToSolverBody.data(), SolverBodyIndex::kInvalidIndex, mBodyToSolverBody.size() * sizeof(SolverBodyIndex));
 		//mConstraintPositionSolveQueue.clear();
 	}
 

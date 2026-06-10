@@ -22,14 +22,20 @@ if(MSVC)
 
 	#/EHsc for std::vector
 	#Base flags
-	set(VX_GLOBAL_FLAGS "/Zc:__cplusplus /MP /nologo /Zc:inline /fp:fast /GR- /EHsc")
+	set(VX_GLOBAL_FLAGS "/Zc:__cplusplus /MP /nologo /Zc:inline /fp:fast /fp:except- /Gm- /GR- /EHsc")
 	
-	#set(VX_GLOBAL_FLAGS "${VX_GLOBAL_FLAGS} /EHsc") 
 	set(VX_GLOBAL_FLAGS "${VX_GLOBAL_FLAGS} /Zc:sizedDealloc") 
 
 	
-	if(ENABLE_ALL_WARNING)
-		set(VX_GLOBAL_FLAGS "${VX_GLOBAL_FLAGS} /Wall /WX") 
+	if(ENABLE_ALL_WARNINGS)
+		#  a lot i do not know, about compiler warning 
+		#could not use flags /Wall /WX
+		#as it break when treating all warnings as Error 
+		#
+		#in future need to look into suppressing some complier warning 
+		#for now keep all warning and as warnings
+		#set(VX_GLOBAL_FLAGS "${VX_GLOBAL_FLAGS} /Wall /WX") 
+		set(VX_GLOBAL_FLAGS "${VX_GLOBAL_FLAGS} /Wall") 
 	endif()
 	
 	#if(GENERATE_DEBUG_SYMBOLS)
@@ -49,13 +55,16 @@ if(MSVC)
 	
 	#common optimisation block
 	set(PHYSICS_OPTS "${VX_GLOBAL_FLAGS} /O2 /Oi /Ot /DNDEBUG")
+	
+	set(CMAKE_CXX_FLAGS_DEBUG "/Zi /MP /nologo /Wall /MP /GS /fp:fast /fp:except- /Gm- /RTC1" CACHE STRING "" FORCE)
+	set(CMAKE_EXE_LINKER_FLAGS_DEBUG "/DEBUG:FULL " CACHE STRING "" FORCE)
 		 
 	#Development (Release speed + uProf/VTune profiling)
-	set(CMAKE_CXX_FLAGS_DEVELOPMENT "${PHYSICS_OPTS} /Zi" CACHE STRING "" FORCE)
+	set(CMAKE_CXX_FLAGS_DEVELOPMENT "${PHYSICS_OPTS} /Zi /GS" CACHE STRING "" FORCE)
 	set(CMAKE_EXE_LINKER_FLAGS_DEVELOPMENT "/DEBUG /OPT:REF /OPT:ICF" CACHE STRING "" FORCE)
 	
 	#Release Speed with no symbol but some profiling benchmarking support
-	set(CMAKE_CXX_FLAGS_RELEASE ${PHYSICS_OPTS} CACHE STRING "" FORCE)
+	set(CMAKE_CXX_FLAGS_RELEASE "${PHYSICS_OPTS} /GS- /Gy /GL" CACHE STRING "" FORCE)
 	set(CMAKE_EXE_LINKER_FLAGS_RELEASE "/OPT:REF /OPT:ICF" CACHE STRING "" FORCE)
 	
 	#Distribution with Link Time Code Gen

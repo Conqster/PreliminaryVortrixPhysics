@@ -131,9 +131,38 @@ void Application::SaveCurrentScenarionWindow()
 	ImGui::End();
 }
 
+
+
+struct Test
+{
+	int f;
+	float g;
+	char b;
+	long p;
+
+	bool IsNan() const
+	{
+		VxIsNaN(f) &&
+		VxIsNaN(g) &&
+		VxIsNaN(b) &&
+		VxIsNaN(p);
+	}
+
+	static bool sIsNan(const Test& t)
+	{
+		return VxIsNaN(t.f) &&
+		VxIsNaN(t.g) &&
+		VxIsNaN(t.b) &&
+		VxIsNaN(t.p);
+	}
+};
+static_assert(std::is_trivial_v<Test>);
+
 Application::Application(const ApplicationSpecification& app_spec)
 {
 	mLastFrameTime = glfwGetTime();
+
+	//Test ty;
 
 	VX_LOG_INFO("Launching Application Program, \n\tName: ",
 		app_spec.name, "\n\tWindow Size: {", 

@@ -108,7 +108,8 @@ namespace vx
 
 	template<typename T>
 	VX_INLINE bool VxIsNaN(T v) { return std::isnan(v); }
-
+	template<typename T>
+	VX_INLINE bool VxIsInf(T v) { return std::isinf(v); }
 
 
 	/// Checks whether two floats are approximately equal 
@@ -145,7 +146,7 @@ namespace vx
 		return std::pow(base, exp);
 	}
 
-	VX_INLINE int VxPow(int base, int exp)
+	VX_INLINE double VxPow(int base, int exp)
 	{
 		return std::pow(base, exp);
 	}

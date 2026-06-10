@@ -112,6 +112,15 @@
 #define VX_STACK_ALLOC(n)		alloca(n)
 
 
+
+///  a lot i do not know, about compiler warning 
+/// could not use flags /Wall /WX
+/// as it break when treating all warnings as Error 
+/// 
+/// in future need to look into suppressing some complier warning 
+/// for now keep all warning and as warnings
+
+
 //standard c++ includes
 #include <vector>
 
@@ -142,6 +151,7 @@ namespace vx
 	template<typename T>
 	inline constexpr T Bit(unsigned x) { return static_cast<T>(T(1) << x); } 
 
+
 	inline constexpr uint32_t Bit32(unsigned x) { return Bit<uint32_t>(x); } 
 	inline constexpr uint16_t Bit16(unsigned x) { return Bit<uint16_t>(x); }
 	inline constexpr uint8_t Bit8(unsigned x) { return Bit<uint8_t>(x); }
@@ -151,6 +161,7 @@ namespace vx
 	using uint16 = uint16_t;
 	using uint32 = uint32_t;
 	using uint64 = uint64_t;
+
 
 	using int8 = int8_t;
 	using int16 = int16_t;

@@ -898,7 +898,7 @@ namespace vx {
 						jn = (-lin_vel1).Dot(n);
 					else
 					{
-						VX_LOG_ERROR("Static vs static this should not be possible");
+						VX_ASSERT_WARN(false, "Static vs static this should not be possible");
 						jn = 0.0f;
 					}
 					//simplify 
@@ -955,7 +955,7 @@ namespace vx {
 							jv = (-lin_vel1).Dot(axis);
 						else
 						{
-							VX_LOG_ERROR("Static vs static this should not be possible");
+							VX_ASSERT_WARN(false, "Static vs static this should not be possible");
 							jv = 0.0f;
 						}
 
