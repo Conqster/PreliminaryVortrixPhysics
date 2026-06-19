@@ -64,6 +64,7 @@ namespace vx
 		float GetDensity() const { return mDensity; }
 
 		virtual MassProperties GetMassProperties() const = 0; 
+		virtual Float3 ComputeInertiaTensorDiagonal (float mass) const = 0;
 
 		///GetHalfScale 
 		/// for rendering

@@ -44,20 +44,14 @@ namespace vx
 		body.mOrientation = body_setting.orientation;
 		body.mFriction = body_setting.friction;
 		body.mRestitution = body_setting.restitution;
-		body.mMotionType = body_setting.motionType;
 
 
 		if (body_setting.motionType == EMotionType::Dynamic)
 		{
-			body.mLinearVelocity = Vec3(0.0f);
-			body.mAngularVelocity = Vec3(0.0f);
+			SetBodyMotionType<EMotionType::Dynamic>(body, false);
 
 			body.mLinearDamping = body_setting.linearDamping;
 			body.mAngularDamping = body_setting.angularDamping;
-			body.mAwake = true;
-			body.mSleepTimer = 0.0f;
-		
-			body.ClearAccumulatedForces();
 
 			body.mMaxLinearVelocity = body_setting.maxLinearVelocity;		
 			body.mMaxAngularVelocity = body_setting.maxAngularVelocity;
@@ -65,11 +59,23 @@ namespace vx
 			body.mAllowedDynamicsDof = body_setting.degreeFreedom;
 		}
 		else
+		{
+			SetBodyMotionType<EMotionType::Static>(body, false);
 			body.mAwake = false;
-	
-		/// Set shape handles the bodies shape 
-		/// as well as bounds 
-		body.SetShape(body_setting.shape);
+		}
+
+		
+		if(body_setting.overrideMasses)
+		{
+			/// Set shape handles the bodies shape 
+			/// as well as bounds 
+			body.SetShape(body_setting.shape, false);
+			body.SetMass(body_setting.mass);
+			body.SetInertiaTensor(Vec3::LoadFloat3Raw(body_setting.inertia));
+		}
+		else
+			body.SetShape(body_setting.shape, true);
+
 
 		/// Post body setup 
 		if (!body_setting.intialVelocity.IsZero())
@@ -122,6 +128,41 @@ namespace vx
 			mBodies.emplace_back(_body);
 		}
 		return id;
+	}
+
+	template<EMotionType Type>
+	void BodyManager::SetBodyMotionType(Body& body, bool update_mass_inertia)
+	{
+		body.mSleepTimer = 0.0f;
+
+		body.SetMotionType(Type);
+
+		///if not it must means that 
+		// caller would set the mass properties after Motion type
+		if constexpr (Type == EMotionType::Dynamic)
+		{
+			body.mAwake = true;
+			if (update_mass_inertia)
+			{
+				MassProperties mp = body.GetShape()->GetMassProperties();
+				body.SetMass(mp.mass);
+				body.SetInertiaTensor(Vec3::LoadFloat3Raw(mp.inertialTensorDiagonal));
+			}
+		}
+		else if constexpr (Type == EMotionType::Static)
+		{
+			body.mAwake = false;
+			if (update_mass_inertia)
+			{
+				body.SetMass(0.0f);
+				body.SetInertiaTensor(Vec3::Zero());
+			}
+		}
+	}
+
+	void BodyManager::SetBodyShape(Body& body, RefConst<Shape> shape, bool update_mass_inertia)
+	{
+		body.SetShape(shape, update_mass_inertia);
 	}
 
 	void BodyManager::RemoveBody(const BodyID& id)

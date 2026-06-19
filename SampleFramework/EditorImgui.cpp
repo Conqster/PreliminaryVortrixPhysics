@@ -242,21 +242,26 @@ void EditorImGui::DrawBodyOverlayDetails(vx::Body& body, vx::BodyDebug& body_deb
 		ImGui::Text("Awake: %s", (body.mAwake) ? "true" : "false");
 		//ImGui::Text("Acceleration: %s", body.mAcceleration.ToString().c_str());
 		vx::Vec3 body_orientation_euler = body.GetOrientation().GetEulerAngles();
+		ImGui::SeparatorText("Transformation");
 		ImGui::Text("Euler Angles: %s degrees", vx::RadToDeg(body_orientation_euler).ToString().c_str());
 		ImGui::Text("UI Cache Euler Angles: %s degrees", euler.ToVec3().ToString().c_str());
 		ImGui::Text("Orientation Quat: %s ", body.GetOrientation().ToString().c_str());
-		ImGui::Text("Force Accumulated: %s", body.mForceAccumulated.ToString().c_str());
-		ImGui::Text("Torque Accumulated: %s", body.mTorqueAccumulated.ToString().c_str());
+
+		ImGui::SeparatorText("Motion Dynamics");
 		ImGui::Text("Linear Velocity: %s", body.mLinearVelocity.ToString().c_str());
 		ImGui::Text("Linear Speed: %s m/s", std::to_string(body.mLinearVelocity.Length()).c_str());
 		ImGui::Text("Angular Velocity: %s", body.mAngularVelocity.ToString().c_str());
 		ImGui::Text("Angular Speed: %s rad/s", std::to_string(body.mAngularVelocity.Length()).c_str());
-		ImGui::Text("Mass: %f kg.", body.GetMass());
+		ImGui::Text("Force Accumulated: %s", body.mForceAccumulated.ToString().c_str());
+		ImGui::Text("Torque Accumulated: %s", body.mTorqueAccumulated.ToString().c_str());
+		ImGui::Text("Sleep Timer: %f", body.mSleepTimer);
 		auto& body_stat = body_debug_info.simulationStats;
 		ImGui::Text("Max Attained Linear Speed Squared: %f(m/s)^2", body_stat.maxAttainedLinearVelocitySq);
 		ImGui::Text("Max Angular Speed Squared: %f(rad/s)^2", body_stat.maxAttainedAngularVelocitySq);
-		//ImGui::Text("Meant Speed Threshold %s", (body.mMeantSpeedSleepThreshold) ? "True" : "False");
-		ImGui::Text("Sleep Timer: %f", body.mSleepTimer);
+
+		ImGui::SeparatorText("Mass Properties");
+		ImGui::Text("Mass: %f kg.", body.GetMass());
+		ImGui::Text("Diagonal Inverse Inertia: %s", body.GetLocalInvInertiaDiagonal().ToString().c_str());
 		ImGui::TreePop();
 	}
 	if (ImGui::TreeNode("Debug Shape Properies"))

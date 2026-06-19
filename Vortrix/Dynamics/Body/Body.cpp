@@ -101,6 +101,16 @@ namespace vx
 	}
 
 
+	void Body::SetMotionType(EMotionType type)
+	{
+		mMotionType = type;
+
+		mLinearVelocity = Vec3::Zero();
+		mAngularVelocity = Vec3::Zero();
+
+		ClearAccumulatedForces();
+	}
+
 	void Body::ApplyGravity(const Vec3& gravity)
 	{
 		if (!IsDynamic()) return;
@@ -109,10 +119,6 @@ namespace vx
 		//mForceAccumulated += gravity * GetMass();
 	}
 
-	void Body::SetInertiaTensor(const Vec3& inertia_tensor_diagonal)
-	{
-		mInvInertiaTensorDiagonal = inertia_tensor_diagonal.Reciprocal();
-	}
 
 
 	void Body::IntegrateAcceleration(float dt, const Vec3& gravity)
@@ -271,27 +277,21 @@ namespace vx
 		mOrientation.Normalise();
 		ComputeWorldSpaceBoundsInternal();
 	}
-	void Body::SetShape(const RefConst<Shape>& type)
+	void Body::SetShape(const RefConst<Shape>& shape, bool update_mass_inertia)
 	{
-		VX_ASSERT_WARN_VOID(type != nullptr, "Trying to set body shape with null shape");
-		mShape = type;
-		MassProperties mp = mShape->GetMassProperties();
-		SetInertiaTensor(Vec3::LoadFloat3Raw(mp.inertialTensorDiagonal));
+		VX_ASSERT_WARN_VOID(shape != nullptr, "Trying to set body shape with null shape");
+		mShape = shape;
 
-		if (mp.mass > 0.0f)
+		if (update_mass_inertia)
 		{
-			mMotionType = EMotionType::Dynamic;
-			mAwake = true;
-			mInverseMass = static_cast<float>(1.0f / mp.mass);
+			/// we are not checking if dynamic / static 
+			/// manager/interface should ignore update 
+			MassProperties mp = mShape->GetMassProperties();
+
+			SetMass(mp.mass);
 			SetInertiaTensor(Vec3::LoadFloat3Raw(mp.inertialTensorDiagonal));
 		}
-		else
-		{
-			mMotionType = EMotionType::Static;
-			mAwake = false;
-			mInverseMass = 0.0f;
-			mInvInertiaTensorDiagonal = Vec3(0.0f);
-		}
+
 		ComputeWorldSpaceBoundsInternal();
 	}
 	Mat44 Body::TransformDiagonalInertiaTensor(const Vec3& inv_inertia_diagonal, const Quat& rot) const

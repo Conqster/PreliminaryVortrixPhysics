@@ -233,4 +233,16 @@ namespace vx {
 
 		return mp;
 	}
+	Float3 BoxShape::ComputeInertiaTensorDiagonal(float mass) const
+	{
+		Vec3 he2 = 2 * mHalfExtent;
+
+		float ww = he2.X();
+		float hh = he2.Y();
+		float dd = he2.Z();
+
+		return Float3(((1.0f / 12.0f) * mass * (hh + dd)),
+			((1.0f / 12.0f) * mass * (ww + dd)),
+			((1.0f / 12.0f) * mass * (ww + hh)));
+	}
 } //namespace vx

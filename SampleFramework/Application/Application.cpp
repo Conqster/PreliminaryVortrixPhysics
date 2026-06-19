@@ -133,36 +133,9 @@ void Application::SaveCurrentScenarionWindow()
 
 
 
-struct Test
-{
-	int f;
-	float g;
-	char b;
-	long p;
-
-	bool IsNan() const
-	{
-		VxIsNaN(f) &&
-		VxIsNaN(g) &&
-		VxIsNaN(b) &&
-		VxIsNaN(p);
-	}
-
-	static bool sIsNan(const Test& t)
-	{
-		return VxIsNaN(t.f) &&
-		VxIsNaN(t.g) &&
-		VxIsNaN(t.b) &&
-		VxIsNaN(t.p);
-	}
-};
-static_assert(std::is_trivial_v<Test>);
-
 Application::Application(const ApplicationSpecification& app_spec)
 {
 	mLastFrameTime = glfwGetTime();
-
-	//Test ty;
 
 	VX_LOG_INFO("Launching Application Program, \n\tName: ",
 		app_spec.name, "\n\tWindow Size: {", 
@@ -2252,10 +2225,21 @@ void Application::PhysicsInteraction()
 			vx::BodySettings& body_settings = (mNewPhyObjectSettings.isDynamic) ?
 				vx::BodySettings::DefaultDynamicConstruct() : vx::BodySettings::DefaultStaticConstruct();
 			body_settings.position = position;
-			body_settings.overrideMasses = mNewPhyObjectSettings.overrideMasses;
 			body_settings.density = mNewPhyObjectSettings.density;
 
-			body_settings.mass = (mNewPhyObjectSettings.isDynamic && !mNewPhyObjectSettings.overrideMasses) ? mNewPhyObjectSettings.mass : 0.0f;
+			if(mNewPhyObjectSettings.overrideMasses)
+			{
+				body_settings.overrideMasses = mNewPhyObjectSettings.overrideMasses;
+				body_settings.mass = mNewPhyObjectSettings.mass;
+				if(mNewPhyObjectSettings.multiplyInertiaTensor_Mass)
+				{
+					Float3 v = mNewPhyObjectSettings.inertia;
+					float m = mNewPhyObjectSettings.mass;
+					body_settings.inertia = vx::Float3(v.x * m, v.y * m, v.z * m);
+				}
+				else
+					body_settings.inertia = mNewPhyObjectSettings.inertia;
+			}
 			body_settings.impluse = impluse;
 			body_settings.intialVelocity = dir * mNewPhyObjectSettings.initialLinearVelocity;
 			body_settings.linearDamping = mNewPhyObjectSettings.damping;
@@ -2865,10 +2849,24 @@ void Application::CreateNewPhysicsBodyWindow()
 				mNewPhyObjectSettings.bodyShape = static_cast<vx::EShapeType>(curr_sp_type);
 				///alway reset when shape type change to prevent bugs 
 				mNewPhyObjectSettings.halfExtents = Float3{ 0.5f };
-				if(mNewPhyObjectSettings.bodyShape != EShapeType::Capsule)
+				switch (mNewPhyObjectSettings.bodyShape)
+				{
+				case vx::EShapeType::Sphere:
+					mNewPhyObjectSettings.inertia = vx::BodySettings::UnitSphereinteriatensor();
 					mNewPhyObjectSettings.halfExtents = Float3{ 0.5f };
-				else
+					break;
+				case vx::EShapeType::Box:
+					mNewPhyObjectSettings.inertia = vx::BodySettings::UnitBoxinteriatensor();
+					mNewPhyObjectSettings.halfExtents = Float3{ 0.5f };
+					break;
+				case vx::EShapeType::Capsule:
+					mNewPhyObjectSettings.inertia = vx::BodySettings::UnitCapsuleinteriatensor();
 					mNewPhyObjectSettings.halfExtents = Float3{ 0.5f, 1.0f, 0.5f };// convert to the actual half extent along y
+					break;
+				default:
+					break;
+				}
+	
 			}
 
 			ImGui::SliderInt("Count", (int*)&mNewPhyObjectSettings.count, 1, 50);
@@ -2901,7 +2899,11 @@ void Application::CreateNewPhysicsBodyWindow()
 			ImGui::DragFloat("Density (kg/m^3)", &mNewPhyObjectSettings.density, 0.0f);
 			ImGui::Checkbox("Override Mass WIP", &mNewPhyObjectSettings.overrideMasses);
 			if(mNewPhyObjectSettings.overrideMasses)
+			{
 				ImGui::SliderFloat("Mass (kg)", &mNewPhyObjectSettings.mass, 0.0f, 200.0f);
+				ImGui::DragFloat3("Inertia Tensor ", &mNewPhyObjectSettings.inertia[0]);
+				ImGui::Checkbox("Multiply Inertia Tensor with Mass, for final Inertia", &mNewPhyObjectSettings.multiplyInertiaTensor_Mass);
+			}
 			ImGui::SliderFloat("Linear Damping", &mNewPhyObjectSettings.damping, 0.0f, 1.0f);
 			ImGui::SliderFloat("Angular Damping", &mNewPhyObjectSettings.angularDamping, 0.0f, 1.0f);
 

@@ -82,7 +82,7 @@ namespace vx{
 		vx::BoxShapeSettings pelvis_settings(Vec3(0.25f, 0.10f, 0.1f));
 
 
-		float each_density = 12000 * 5.0f;
+		float each_density = 12000;// *5.0f;
 		chest_settings.SetDensity(each_density);
 		pelvis_settings.SetDensity(each_density);
 
@@ -685,10 +685,19 @@ vx::PointConstraint(
 		vx::BodySettings body_settings = vx::BodySettings::DefaultDynamicConstruct();
 
 
+		///
+		float total_masses = 8000.0f;
+		float each_masses = total_masses / 10.0f;
+		body_settings.overrideMasses = true;
+		body_settings.mass = each_masses;
+		Float3 v = BodySettings::UnitBoxinteriatensor();
+		body_settings.inertia = vx::Float3(v.x * each_masses, v.y * each_masses, v.z * each_masses);
+
 		body_settings.shape = head;
 		body_settings.debug_name = "Head";
 		body_settings.position = head_pos;
 		body_settings.orientation = vx::Quat::Identity();
+		body_settings.inertia = body_settings.shape->ComputeInertiaTensorDiagonal(each_masses);
 		Body* _head = mPhysicsWorld->CreateBody(body_settings);
 		bodies.push_back(_head);
 		ragdoll.AddBodyPart(_head->GetID(), "Head");
@@ -698,6 +707,7 @@ vx::PointConstraint(
 		body_settings.debug_name = "Chest";
 		body_settings.position = chestPos;
 		body_settings.orientation = vx::Quat::Identity();
+		body_settings.inertia = body_settings.shape->ComputeInertiaTensorDiagonal(each_masses);
 		Body* chest_body = mPhysicsWorld->CreateBody(body_settings);
 		bodies.push_back(chest_body);
 		ragdoll.AddBodyPart(chest_body->GetID(), "Chest");
@@ -706,6 +716,7 @@ vx::PointConstraint(
 		body_settings.debug_name = "Pelvis";
 		body_settings.position = vx::Vec3(0.0f, 0.0f, 0.0f);
 		body_settings.orientation = vx::Quat::Identity();
+		body_settings.inertia = body_settings.shape->ComputeInertiaTensorDiagonal(each_masses);
 		Body* pelvis_body = mPhysicsWorld->CreateBody(body_settings);
 		bodies.push_back(pelvis_body);
 		ragdoll.AddBodyPart(pelvis_body->GetID(), "Pelvis");
@@ -714,6 +725,7 @@ vx::PointConstraint(
 		body_settings.shape = upper_arm;
 		body_settings.debug_name = "Left Upper Arm";
 		body_settings.position = upper_armLPos;
+		body_settings.inertia = body_settings.shape->ComputeInertiaTensorDiagonal(each_masses);
 		body_settings.orientation.SetAxisAngle(vx::Vec3::Forward(), vx::DegToRad(90.0f));
 		Body* upper_armL = mPhysicsWorld->CreateBody(body_settings);
 		bodies.push_back(upper_armL);
@@ -723,6 +735,7 @@ vx::PointConstraint(
 		body_settings.shape = upper_arm;
 		body_settings.debug_name = "Right Upper Arm";
 		body_settings.position = upper_armRPos;
+		body_settings.inertia = body_settings.shape->ComputeInertiaTensorDiagonal(each_masses);
 		body_settings.orientation.SetAxisAngle(vx::Vec3::Forward(), vx::DegToRad(-90.0f));
 		Body* upper_armR = mPhysicsWorld->CreateBody(body_settings);
 		bodies.push_back(upper_armR);
@@ -732,6 +745,7 @@ vx::PointConstraint(
 		body_settings.shape = lower_arm;
 		body_settings.debug_name = "Left Lower Arm";
 		body_settings.position = lower_armLPos;
+		body_settings.inertia = body_settings.shape->ComputeInertiaTensorDiagonal(each_masses);
 		body_settings.orientation.SetAxisAngle(vx::Vec3::Forward(), vx::DegToRad(90.0f));
 		Body* lower_armL = mPhysicsWorld->CreateBody(body_settings);
 		bodies.push_back(lower_armL);
@@ -741,6 +755,7 @@ vx::PointConstraint(
 		body_settings.shape = lower_arm;
 		body_settings.debug_name = "Right Lower Arm";
 		body_settings.position = lower_armRPos;
+		body_settings.inertia = body_settings.shape->ComputeInertiaTensorDiagonal(each_masses);
 		body_settings.orientation.SetAxisAngle(vx::Vec3::Forward(), vx::DegToRad(-90.0f));
 		Body* lower_armR = mPhysicsWorld->CreateBody(body_settings);
 		bodies.push_back(lower_armR);
@@ -751,6 +766,7 @@ vx::PointConstraint(
 		body_settings.shape = upper_leg;
 		body_settings.debug_name = "Left Upper Leg";
 		body_settings.position = upper_legLPos;
+		body_settings.inertia = body_settings.shape->ComputeInertiaTensorDiagonal(each_masses);
 		body_settings.orientation = vx::Quat::Identity();
 		Body* upper_legL = mPhysicsWorld->CreateBody(body_settings);
 		bodies.push_back(upper_legL);
@@ -760,6 +776,7 @@ vx::PointConstraint(
 		body_settings.shape = upper_leg;
 		body_settings.debug_name = "Right Upper Leg";
 		body_settings.position = upper_legRPos;
+		body_settings.inertia = body_settings.shape->ComputeInertiaTensorDiagonal(each_masses);
 		body_settings.orientation = vx::Quat::Identity();
 		Body* upper_legR = mPhysicsWorld->CreateBody(body_settings);
 		bodies.push_back(upper_legR);
@@ -770,6 +787,7 @@ vx::PointConstraint(
 		body_settings.shape = lower_leg;
 		body_settings.debug_name = "Left Lower Leg";
 		body_settings.position = lower_legLPos;
+		body_settings.inertia = body_settings.shape->ComputeInertiaTensorDiagonal(each_masses);
 		body_settings.orientation = vx::Quat::Identity();
 		Body* lower_legL = mPhysicsWorld->CreateBody(body_settings);
 		bodies.push_back(lower_legL);
@@ -779,6 +797,7 @@ vx::PointConstraint(
 		body_settings.shape = lower_leg;
 		body_settings.debug_name = "Right Lower Leg";
 		body_settings.position = lower_legRPos;
+		body_settings.inertia = body_settings.shape->ComputeInertiaTensorDiagonal(each_masses);
 		body_settings.orientation = vx::Quat::Identity();
 		Body* lower_legR = mPhysicsWorld->CreateBody(body_settings);
 		bodies.push_back(lower_legR);

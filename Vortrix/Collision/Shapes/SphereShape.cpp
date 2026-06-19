@@ -27,6 +27,11 @@ namespace vx {
 		mp.inertialTensorDiagonal = Float3(inertia_scalar);
 		return mp;
 	}
+	Float3 SphereShape::ComputeInertiaTensorDiagonal(float mass) const
+	{
+		float radius_sq = mRadius * mRadius;
+		return Float3((2.0f / 5.0f) * mass * radius_sq);
+	}
 	AABB SphereShape::GetWorldBounds(const Mat44& tranform, const Vec3& scale) const
 	{
 		Vec3 scaled_radius = scale.Abs() * mRadius;

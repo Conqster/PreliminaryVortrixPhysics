@@ -50,9 +50,23 @@ namespace vx
 			return t;
 		}
 
+		static Float3 UnitBoxinteriatensor()
+		{
+			return Float3{ 1.0f / 6.0f };
+		}
+		static Float3 UnitSphereinteriatensor()
+		{
+			return Float3{ 2.0f / 5.0f };
+		}
+		static Float3 UnitCapsuleinteriatensor()
+		{
+			return Float3{ 0.324f, 0.324f, 0.115f};
+		}
+
 
 		Vec3 position = Vec3::Zero();
 		float mass;
+		Float3 inertia{0.0f};
 		Vec3 impluse = Vec3(0.0f);
 		const char* debug_name = nullptr;
 		RefConst<Shape> shape = nullptr;
@@ -205,6 +219,7 @@ namespace vx
 
 		bool IsDynamic() const { return mMotionType == EMotionType::Dynamic; }
 		bool IsStatic() const { return mMotionType == EMotionType::Static; }
+
 		EMotionType GetMotionType() const { return mMotionType; }
 
 		Float3 GetAccumulatedForce() const { return mForceAccumulated; }
@@ -214,7 +229,6 @@ namespace vx
 		//f(N->kgms^-2) = ma = mg 
 		void ApplyGravity(const Vec3& gravity);
 
-		void SetInertiaTensor(const Vec3& inertia_tensor_diagonal);
 
 		/// Step Intergrators
 		void IntegrateAcceleration(float dt, const Vec3& gravity);
@@ -249,9 +263,8 @@ namespace vx
 		//for debugging
 		void SetWorldTransform(const Mat44& mat);
 
+		
 		const Shape* GetShape() const { return mShape.get(); }
-
-		void SetShape(const RefConst<Shape>& type);
 
 		Mat44 TransformDiagonalInertiaTensor(const Vec3& inv_inertia_diagonal, const Quat& rot) const;
 		Mat44 ComputeInvInertiaTensorWorld();
@@ -326,6 +339,26 @@ namespace vx
 		}
 
 	private:
+
+		/// set the motion type and reset motion dynamics
+		/// if update mass inertia, would use shape mass property
+		/// if not ensure to set mass and inertia if motion type is dynamics
+		void SetMotionType(EMotionType type);
+		/// set shape
+		/// if update mass inertia, would use shape mass property
+		/// if not ensure to set mass and inertia if motion type is dynamics
+		/// move to manager/interface 
+		void SetShape(const RefConst<Shape>& shape, bool update_mass_inertia);
+
+		VX_INLINE void SetMass(float mass)
+		{
+			mInverseMass = (mass > kEpsilon) ? (1.0f / mass) : 0.0f;
+		}
+		VX_INLINE void SetInertiaTensor(const Vec3& inertia_tensor_diagonal)
+		{
+			mInvInertiaTensorDiagonal = (!inertia_tensor_diagonal.IsZero()) ? inertia_tensor_diagonal.Reciprocal() : Vec3(0.0f);
+		}
+
 		void ComputeWorldSpaceBoundsInternal();
 
 
@@ -374,9 +407,11 @@ namespace vx
 		/// static bodies does not try get masses, not a hard requirement
 		
 		//3rd cache line 
+		//The inertia tensor of this body, defined as a diagonal matrix in a reference
+			//     frame positioned at this body's center of mass and rotated by Rigidbody.inertiaTensorRotation.
 		Vec3 mInvInertiaTensorDiagonal = Vec3(0.0f);					//16 bytes	[16 bytes] 
 		//4 bytes alignment, float3 is 4 bytes aligned compared to Vec3 which is 16 bytes align
-		float mInverseMass;								//4 bytes	[20 bytes]
+		float mInverseMass = 0.0f;								//4 bytes	[20 bytes]
 		Float3 mForceAccumulated{ 0 };						//12 bytes	[32 bytes]
 		Float3 mTorqueAccumulated{ 0 };						//12 bytes	[44 bytes]
 		float mLinearDamping = 1.0f;							//4 bytes	[48 bytes]

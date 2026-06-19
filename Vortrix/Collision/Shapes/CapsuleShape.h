@@ -50,6 +50,7 @@ namespace vx {
 
 
 		virtual MassProperties GetMassProperties() const override;
+		virtual Float3 ComputeInertiaTensorDiagonal(float mass) const override;
 
 		bool DataEq(const Shape* rhs) const override
 		{

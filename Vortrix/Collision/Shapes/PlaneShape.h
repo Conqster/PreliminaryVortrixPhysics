@@ -38,6 +38,8 @@ namespace vx {
 		virtual AABB GetLocalBounds() const override { return mLocalBounds; }
 
 		virtual MassProperties GetMassProperties() const override { return {}; }
+		virtual Float3 ComputeInertiaTensorDiagonal(float mass) const override { return {}; }
+
 		AABB ComputeLocalBounds();
 
 		bool DataEq(const Shape* rhs) const override
@@ -46,7 +48,7 @@ namespace vx {
 
 			const PlaneShape* plane_rhs = static_cast<const PlaneShape*>(rhs);
 
-			return mDensity, plane_rhs->mDensity&&
+			return mDensity && plane_rhs->mDensity&&
 				mHalfExtent == plane_rhs->mHalfExtent &&
 				mConstant == plane_rhs->mConstant &&
 				mNormal.IsApprox(plane_rhs->mNormal);

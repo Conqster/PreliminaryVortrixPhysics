@@ -39,6 +39,9 @@ struct CreatePhysicsObjectSettings
 
 	float density = 1000.0f;
 	bool overrideMasses = false;
+	Float3 inertia;
+	/// Multiply Inertia Tensor with Mass, for final Inertia
+	bool multiplyInertiaTensor_Mass = false;
 
 	float friction = 0.4f;
 	float restitution = 0.2f;

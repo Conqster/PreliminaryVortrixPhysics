@@ -73,6 +73,7 @@ namespace vx {
 		Vec3 GetSupportWS(const Mat44& in_transform, const Vec3& dir) const;
 		Vec3 GetEdgeCenter(const Mat44& in_transform, int edge_idx, const Vec3& normal) const;
 		virtual MassProperties GetMassProperties() const override;
+		virtual Float3 ComputeInertiaTensorDiagonal(float mass) const override;
 
 		bool DataEq(const Shape* rhs) const override
 		{

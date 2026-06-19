@@ -53,7 +53,7 @@ namespace vx {
 
 		// From hemispheres
 		const float temp = hemisphere_mass * 4.0f * radius_sq / 5.0f;
-		Iy += temp;
+		Iy += temp * 2.0f;
 		Ix += temp + hemisphere_mass * (0.5f * height_sq + (3.0f / 4.0f) * h * mRadius);
 
 
@@ -63,5 +63,19 @@ namespace vx {
 		mp.mass = Mtotal;
 		mp.inertialTensorDiagonal = Float3(Ix, Iy, Ix);
 		return mp;
+	}
+
+	Float3 CapsuleShape::ComputeInertiaTensorDiagonal(float mass) const
+	{
+		const float radius_sq = mRadius * mRadius;
+		const float h = mCylinderHalfHeight * 2.0f;
+		const float h_sq = h * h;
+
+		//cylinder
+		float height_sq = VxSqr(h);
+		float Iy = radius_sq * mass * 0.5f;
+		float IxIz = mass * 3.0f * radius_sq + h_sq / 12.0f;
+
+		 return Float3(IxIz, Iy, IxIz);
 	}
 } //namespace vx

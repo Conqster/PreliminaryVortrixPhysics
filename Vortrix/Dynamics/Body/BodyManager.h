@@ -22,6 +22,9 @@ namespace vx
 		const BodyID AddBody(const BodySettings& body_setting);
 		const BodyID AddBody(Body& _body);
 
+		template<EMotionType Type>
+		void SetBodyMotionType(Body& body, bool update_mass_inertia);
+		void SetBodyShape(Body& body, RefConst<Shape> shape, bool update_mass_inertia);
 
 		//it bettre to remove body via Physocs world as to manage broadphase handles etc
 		void RemoveBody(const Body& body) { RemoveBody(body.GetID()); }

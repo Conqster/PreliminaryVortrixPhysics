@@ -30,6 +30,7 @@ namespace vx {
 		virtual AABB GetLocalBounds() const override;
 
 		virtual MassProperties GetMassProperties() const override;
+		virtual Float3 ComputeInertiaTensorDiagonal(float mass) const override;
 
 		virtual AABB GetWorldBounds(const Mat44& tranform, const Vec3& scale) const override;
 
