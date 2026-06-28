@@ -230,6 +230,7 @@ namespace vx
 
 	void PhysicsWorld::Init(float max_bodies, float max_body_pairs, float max_contact_constraint)
 	{
+		VX_PROFILE_FUNCTION();
 		//heavily using point to data in vector in Broadphase 
 		//at the moment so let reseve 
 		mBodyManager.Init(max_bodies);
@@ -454,6 +455,7 @@ namespace vx
 
 		if (mSettings.solver.enable)
 		{
+			VX_PROFILE_SCOPE("Resolve Position Correction");
 			float baumgarte = mSettings.solver.baumgarte;
 			Constraint** solve_constraint_position = mConstraintSolver->GetConstraintResolvePositionQueuePtr();
 			uint32 num_position_constraint = mConstraintSolver->ConstraintResolvePositionQueueCount();
@@ -492,7 +494,6 @@ namespace vx
 	template<EShapeType Type>
 	inline void PhysicsWorld::OnDrawBody(const Body& body, Renderer* draw_renderer, const RenderSettings& settings, const Colour& c)
 	{
-		VX_PROFILE_FUNCTION();
 		///most shapes are 1:2 physics size : rendering size on all axes
 		/// with capsule as exception (1:1:1) : (2:1:2)
 
@@ -859,7 +860,7 @@ namespace vx
 
 	void PhysicsWorld::QuickDebugDrawInertia(DebugGizmosRenderer* debug_renderer)
 	{
-
+		VX_PROFILE_FUNCTION();
 		for(const auto& body : mBodyManager.GetBodies())
 		{
 			if (body.GetInverseMass() <= 0.0f)
@@ -922,6 +923,7 @@ namespace vx
 
 	void PhysicsWorld::UpdateBodiesActivationState(float dt)
 	{
+		VX_PROFILE_FUNCTION();
 		mNumActiveBodies = 0;
 		for (auto& body : GetBodies())
 		{

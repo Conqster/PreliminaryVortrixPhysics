@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.18)
 
 #generate project
 project(Vortrix VERSION 1.0 LANGUAGES CXX)
@@ -247,6 +247,31 @@ if(VX_PROFILE_SIM)
 	target_compile_definitions(${PROJECT_NAME} PUBLIC VX_PROFILE_SIM)
 endif()
 
+option(VX_USE_TRACY_PROFILER "Enable Tracy Profiler" ON)
+if(VX_USE_TRACY_PROFILER)
+
+	set(TRACY_ZIP_SRC "${CMAKE_CURRENT_SOURCE_DIR}/external/TracyProfiler.zip")
+	set(TRACY_TARGET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external")
+	
+	
+	if(NOT EXISTS "${TRACY_TARGET_DIR}/TracyProfiler")
+		message(STATUS "Extracting ${TRACY_ZIP_SRC}...")
+		
+		file(ARCHIVE_EXTRACT
+			INPUT "${TRACY_ZIP_SRC}"
+			DESTINATION "${TRACY_TARGET_DIR}"
+			)
+			
+		# need to include TracyClient.cpp
+		target_sources(${PROJECT_NAME} PRIVATE ${TRACY_TARGET_DIR}/TracyProfiler/TracyClient.cpp)
+	else()
+		message(STATUS "Folder already extracted, skipping.")
+	endif()
+	
+	# unzip trace profiler folder
+	target_compile_definitions(${PROJECT_NAME} PUBLIC VX_ENABLE_TRACY)
+	target_compile_definitions(${PROJECT_NAME} PUBLIC TRACY_ENABLE)
+endif()
 
 
 

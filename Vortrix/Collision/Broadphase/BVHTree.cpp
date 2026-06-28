@@ -274,7 +274,6 @@ namespace vx
 	template<typename BoundType>
 	void BVHTree<BoundType>::RefitNode(NodeID node_id, float bounds_margin)
 	{
-		VX_PROFILE_FUNCTION();
 		if (node_id == kInvalidNode) return;
 		NodeID curr_id = node_id;
 		while (curr_id != kInvalidNode)

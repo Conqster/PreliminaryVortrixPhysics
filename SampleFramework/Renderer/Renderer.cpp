@@ -153,6 +153,7 @@ void Renderer::BeginFrame(Camera* p_camera, vx::Colour clear_colour)
 
 void Renderer::EndFrame()
 {
+	VX_VARIABLE_PROFILE_FUNCTION();
 	//mDisplay.FlushAndSwapBuffer();
 	mCamera = nullptr;
 	//mFrameEntitiesCount = 0;

@@ -204,6 +204,7 @@ namespace vx
 
 		float ComputeDepthImbalance()
 		{
+			//VX_PROFILE_FUNCTION();
 			size_t max_depth = 0;
 			size_t sum_depth = 0;
 			size_t leaf_count = 0;

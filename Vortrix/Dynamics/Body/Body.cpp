@@ -123,7 +123,6 @@ namespace vx
 
 	void Body::IntegrateAcceleration(float dt, const Vec3& gravity)
 	{
-		VX_PROFILE_FUNCTION();
 		if (!IsDynamic())
 			return;
 
@@ -141,7 +140,6 @@ namespace vx
 	}
 	void Body::IntegrateVelocity(float dt)
 	{
-		VX_PROFILE_FUNCTION();
 		ClampVelocities(); //hack if velocity constraint solve was too strong
 		DampVelocities(dt);
 

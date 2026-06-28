@@ -111,6 +111,7 @@ namespace vx
 	template<typename BoundType>
 	void BVHBroadphase<BoundType>::DebugDraw(DebugGizmosRenderer* debug_renderer, const DrawSettings& settings)
 	{
+		VX_PROFILE_FUNCTION();
 		if(vx::Contains(settings.braodphaseFlags, EBroadphaseDrawFlag::LeafNodes) &&
 			vx::Contains(settings.braodphaseFlags, EBroadphaseDrawFlag::InternalNodes))
 		{

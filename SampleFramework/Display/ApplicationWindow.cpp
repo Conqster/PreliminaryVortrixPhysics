@@ -5,6 +5,8 @@
 #include <glfw/glfw3.h>
 
 
+#include "Vortrix/Core/Profiler.h"
+
 unsigned int ApplicationWindow::mWindowWidth;
 unsigned int ApplicationWindow::mWindowHeight;
 
@@ -242,11 +244,13 @@ void ApplicationWindow::FlushAndSwapBuffer()
 
 void ApplicationWindow::SwapBuffer() const
 {
+	VX_VARIABLE_PROFILE_FUNCTION();
 	glfwSwapBuffers(mWindow);
 }
 
 void ApplicationWindow::PollEvents() const
 {
+	VX_VARIABLE_PROFILE_FUNCTION();
 	glfwPollEvents();
 }
 

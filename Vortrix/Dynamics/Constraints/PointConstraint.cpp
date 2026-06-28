@@ -31,7 +31,6 @@ namespace vx {
 
 	bool PointConstraint::PrepSolver(ConstraintSolver* solver, const PhysicsStepContext& ctx)
 	{
-		VX_PROFILE_FUNCTION();
 		mFlags |= EConstraintFlags::Active;
 
 		bool active = (mBodyA->IsAwake() || mBodyB->IsAwake()) && (mBodyA->IsDynamic() || mBodyB->IsDynamic());

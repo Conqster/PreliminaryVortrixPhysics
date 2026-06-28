@@ -64,6 +64,7 @@ namespace vx
 
 		void DebugDraw(DebugGizmosRenderer* debug_renderer, const DrawSettings& settings) override
 		{
+			VX_PROFILE_FUNCTION();
 			if (!Contains(settings.braodphaseFlags, EBroadphaseDrawFlag::All))
 				return;
 			for (auto& aabb : mFrameAABBs)

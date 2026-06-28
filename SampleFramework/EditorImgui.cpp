@@ -45,6 +45,7 @@ void EditorImGui::BeginNewFrame()
 
 void EditorImGui::RenderFrame()
 {
+	VX_VARIABLE_PROFILE_FUNCTION();
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }

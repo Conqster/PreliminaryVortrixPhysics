@@ -9,6 +9,8 @@
 
 #include "Display/ApplicationWindow.h"
 
+#include "Vortrix/Core/Profiler.h"
+
 bool DebugGizmosRenderer::Init(ApplicationWindow* window)
 {
 	if (!this)
@@ -490,6 +492,7 @@ void DebugGizmosRenderer::UploadIfDirty()
 
 void DebugGizmosRenderer::ExecuteDraws()
 {
+	VX_VARIABLE_PROFILE_FUNCTION();
 	if (mLineBatches.size() <= 0 && mTriangleBatches.size() <= 0)
 		return;
 

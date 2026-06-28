@@ -149,7 +149,6 @@ namespace vx {
 
 	void ConstraintSolver::SolverVelocityLinear1DRow(Linear1DRow& row, SolverBody* bodies)
 	{
-		VX_PROFILE_FUNCTION();
 		SolverBody& sbA = bodies[row.bodyAidx.Value()];
 		SolverBody& sbB = bodies[row.bodyBidx.Value()];
 

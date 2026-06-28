@@ -64,6 +64,37 @@ namespace vx {
 		mp.inertialTensorDiagonal = Float3(Ix, Iy, Ix);
 		return mp;
 	}
+	//MassProperties CapsuleShape::GetMassProperties() const
+	//{
+	//	const float r = mRadius;
+	//	const float r2 = r*r;
+	//	const float h = mCylinderHalfHeight * 2.0f;
+	//	const float h2 = h * h;
+
+	//	float cylinder_mass = kVxPi * h * r2 * mDensity;
+	//	float hemisphere_mass = (2.0f / 3.0f) * kVxPi * r2 * mRadius * mDensity;
+
+
+	//	//cylinder
+	//	float height_sq = VxSqr(h);
+	//	float Iy = r2 * cylinder_mass * 0.5f;
+	//	float Ix = cylinder_mass * (3.0f * r2 * height_sq) / 12.0f;
+
+	//	// From hemispheres
+	//	const float temp = h * 0.5f + (3.0f/8.0f)*r;
+
+	//	const float hemiI = 0.4f * hemisphere_mass * r2;
+	//	Ix += 2.0f * (hemiI + hemisphere_mass * temp * temp);
+	//	Iy += 2.0f * hemiI;
+
+
+	//	const float Mtotal = cylinder_mass + hemisphere_mass * 2.0f;
+
+	//	MassProperties mp;
+	//	mp.mass = Mtotal;
+	//	mp.inertialTensorDiagonal = Float3(Ix, Iy, Ix);
+	//	return mp;
+	//}
 
 	Float3 CapsuleShape::ComputeInertiaTensorDiagonal(float mass) const
 	{

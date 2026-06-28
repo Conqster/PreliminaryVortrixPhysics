@@ -262,6 +262,8 @@ void Application::Run()
 	//main loop {delta time >> camera 
 	while (mWindow.ProgramActive())
 	{
+		VX_MARK_NEW_FRAME;
+
 		//VX_INFO("================== NEW FRAME ================== ");
 		static float loop_time = 0.0f;
 
@@ -270,9 +272,12 @@ void Application::Run()
 		mLastFrameTime = curr_frame_time;
 
 		/// Event handling
-		if (mPtrInputEventHandle)
-			mPtrInputEventHandle->FlushFrameInputs();
-		mWindow.PollEvents();
+		{
+			VX_VARIABLE_PROFILE_SCOPE("Poll and Handling Events")
+			if (mPtrInputEventHandle)
+				mPtrInputEventHandle->FlushFrameInputs();
+			mWindow.PollEvents();
+		}
 		CheckInputs();
 
 		if (mWindow.Minimised())
@@ -344,6 +349,7 @@ void Application::Run()
 		if (mCurrScenario)
 		{
 			//debg current scene 
+			VX_VARIABLE_PROFILE_SCOPE("App Scenario UI Overlay");
 			if (ImGui::Begin("Debug Scenario"))
 			{
 				ImGui::Text("Scene: %s", mCurrScenario->Name());
@@ -354,14 +360,18 @@ void Application::Run()
 		}
 
 		//========== RESOLVE FRAME ==========/
-		mUI.RenderFrame();
-		mWindow.SwapBuffer();
+		{
+			VX_VARIABLE_PROFILE_SCOPE("Resolve Application Frame");
+			mUI.RenderFrame();
+			mWindow.SwapBuffer();
+		}
 	}
 
 }
 
 void Application::ResetWorld(bool& reset_flag)
 {
+	VX_PROFILE_FUNCTION();
 	vx::PhysicsWorldSettings phy_wld_setting = (mPhysicsWorld && mPhysicsDebugState.keepSettingsOnReset) ?
 					mPhysicsWorld->GetSettings() : vx::PhysicsWorldSettings();
 
@@ -405,6 +415,7 @@ void Application::ResetWorld(bool& reset_flag)
 
 void Application::ResetParticleWorld(bool& reset_flag)
 {
+	VX_PROFILE_FUNCTION();
 	delete mParticleWorld;
 	mParticleWorld = new Particles::ParticleWorld(Particles::kParticleLimit, Vec3(0.0f, -9.85f, 0.0f));
 	Particles::ParticleWorld::CreateSimpleSampleWorld(mParticleWorld);
@@ -413,6 +424,8 @@ void Application::ResetParticleWorld(bool& reset_flag)
 
 void Application::PhysicsStep(double frame_dt)
 {
+	VX_PROFILE_FUNCTION();
+
 	auto physics_dt = mPhysicsAppSetting.FixedTimeStep();
 
 	PhysicsAppSetting::State& curr_state = mPhysicsAppSetting.StateStats();
@@ -421,7 +434,11 @@ void Application::PhysicsStep(double frame_dt)
 
 	bool physics_scenario_world = mPhysicsWorld && mCurrScenario;
 	if (physics_scenario_world)
+	{
+		VX_PROFILE_SCOPE("Pre Physics Step");
 		mCurrScenario->PrePhysicsStep(physics_dt);
+	}
+
 	{
 		VX_PROFILE_SCOPE("Physics-Update", &curr_state.frameTime, false);
 		while (curr_state.accumulator >= physics_dt && curr_state.subSteps < mPhysicsAppSetting.mMaxSubStep)
@@ -437,7 +454,11 @@ void Application::PhysicsStep(double frame_dt)
 		}
 	}
 	if (physics_scenario_world)
+	{
+		VX_PROFILE_SCOPE("Post Physics Step");
 		mCurrScenario->PostPhysicsStep(physics_dt);
+	}
+
 
 
 	if (curr_state.frameTime > curr_state.maxAttainedTime)
@@ -489,6 +510,7 @@ void Application::ResetCamera()
 
 void Application::CheckInputs()
 {
+	VX_VARIABLE_PROFILE_FUNCTION();
 	if (Input::GetKeyDown(IKeyCode::R))
 	{
 		(mCurrScenario) ? mCurrScenario->OnClose() : void(0);
@@ -564,66 +586,79 @@ void Application::OnRenderer()
 	//static float render_time = 0.0f;
 
 	//VPHX_VARIABLE_PROFILE_SCOPE("Render-Begin", &render_time, false);
-	mRenderer.BeginFrame(&mCamera, vx::Colour(0.0f, 0.2f, 0.5f, 1.0f));
-	
-	SubmitRenderObjects();
-	if (mPhysicsWorld)
-		mPhysicsWorld->OnDrawBodies(&mRenderer, mPhysicsRenderSettings);
-	mRenderer.ShadowPass();
-
-
-	mDebugGizmos->PushDrawCommand(mCamera.ProjMat(mWindow.GetAspectRatio()), mCamera.ViewMat(), nullptr);
-
-	if (mPhysicsWorld)
-		mPhysicsWorld->OnDebugDraw(mDebugGizmos);
-
-	if (mPhysicsRenderSettings.drawWorldAxes)
 	{
-		vx::Vec3 rt = vx::Vec3::Right() * mPhysicsRenderSettings.worldAxesLength;
-		vx::Vec3 up = vx::Vec3::Up() * mPhysicsRenderSettings.worldAxesLength;
-		vx::Vec3 fwd = vx::Vec3::Forward() * mPhysicsRenderSettings.worldAxesLength;
-		vx::Vec3 c = vx::Vec3::Zero();
-		mDebugGizmos->DrawLine(c, c + rt, vx::Colour::sRed);
-		mDebugGizmos->DrawLine(c, c + up, vx::Colour::sGreen);
-		mDebugGizmos->DrawLine(c, c + fwd, vx::Colour::sBlue);
+		VX_VARIABLE_PROFILE_SCOPE("Application Pre Render");
+		mRenderer.BeginFrame(&mCamera, vx::Colour(0.0f, 0.2f, 0.5f, 1.0f));
+
+		SubmitRenderObjects();
+		if (mPhysicsWorld)
+			mPhysicsWorld->OnDrawBodies(&mRenderer, mPhysicsRenderSettings);
 	}
 
-	if (mParticleWorld)
 	{
-		mParticleWorld->OnDebug(mDebugGizmos);
-		for (const auto& p : mParticleWorld->GetParticles())
-			mDebugGizmos->DrawLine(p.mPosition, p.mPosition + p.GetVelocity().Normalise(), vx::Colour(vx::Vec3::Forward()));
-
+		VX_VARIABLE_PROFILE_SCOPE("Application Render Draw");
+		mRenderer.ShadowPass();
+		mRenderer.DrawPass();
 	}
-	OnApplicationDebugDraw();
-
-	mRenderer.DrawPass();
 
 
-	mDebugGizmos->Flush(mRenderer.GetTestRTPtr());
+	{
+		VX_VARIABLE_PROFILE_SCOPE("Application Pre Debug Gizmos");
+			mDebugGizmos->PushDrawCommand(mCamera.ProjMat(mWindow.GetAspectRatio()), mCamera.ViewMat(), nullptr);
 
-	//FrameBlitInfo blit_info;
-	//blit_info.readFBO = &mRenderer.GetTestRTPtr()->GetFramebuffer();
-	//blit_info.srcSize = { 125, 125 };
-	////blit_info.dstSize = { (float)mWindow.GetWidth(), (float)mWindow.GetHeight() };
-	//blit_info.dstSize = { 125, 125 };
-	//blit_info.mask = GL_DEPTH_BUFFER_BIT;
-	//Framebuffer::Blit(blit_info);
-	//glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	////remove
+		if (mPhysicsWorld)
+			mPhysicsWorld->OnDebugDraw(mDebugGizmos);
 
-	GLCall(glViewport(0, 0, mWindow.GetWidth(), mWindow.GetHeight()));
+		if (mPhysicsRenderSettings.drawWorldAxes)
+		{
+			vx::Vec3 rt = vx::Vec3::Right() * mPhysicsRenderSettings.worldAxesLength;
+			vx::Vec3 up = vx::Vec3::Up() * mPhysicsRenderSettings.worldAxesLength;
+			vx::Vec3 fwd = vx::Vec3::Forward() * mPhysicsRenderSettings.worldAxesLength;
+			vx::Vec3 c = vx::Vec3::Zero();
+			mDebugGizmos->DrawLine(c, c + rt, vx::Colour::sRed);
+			mDebugGizmos->DrawLine(c, c + up, vx::Colour::sGreen);
+			mDebugGizmos->DrawLine(c, c + fwd, vx::Colour::sBlue);
+		}
 
-	//glDisable(GL_BLEND);
-	GLCall(glEnable(GL_DEPTH_TEST));
+		if (mParticleWorld)
+		{
+			mParticleWorld->OnDebug(mDebugGizmos);
+			for (const auto& p : mParticleWorld->GetParticles())
+				mDebugGizmos->DrawLine(p.mPosition, p.mPosition + p.GetVelocity().Normalise(), vx::Colour(vx::Vec3::Forward()));
 
-	mDebugGizmos->ExecuteDraws();
+		}
+		OnApplicationDebugDraw();
+	}
+
+
+	{
+		VX_VARIABLE_PROFILE_SCOPE("Application DebugGizmos Draw");
+		mDebugGizmos->Flush(mRenderer.GetTestRTPtr());
+
+		//FrameBlitInfo blit_info;
+		//blit_info.readFBO = &mRenderer.GetTestRTPtr()->GetFramebuffer();
+		//blit_info.srcSize = { 125, 125 };
+		////blit_info.dstSize = { (float)mWindow.GetWidth(), (float)mWindow.GetHeight() };
+		//blit_info.dstSize = { 125, 125 };
+		//blit_info.mask = GL_DEPTH_BUFFER_BIT;
+		//Framebuffer::Blit(blit_info);
+		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		////remove
+
+		GLCall(glViewport(0, 0, mWindow.GetWidth(), mWindow.GetHeight()));
+
+		//glDisable(GL_BLEND);
+		GLCall(glEnable(GL_DEPTH_TEST));
+
+		mDebugGizmos->ExecuteDraws();
+	}
 
 	mRenderer.EndFrame();
 }
 
 void Application::OnApplicationDebugDraw()
 {
+	VX_VARIABLE_PROFILE_FUNCTION();
 	if (!mDebugGizmos)return;
 
 
@@ -920,6 +955,7 @@ void Application::OnExpandDrawScenarioCatergory(const ScenarioCatergory& catergo
 
 void Application::OnDrawImGuiOverlays()
 {
+	VX_VARIABLE_PROFILE_FUNCTION();
 	mUI.BeginNewFrame();
 
 	

@@ -564,7 +564,7 @@ namespace vx {
 
 	void ContactConstraintSolver::DebugDraw(DebugGizmosRenderer* debug_renderer, const DrawSettings& settings) const
 	{
-
+		VX_PROFILE_FUNCTION();
 #if !CONTACT_USE_SOLVERBODY
 
 
@@ -802,6 +802,7 @@ namespace vx {
 	}
 	void ContactConstraintSolver::WarmStart(ContactConstraint* contact_constraints, size_t count, SolverBody* bodies)
 	{
+		VX_PROFILE_FUNCTION();
 		for (ContactConstraint* c = contact_constraints,
 			*c_end = contact_constraints + count; c < c_end; 
 			++c)
@@ -814,7 +815,7 @@ namespace vx {
 	}
 	void ContactConstraintSolver::SolveVelocityConstraint(SolverBody* bodies)
 	{
-
+		VX_PROFILE_FUNCTION();
 		//curr_manifold_idx = -1;
 		//for (auto& contact_info : manifolds)
 		for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
@@ -1017,6 +1018,7 @@ namespace vx {
 	}
 	void ContactConstraintSolver::SolvePositionCorrections(SolverBody* bodies, BodyManager& body_manager, float baumgarte, float slop, float min_limit, float max_limit, float limit_scale)
 	{
+		VX_PROFILE_FUNCTION();
 		for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
 		{
 

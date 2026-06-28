@@ -13,6 +13,16 @@
 #include "Logger.h"
 #include "EProfileMode.h"
 #include <unordered_map>
+
+#if defined(TRACY_ENABLE)
+#define VX_USE_TRACY 1
+
+#if VX_USE_TRACY
+#include "TracyProfiler/tracy/Tracy.hpp"
+#endif // VX_USE_TRACY
+
+#endif // defined(TRACY_ENABLE)
+
 #endif // VPHX_ENABLE_PROFILING
 				
 
@@ -219,6 +229,22 @@ namespace vx
 
 
 
+#if VX_USE_TRACY
+
+#define VX_MARK_NEW_FRAME FrameMark
+
+#define VX_PROFILE_SCOPE(name, ...) ZoneScopedN(name)
+
+#define VX_PROFILE_FUNCTION(...) ZoneScoped
+
+#define VX_VARIABLE_PROFILE_SCOPE(name, ...) ZoneScopedN(name)
+
+#define VX_VARIABLE_PROFILE_FUNCTION(...) ZoneScoped
+
+#else
+
+#define VX_MARK_NEW_FRAME
+
 #define VX_PROFILE_SCOPE(name, ...) \
 	VX_SELECT_2(name, VX_PROFILER_FUNCTION_NO_PARAM, VX_PROFILER_FUNCTION_WITH_PARAM) \
 	(name, Profiler::EProfileMode::Deterministic, __VA_ARGS__) 
@@ -238,6 +264,7 @@ namespace vx
 	VX_SELECT_2(__FUNCTION__, VX_PROFILER_FUNCTION_NO_PARAM, VX_PROFILER_FUNCTION_WITH_PARAM) \
 		(__FUNCTION__, Profiler::EProfileMode::VariableRate, __VA_ARGS__)
 
+#endif // VX_USE_TRACY
 
 #define SET_VX_PROFILER_GLOBAL_SAMPLE_RATE(rate) Profiler::TimeTaken::SetDefaultGlobalSampleRate(rate)
 #define SET_VX_PROFILER_SAMPLE_INTERVAL_SECONDS(rate) Profiler::TimeTaken::SetSampleIntervalSeconds(rate)
