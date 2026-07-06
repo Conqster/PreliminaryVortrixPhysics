@@ -436,6 +436,9 @@ namespace vx
 
 
 		UpdateBodiesActivationState(dt);
+		//mBodyManager.UpdateBodiesActiveState(0.0f, mSettings.sleeping); //prevent extra time update
+
+
 
 		{
 			VX_PROFILE_SCOPE("Integrate bodies velocities and clear accumulated force");
@@ -485,6 +488,8 @@ namespace vx
 		mConstraintSolver->ReleaseAllocation(mScratchAllocator);
 
 		mContactConstraintSolver.FinaliseStepManifoldCache(mBodyManager);
+
+		
 
 
 		PhysicsWorld::mFrameIdx++;

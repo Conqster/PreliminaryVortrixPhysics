@@ -327,6 +327,7 @@ namespace vx
 		x += rhs.x;
 		y += rhs.y;
 #endif // VX_SIMD_SSE
+		return *this;
 	}
 
 	inline VX_INLINE Vec2 Vec2::operator-(const Vec2& rhs) const
@@ -346,6 +347,7 @@ namespace vx
 		x -= rhs.x;
 		y -= rhs.y;
 #endif // VX_SIMD_SSE
+		return *this;
 	}
 
 	inline VX_INLINE Vec2 Vec2::operator*(float scalar) const
@@ -370,6 +372,7 @@ namespace vx
 		x *= scalar;
 		y *= scalar;
 #endif // VX_SIMD_SSE
+		return *this;
 	}
 
 	inline VX_INLINE Vec2 Vec2::operator/(float scalar) const
@@ -391,6 +394,7 @@ namespace vx
 		x *= inv;
 		y *= inv;
 #endif // VX_SIMD_SSE
+		return *this;
 	}
 
 	inline VX_INLINE Vec2 Vec2::operator-() const
@@ -418,7 +422,6 @@ namespace vx
 		x *= rhs.x;
 		y *= rhs.y;
 #endif // VX_SIMD_SSE
-
 		return *this;
 	}
 
@@ -439,6 +442,7 @@ namespace vx
 		x /= rhs.x;
 		y /= rhs.y;
 #endif // VX_SIMD_SSE
+		return *this;
 	}
 
 	inline VX_INLINE __m128 Vec2::SimdValue() const

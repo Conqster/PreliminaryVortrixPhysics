@@ -391,6 +391,7 @@ namespace vx
 		/// Static bodies is not allowed to go to sleep 
 		/// for optimisation 
 		/// Broad refits dynamic bodies node when aawake
+		/// later body should not have awake flag
 		bool mAwake = false;							//1 bytes	[29 bytes]
 		EMotionType mMotionType = EMotionType::Dynamic;//1 bytes	[30 bytes]
 		/////////////////////////////////////////////////////////////////////////

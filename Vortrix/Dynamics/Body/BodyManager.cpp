@@ -6,6 +6,8 @@
 #include "Collision/Shapes/Shape.h"
 
 #include <set>
+
+#include "Core/Profiler.h"
 namespace vx
 {
 	void BodyManager::Init(uint32 max_bodies)
@@ -13,6 +15,10 @@ namespace vx
 		mMaxBodies = max_bodies;
 		mBodies.reserve(mMaxBodies);
 		mBodiesDebugInfo.reserve(mMaxBodies);
+
+		//may be pass active body ratio
+		mMaxActiveBodies = max_bodies * 0.5f;
+		mActiveBodies = new BodyID[mMaxActiveBodies];
 
 		uint32 min_free_list = 64;
 		mFreedIdxs.reserve(min_free_list);
@@ -98,6 +104,10 @@ namespace vx
 		StackString<40> _s(body_setting.debug_name);
 		_s << "_body_" << body.GetID().ID() << "_idx_" << body.GetID().Idx();
 		mBodiesDebugInfo[body.GetID().Idx()].name = _s;
+
+		//if (success && body_setting.motionType == EMotionType::Dynamic)
+		//	ActivateBodies(&id, 1);
+
 		return id;
 	}
 	const BodyID BodyManager::AddBody(Body& _body)
@@ -213,5 +223,62 @@ namespace vx
 		sim_stat.maxAttainedLinearVelocitySq = VxMax(sim_stat.maxAttainedLinearVelocitySq, body.GetLinearVelocity().LengthSq());
 		sim_stat.maxAttainedAngularVelocitySq = VxMax(sim_stat.maxAttainedAngularVelocitySq, body.GetAngularVelocity().LengthSq());
 	}
+
+	void BodyManager::UpdateBodiesActiveState(float dt, const SleepingSettings& sleeping_setting)
+	{
+		VX_PROFILE_FUNCTION();
+		mNumActiveBodies = 0;
+		for (auto& body : GetBodies())
+		{
+			body.UpdateSleepState(dt, sleeping_setting);
+
+			if (body.IsAwake())
+			{
+				VX_ASSERT_WARN(mNumActiveBodies < mMaxActiveBodies, "Reach max bodies limits");
+				if (mNumActiveBodies >= mMaxActiveBodies) continue;
+				mActiveBodies[mNumActiveBodies++] = body.GetID();
+			}
+		}
+
+
+		//VX_PROFILE_FUNCTION();
+
+		//uint32* deactive_body = (uint32*)VX_STACK_ALLOC(mNumActiveBodies * sizeof(uint32));
+		//int body_remove = 0;
+
+		//for (size_t i = 0; i < mNumActiveBodies; ++i)
+		//{
+		//	const auto& active_body_id = mActiveBodies[i];
+		//	VX_ASSERT(active_body_id.IsValid());
+
+		//	auto& body = GetBody(active_body_id);
+
+		//	body.UpdateSleepState(dt, sleeping_setting);
+		//	if (!body.IsAwake()) //later body should not have awake flag
+		//		deactive_body[body_remove++] = i;
+		//}
+
+		//for (size_t i = 0; i < body_remove; ++i)
+		//{
+		//	uint32_t idx = deactive_body[i];
+		//	if(idx < mNumActiveBodies-1)
+		//		std::swap(mActiveBodies[idx], mActiveBodies[mNumActiveBodies-1]);
+		//	mActiveBodies[mNumActiveBodies - 1] = BodyID();
+		//	mNumActiveBodies--;
+		//}
+
+
+
+	}
+
+
+	//void BodyManager::DeactivateBodies(BodyID* bodies_id, uint32 count)
+	//{
+	//	for (BodyID* body_id = bodies_id, *end_body_id = bodies_id + count;
+	//		body_id < end_body_id; ++body_id)
+	//	{
+
+	//	}
+	//}
 
 }

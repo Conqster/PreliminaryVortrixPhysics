@@ -233,11 +233,6 @@ namespace vx
 
 	void Body::UpdateSleepState(float dt, const SleepingSettings& settings)
 	{
-		auto reset_sleep = [this]() {
-			mSleepTimer = 0.0f;
-			mAwake = true;
-		};
-
 		//later remove this check 
 		if (!IsDynamic()) return;
 		//{
@@ -251,7 +246,8 @@ namespace vx
 		if (linear_speed_sq > settings.velocityThreshold * settings.velocityThreshold ||
 			angular_speed_sq > settings.angularThreshold * settings.angularThreshold)
 		{
-			reset_sleep();
+			mSleepTimer = 0.0f;
+			mAwake = true;
 			return;
 		}
 

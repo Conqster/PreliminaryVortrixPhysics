@@ -53,12 +53,23 @@ namespace vx
 
 		VX_INLINE uint32 MaxBodies() const { return mMaxBodies; }
 
+
+		/// mainly only active bodies could go to sleep 
+		void UpdateBodiesActiveState(float dt, const SleepingSettings& sleeping_setting);
+
+		uint32 GetNumActiveBodies() const { return mNumActiveBodies; }
+
+		//void ActivateBodies(BodyID* bodies_id, uint32 count);
+		//void DeactivateBodies(BodyID* bodies_id, uint32 count);
 	private:
 		BodyVector mBodies;
 		std::vector<BodyDebug> mBodiesDebugInfo;
 
 		uint32 mMaxBodies = 0;
 
+		BodyID* mActiveBodies = nullptr;
+		uint32 mNumActiveBodies = 0;
+		uint32 mMaxActiveBodies = 32;
 
 		std::vector<uint32> mFreedIdxs;
 		std::vector<uint8> mBodyIdxGenerations;

@@ -575,6 +575,7 @@ bool Application::CheckInputsBlocked()
 
 void Application::Quit()
 {
+	VX_VARIABLE_PROFILE_FUNCTION();
 	mWindow.Close();
 }
 
