@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Maths/Vec3.h"
+#include "Vortrix/Maths/Vec3.h"
 
 #include <array>
 

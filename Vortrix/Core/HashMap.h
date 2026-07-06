@@ -1,7 +1,7 @@
 #pragma once
 #include <unordered_map>
-#include "Core/Core.h"
-#include "Core/NonCopyable.h"
+#include "Vortrix/Core/Core.h"
+#include "Vortrix/Core/NonCopyable.h"
 
 
 namespace vx {

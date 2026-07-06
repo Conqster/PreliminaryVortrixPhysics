@@ -3,17 +3,17 @@
 #include "BroadphasePair.h"
 #include "Broadphase.h"
 
-#include "Geometry/AABB.h"
-#include "Dynamics/Body/Body.h"
+#include "Vortrix/Geometry/AABB.h"
+#include "Vortrix/Dynamics/Body/Body.h"
 
-#include "Core/Profiler.h"
+#include "Vortrix/Core/Profiler.h"
 
 #include <algorithm>
 
-#include "Dynamics/Body/BodyManager.h"
-#include "Dynamics/Body/EBodyDebugFlags.h"
+#include "Vortrix/Dynamics/Body/BodyManager.h"
+#include "Vortrix/Dynamics/Body/EBodyDebugFlags.h"
 
-#include "Core/StackString.h"
+#include "Vortrix/Core/StackString.h"
 
 
 namespace vx

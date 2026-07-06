@@ -1,6 +1,7 @@
 #pragma once
-#include "Dynamics/Body/Body.h"
-#include "SampleFramework/Renderer/DebugGizmosRenderer.h"
+#include "Vortrix/Dynamics/Body/Body.h"
+
+#include "Vortrix/Visuals/Renderers.h"
 
 
 #include "Constraint.h"

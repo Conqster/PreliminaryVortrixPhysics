@@ -1,5 +1,5 @@
 #include "BoxShape.h"
-#include "Geometry/AABB.h"
+#include "Vortrix/Geometry/AABB.h"
 
 namespace vx {
 	AABB BoxShape::GetLocalBounds() const

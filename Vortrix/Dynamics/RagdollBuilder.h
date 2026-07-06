@@ -1,6 +1,6 @@
 #pragma once
-#include "Core/Core.h"
-#include "Collision/Shapes/Shape.h"
+#include "Vortrix/Core/Core.h"
+#include "Vortrix/Collision/Shapes/Shape.h"
 #include "Body/BodyID.h"
 
 /// <summary>

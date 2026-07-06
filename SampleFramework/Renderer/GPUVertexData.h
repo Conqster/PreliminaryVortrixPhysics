@@ -37,23 +37,7 @@ private:
 	unsigned int mTriangleCount = 0;
 };
 
-#include "Vortrix/Maths/Mat44.h"
-#include "Vortrix/Core/Colours.h"
-
-//#include <GLM/glm/glm.hpp>
-//since multiple object could share Mesh 
-struct RenderableEntity
-{
-	RenderableMesh* renderableMesh = nullptr;
-	vx::Mat44 transform = vx::Mat44(1.0f);
-	bool solidRender = true;
-	bool canCastShadow = true;
-
-	//glm::vec4 colour = glm::vec4(1.0f);
-	vx::Colour colour = vx::Colour::sWhite;
-	bool plainTexture = false;
-};
-
+#include <Vortrix/Core/Colours.h>
 
 struct Light
 {

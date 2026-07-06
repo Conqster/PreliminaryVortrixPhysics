@@ -2,10 +2,10 @@
 #include "Constraints/Constraint.h"
 
 
-class DebugGizmosRenderer;
 
 namespace vx {
 
+	class DebugGizmosRenderer;
 	class ConstraintSolver;
 	struct NonContactConstraintDrawSettings;
 

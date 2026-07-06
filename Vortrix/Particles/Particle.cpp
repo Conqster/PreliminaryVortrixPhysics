@@ -1,6 +1,6 @@
 #include <Vortrix/Vortrix.h>
 
-#include "Core/Profiler.h"
+#include "Vortrix/Core/Profiler.h"
 
 #include "Particle.h"
 

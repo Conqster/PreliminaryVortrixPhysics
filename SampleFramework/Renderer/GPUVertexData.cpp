@@ -218,7 +218,7 @@ void ShadowMap::Destroy()
 }
 
 
-#include "SampleFramework.h"
+#include "SampleFramework/SampleFramework.h"
 #include "Vortrix/Maths/ViewProjection.h"
 vx::Mat44 ShadowData::ComputeProjection(const vx::Mat44& light_view_mat)
 {

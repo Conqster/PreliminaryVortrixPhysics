@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Renderer/GPUVertexData.h"
+#include "SampleFramework/Renderer/GPUVertexData.h"
 
 #include <string>
 #include <fstream>

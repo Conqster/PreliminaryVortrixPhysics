@@ -11,7 +11,7 @@ namespace vx{
 }
 class Texture;
 
-#include "Vortrix.h"
+#include "Vortrix/Vortrix.h"
 
 
 #include "Vortrix/Dynamics/Body/EBodyDebugFlags.h"

@@ -1,7 +1,7 @@
 #include "ManifoldProcessing.h"
 
-#include "Core/Assertion.h"
-#include "Collision/ContactManifold.h"
+#include "Vortrix/Core/Assertion.h"
+#include "Vortrix/Collision/ContactManifold.h"
 #include "Vortrix/Maths/VortrixMaths.h"
 #include <array>
 

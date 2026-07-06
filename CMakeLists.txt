@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.18)
 
 #generate project
-project(Vortrix VERSION 0.1 LANGUAGES CXX)
+project(VortrixPhysics VERSION 0.1 LANGUAGES CXX)
 
 option(ENABLE_ALL_WARNINGS "Enable all warning" ON)
 # When turning this option on, the library will be compiled with debug symbols
@@ -104,165 +104,39 @@ set(VX_ROOT_DIR ${CMAKE_SOURCE_DIR})
 include(${VX_ROOT_DIR}/Vortrix/Vortrix.cmake)
 
 # Sample framework executable
-set(VX_SAMPLE_APP ${VX_ROOT_DIR}/SampleFramework)
-file(GLOB_RECURSE VX_APP_FILES CONFIGURE_DEPENDS
-										${VX_SAMPLE_APP}/*.h
-										${VX_SAMPLE_APP}/*.inl
-										${VX_SAMPLE_APP}/*.cpp)
-#for code organisation 
-source_group(TREE ${VX_SAMPLE_APP} PREFIX "SampleFramework" FILES ${VX_APP_FILES})
+set(VX_TARGET_SAMPLE_EXE VortrixPhysicsSample)
+set(VX_SAMPLE_FRAMEWORK_DIR ${VX_ROOT_DIR}/SampleFramework)
+include(${VX_SAMPLE_FRAMEWORK_DIR}/VxSampleFramework.cmake)
 
-
-set(SAMPLE_FRAMEWORK ${VX_PHY_FILES} ${VX_APP_FILES})
-
-#required imgui code
-if(USE_IMGUI)
-	set(VX_EXTERNAL_IMGUI_DIR ${VX_ROOT_DIR}/external/imgui)
-	file(GLOB_RECURSE IMGUI_FILES 
-						${VX_EXTERNAL_IMGUI_DIR}/*.h 
-						${VX_EXTERNAL_IMGUI_DIR}/*.c 
-						${VX_EXTERNAL_IMGUI_DIR}/*.cpp)
-						
-set(SAMPLE_FRAMEWORK ${SAMPLE_FRAMEWORK} ${IMGUI_FILES})						
-endif()
-
-##IMPORTANT THINGS TO INCLUDES
-#output directory 
-#intermidiate directory
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin")
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin")
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib")
-
-
-
-add_executable(${PROJECT_NAME} ${SAMPLE_FRAMEWORK})
-
-#########################################
-# REMOVE THIS 
-#########################################
-if(USE_AVX2)
-	message(STATUS "[Vortrix] Compiling with AVX2 hardware optimisations")
-	target_compile_options(${PROJECT_NAME} PRIVATE "/arch:AVX2")
-endif()
-	
-
-if(PROFILE_NARROW)
-	target_compile_definitions(${PROJECT_NAME} PUBLIC VX_PROFILE_NARROW)
-endif()
-if(PROFILE_BROAD)
-	target_compile_definitions(${PROJECT_NAME} PUBLIC VX_PROFILE_BROAD)
-endif()
-if(PROFILE_SIM)
-	target_compile_definitions(${PROJECT_NAME} PUBLIC VX_PROFILE_SIM)
-endif()
-
-
-#work around for in function const 
-#target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
-target_compile_definitions(${PROJECT_NAME} PRIVATE
+# shared between Vortrix library & sample framework
+add_compile_definitions(
 	$<$<CONFIG:Debug>:VX_DEBUG>
 	$<$<CONFIG:Development>:VX_DEV>
 	$<$<CONFIG:Release>:VX_REL>
 	$<$<CONFIG:Distribution>:VX_DIST>
 	$<$<CONFIG:ReleaseASan>:VX_REL_ASAN>
-	)
 	
-	
-#outputs Debug; Release etc 	
-target_compile_definitions(${PROJECT_NAME} PRIVATE 
+	#outputs Debug; Release etc
 	VX_BUILD_NAME="$<CONFIG>"
-)
-
-#string print outputs DEBUG; DEV, REL etc
-target_compile_definitions(${PROJECT_NAME} PRIVATE
+	
+	#string print outputs DEBUG; DEV, REL etc
 	$<$<CONFIG:Debug>:VX_BUILD_STR="DEBUG">
 	$<$<CONFIG:Development>:VX_BUILD_STR="DEV">
 	$<$<CONFIG:Release>:VX_BUILD_STR="REL">
 	$<$<CONFIG:Distribution>:VX_BUILD_STR="DIST">
 	$<$<CONFIG:ReleaseASan>:VX_BUILD_STR="REL_ASAN">
-)
+	)
 	
 
-## flags options
-# VX_DISABLE_FORCE_INLINE
 
 
-
-#additional include directory 
-#	project directory	
-# 	/external
-#	/vortrix
-# 	/external/glfw/include
-# 	/external/glew/glew-2.1.0/include
-# 	/SampleFramework <-- actual app fused in physics lib for now 
-
-target_include_directories(${PROJECT_NAME} PUBLIC
-												${PROJECT_SOURCE_DIR}
-												${PROJECT_SOURCE_DIR}/external
-												${VX_SRC_DIR}
-												${PROJECT_SOURCE_DIR}/external/glfw/include
-												${PROJECT_SOURCE_DIR}/external/glew/glew-2.1.0/include
-												${PROJECT_SOURCE_DIR}/SampleFramework)
-												
-												
-
-#Linker 
-#Additional Library directory
-#	glew
-# 	glfw
-# Additional dependencies
-#	opengl32.lib
-#	glfw3.lib	
-#	glew32.lib
-
-#could use "link_directories" 
-target_link_directories(${PROJECT_NAME} PUBLIC
-											${PROJECT_SOURCE_DIR}/external/glew/glew-2.1.0/lib/Release/x64
-											${PROJECT_SOURCE_DIR}/external/glfw/lib-vc2022)
-
-target_link_libraries(${PROJECT_NAME} PUBLIC 
-											opengl32.lib
-											glfw3.lib
-											glew32.lib)
-											
-					
-target_compile_definitions(${PROJECT_NAME} PRIVATE
-					PROJECT_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
-					
-
-if(USE_TRACY_PROFILER)
-
-	set(TRACY_ZIP_SRC "${CMAKE_CURRENT_SOURCE_DIR}/external/TracyProfiler.zip")
-	set(TRACY_TARGET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external")
-	
-	
-	if(NOT EXISTS "${TRACY_TARGET_DIR}/TracyProfiler")
-		message(STATUS "Extracting ${TRACY_ZIP_SRC}...")
-		
-		file(ARCHIVE_EXTRACT
-			INPUT "${TRACY_ZIP_SRC}"
-			DESTINATION "${TRACY_TARGET_DIR}"
-			)
-			
-	else()
-		message(STATUS "Folder already extracted, skipping.")
-	endif()
-	
-	# need to include TracyClient.cpp
-	target_sources(${PROJECT_NAME} PRIVATE ${TRACY_TARGET_DIR}/TracyProfiler/TracyClient.cpp)
-	source_group(TREE "${TRACY_TARGET_DIR}/TracyProfiler" PREFIX "TracyClient" FILES "${TRACY_TARGET_DIR}/TracyProfiler/TracyClient.cpp")
-	
-	# unzip trace profiler folder
-	target_compile_definitions(${PROJECT_NAME} PUBLIC VX_ENABLE_TRACY)
-	target_compile_definitions(${PROJECT_NAME} PUBLIC TRACY_ENABLE)
-endif()
-
-
-
-set_target_properties(${PROJECT_NAME} PROPERTIES 
-						VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+set_target_properties(${VX_TARGET_SAMPLE_EXE} PROPERTIES 
+						#VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+						#VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+						VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:${VX_TARGET_SAMPLE_EXE}>"
 						VS_STARTUP_PROJECT TRUE)
-set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
+						
+set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${VX_TARGET_SAMPLE_EXE})
 
 
 #Build Events - Post-Build Event
@@ -275,17 +149,17 @@ get_filename_component(MSVC_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
 set(ASAN_DLL "${MSVC_DIR}/clang_rt.asan_dynamic-x86_64.dll")
 
 #copy require data to output directory
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+add_custom_command(TARGET ${VX_TARGET_SAMPLE_EXE} POST_BUILD
 	#assets 
 	COMMAND ${CMAKE_COMMAND} -E copy_directory
 	"${PROJECT_SOURCE_DIR}/assets/"
-	"$<TARGET_FILE_DIR:${PROJECT_NAME}>/assets"
+	"$<TARGET_FILE_DIR:${VX_TARGET_SAMPLE_EXE}>/assets"
 	
 	
 	#dlls
 	COMMAND ${CMAKE_COMMAND} -E copy_if_different
 	"${PROJECT_SOURCE_DIR}/external/glew/glew-2.1.0/bin/Release/x64/glew32.dll"
-	"$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+	"$<TARGET_FILE_DIR:${VX_TARGET_SAMPLE_EXE}>"
 	
 	
 	
@@ -295,7 +169,7 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 	$<$<CONFIG:ReleaseASan>:-E>
 	$<$<CONFIG:ReleaseASan>:copy_if_different>
 	$<$<CONFIG:ReleaseASan>:${ASAN_DLL}>
-	$<$<CONFIG:ReleaseASan>:$<TARGET_FILE_DIR:${PROJECT_NAME}>>
+	$<$<CONFIG:ReleaseASan>:$<TARGET_FILE_DIR:${VX_TARGET_SAMPLE_EXE}>>
 	
 	COMMENT "Depolying assets and DLLs to output directory"
 	)

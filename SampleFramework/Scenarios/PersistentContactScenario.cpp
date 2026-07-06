@@ -1,18 +1,18 @@
 #include "PersistentContactScenario.h"
-#include "PhysicsWorld.h"
+#include "Vortrix/PhysicsWorld.h"
 
 #include "Vortrix/Maths/ScalarMath.h"
 
-#include "Collision/Shapes/Shape.h"
-#include "Collision/Shapes/BoxShape.h"
-#include "Collision/Shapes/CapsuleShape.h"
-#include "Collision/Shapes/SphereShape.h"
+#include "Vortrix/Collision/Shapes/Shape.h"
+#include "Vortrix/Collision/Shapes/BoxShape.h"
+#include "Vortrix/Collision/Shapes/CapsuleShape.h"
+#include "Vortrix/Collision/Shapes/SphereShape.h"
 
-#include "Camera.h"
+#include "SampleFramework/Camera.h"
 
 #include "external/imgui/imgui.h"
 
-#include "Dynamics/Constraints/PointConstraint.h"
+#include "Vortrix/Dynamics/Constraints/PointConstraint.h"
 
 void PersistentContactScenario::Init(vx::PhysicsWorld* i_world)
 {
@@ -55,13 +55,13 @@ void PersistentContactScenario::Init(vx::PhysicsWorld* i_world)
 
 	vx::PointConstraintSettings point_constraint_setting_ws;
 	point_constraint_setting_ws.anchorPointFrame = vx::EConstraintFrame::World;
-	point_constraint_setting_ws.anchorA = dyn_bodies_settings.position + Vec3(0.0f, 0.5f, 0.0f);
-	point_constraint_setting_ws.anchorB = dyn_bodies_settings.position + Vec3(0.0f, 0.5f, 0.0f);
+	point_constraint_setting_ws.anchorA = dyn_bodies_settings.position + vx::Vec3(0.0f, 0.5f, 0.0f);
+	point_constraint_setting_ws.anchorB = dyn_bodies_settings.position + vx::Vec3(0.0f, 0.5f, 0.0f);
 
 	vx::PointConstraintSettings point_constraint_setting;
 	point_constraint_setting.anchorPointFrame = vx::EConstraintFrame::Local;
-	point_constraint_setting.anchorA = Vec3(0.0f, 1.1875f, 0.0f);
-	point_constraint_setting.anchorB = Vec3(0.0f, -1.1875f, 0.0f);
+	point_constraint_setting.anchorA = vx::Vec3(0.0f, 1.1875f, 0.0f);
+	point_constraint_setting.anchorB = vx::Vec3(0.0f, -1.1875f, 0.0f);
 
 	//point_constraint_setting.enableVelocityBias = true;
 	//point_constraint_setting.errorTreshold = 1.0f;
@@ -75,12 +75,12 @@ void PersistentContactScenario::Init(vx::PhysicsWorld* i_world)
 	mTestConstraint = new vx::PointConstraint(&mPhysicsWorld->GetBodies()[0], &mPhysicsWorld->GetBodies()[1], point_constraint_setting);
 	mPhysicsWorld->AddConstraint(mTestConstraint);
 
-	point_constraint_setting.anchorA = Vec3(0.0f, 1.0f, 0.0f);
-	point_constraint_setting.anchorB = Vec3(0.0f, -1.0f, 0.0f);
+	point_constraint_setting.anchorA = vx::Vec3(0.0f, 1.0f, 0.0f);
+	point_constraint_setting.anchorB = vx::Vec3(0.0f, -1.0f, 0.0f);
 
 
 	//offset next test to the right 
-	Vec3 offset = Vec3(4.0f, 0.0f, 0.0f);
+	vx::Vec3 offset = vx::Vec3(4.0f, 0.0f, 0.0f);
 	static_bodies_settings.position += offset;
 	mPhysicsWorld->CreateBody(static_bodies_settings);
 
@@ -100,8 +100,8 @@ void PersistentContactScenario::Init(vx::PhysicsWorld* i_world)
 	dyn_bodies_settings.debug_name = "sphere";
 	dyn_bodies_settings.shape = vx::MakeRef<vx::SphereShape>(0.5f);
 	mPhysicsWorld->CreateBody(dyn_bodies_settings);
-	point_constraint_setting.anchorA = Vec3(0.0f, 1.0f, 0.0f);
-	point_constraint_setting.anchorB = Vec3(0.0f, 0.0f, 0.0f);
+	point_constraint_setting.anchorA = vx::Vec3(0.0f, 1.0f, 0.0f);
+	point_constraint_setting.anchorB = vx::Vec3(0.0f, 0.0f, 0.0f);
 
 	
 
@@ -157,7 +157,7 @@ void PersistentContactScenario::OnUI()
 		{
 			ImGui::Text("Constraint Idx: %d", mTestConstraint->ConstraintIdx());
 			ImGui::SameLine();
-			if(mTestConstraint->ConstraintIdx() != Constraint::kInvalidIdx)
+			if(mTestConstraint->ConstraintIdx() != vx::Constraint::kInvalidIdx)
 			{
 				if (ImGui::Button("Remove"))
 					mPhysicsWorld->RemoveConstraint(mTestConstraint);

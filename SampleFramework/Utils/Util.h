@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Renderer/GPUVertexData.h"
+#include "SampleFramework/Renderer/GPUVertexData.h"
 
 #include "Vortrix/Maths/VortrixMaths.h"
 #include <vector>

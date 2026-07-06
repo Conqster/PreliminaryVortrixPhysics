@@ -1,13 +1,11 @@
 #include "BVHBroadphase.h"
-#include "Core/Profiler.h"
-#include "Renderer/DebugGizmosRenderer.h"
+#include "Vortrix/Core/Profiler.h"
+#include "Vortrix/Visuals/Renderers.h"
 
 #include "BroadphasePair.h"
 
-#include "PhysicsWorld.h"
-
-#include "Dynamics/Body/BodyManager.h"
-
+#include "Vortrix/PhysicsWorld.h"
+#include "Vortrix/Dynamics/Body/BodyManager.h"
 
 namespace vx
 {

@@ -1,9 +1,8 @@
 #pragma once
 
-#include "Vortrix.h"
-#include "Collision/WorldQueryContext.h"
+#include "Vortrix/Vortrix.h"
+#include "Vortrix/Collision/WorldQueryContext.h"
 
-class DebugGizmosRenderer;
 
 namespace vx
 {
@@ -32,6 +31,8 @@ namespace vx
 
 	class Body;
 	struct DrawSettings;
+
+	class DebugGizmosRenderer;
 
 	class Broadphase
 	{

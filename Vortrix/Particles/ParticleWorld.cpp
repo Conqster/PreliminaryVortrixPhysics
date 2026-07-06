@@ -8,8 +8,8 @@
 #include <utility>
 #include "Vortrix/Core/Profiler.h"
 
-#include "Collision/Shapes/Shape.h"
-#include "PhysicsWorld.h"
+#include "Vortrix/Collision/Shapes/Shape.h"
+#include "Vortrix/PhysicsWorld.h"
 
 namespace vx::Particles
 {

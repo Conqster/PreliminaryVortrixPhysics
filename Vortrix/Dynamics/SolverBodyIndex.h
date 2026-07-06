@@ -1,8 +1,8 @@
 #pragma once
-#include "Core/Core.h"
+#include "Vortrix/Core/Core.h"
 #include "Body/BodyID.h"
 
-#include "Maths/Vec3.h"
+#include "Vortrix/Maths/Vec3.h"
 
 namespace vx {
 	class SolverBodyIndex

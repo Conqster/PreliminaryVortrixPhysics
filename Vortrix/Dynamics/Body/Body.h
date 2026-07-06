@@ -1,16 +1,17 @@
 #pragma once
 
-#include "Vortrix.h"
+#include "Vortrix/Vortrix.h"
 
-#include "Geometry/AABB.h"
-#include "PhysicsWorldSettings.h"
+#include "Vortrix/Geometry/AABB.h"
+#include "Vortrix/PhysicsWorldSettings.h"
 
-#include "EditorImGui.h"
 #include "BodyID.h"
 
 #include "EBodyDebugFlags.h"
 
 #include "EDynamicsDofs.h"
+
+class EditorImGui;
 namespace vx
 {
 	class Shape;

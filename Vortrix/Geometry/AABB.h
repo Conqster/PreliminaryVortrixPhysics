@@ -1,8 +1,8 @@
 #pragma once
 
 
-#include "Maths/Vec3.h"
-#include "Maths/Mat44.h"
+#include "Vortrix/Maths/Vec3.h"
+#include "Vortrix/Maths/Mat44.h"
 
 #include <array>
 

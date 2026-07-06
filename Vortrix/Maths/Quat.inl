@@ -2,7 +2,7 @@
 #include "Mat44.h"
 #include "SimdUtil.h"
 
-#include "Core/Logger.h"
+#include "Vortrix/Core/Logger.h"
 
 namespace vx
 {

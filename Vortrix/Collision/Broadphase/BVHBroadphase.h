@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Vortrix.h"
-#include "Collision/Shapes/Shape.h"
-#include "Geometry/AABB.h"
+#include "Vortrix/Vortrix.h"
+#include "Vortrix/Collision/Shapes/Shape.h"
+#include "Vortrix/Geometry/AABB.h"
 
 #include <stack>
 #include <unordered_set>
@@ -10,7 +10,7 @@
 #include "Broadphase.h"
 
 #include "BVHTree.h"
-#include "Dynamics/Body/Body.h"
+#include "Vortrix/Dynamics/Body/Body.h"
 
 namespace vx
 {

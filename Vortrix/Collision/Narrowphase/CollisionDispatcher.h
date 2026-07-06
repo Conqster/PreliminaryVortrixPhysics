@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Collision/Shapes/Shape.h"
-#include "Collision/ContactManifold.h"
+#include "Vortrix/Collision/Shapes/Shape.h"
+#include "Vortrix/Collision/ContactManifold.h"
 
-#include "Core/Logger.h"
+#include "Vortrix/Core/Logger.h"
 
 namespace vx {
 

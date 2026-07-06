@@ -1,6 +1,6 @@
 #include "JengaScenario.h"
 
-#include "Camera.h"
+#include "SampleFramework/Camera.h"
 #include "Vortrix/Dynamics/Body/Body.h"
 #include "Vortrix/Collision/Shapes/BoxShape.h"
 

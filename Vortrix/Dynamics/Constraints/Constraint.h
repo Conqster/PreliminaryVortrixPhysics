@@ -2,7 +2,6 @@
 
 #include "EConstraintFlags.h"
 
-class DebugGizmosRenderer;
 namespace vx {
 
 	enum class EConstraintType : uint8
@@ -19,6 +18,8 @@ namespace vx {
 	struct Linear1DRow;
 
 	struct NonContactConstraintDrawSettings;
+	
+	class DebugGizmosRenderer;
 
 	class Constraint
 	{

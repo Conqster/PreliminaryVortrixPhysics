@@ -7,7 +7,6 @@
 
 #include "Shapes/Shape.h"
 
-class DebugGizmosRenderer;
 
 namespace vx {
 
@@ -157,6 +156,8 @@ namespace vx {
 	};
 
 	struct RayCast;
+
+	class DebugGizmosRenderer;
 
 	class WorldQuery
 	{

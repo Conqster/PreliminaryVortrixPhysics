@@ -7,7 +7,7 @@
 #include <external/imgui/imgui_impl_glfw.h>
 #include <external/imgui/imgui_impl_opengl3.h>
 
-#include <SampleFramework.h>
+#include <SampleFramework/SampleFramework.h>
 #include "Vortrix/Particles/Particle.h"
 #include "Vortrix/Dynamics/Body/Body.h"
 
@@ -15,11 +15,17 @@
 
 #include "Renderer/Texture.h"
 
-#include "Dynamics/Body/BodyManager.h"
-#include "PhysicsWorld.h"
+#include "Vortrix/Dynamics/Body/BodyManager.h"
+#include "Vortrix/PhysicsWorld.h"
 
-#include "Dynamics/Constraints/DistanceConstraint.h"
-#include "Dynamics/Constraints/PointConstraint.h"
+#include "Vortrix/Dynamics/Constraints/DistanceConstraint.h"
+#include "Vortrix/Dynamics/Constraints/PointConstraint.h"
+//
+//template<typename Enum>
+//extern bool UICombo(const char* label, Enum& value, const char* items_separated_by_zeros, int height_in_items = -1)
+//{
+//
+//}
 
 void EditorImGui::Initialise(GLFWwindow* glfw_win)
 {

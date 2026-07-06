@@ -19,7 +19,7 @@ struct Has_ToChar < T, std::void_t<
 //template<size_t N>
 //struct Is_Stack_String<StackString<N>> : std::true_type{};
 
-#include "Maths/Vec3.h"
+#include "Vortrix/Maths/Vec3.h"
 
 namespace vx {
 

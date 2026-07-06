@@ -1,15 +1,15 @@
 #pragma once
 
-#include "Display/ApplicationWindow.h"
-#include "Renderer/Renderer.h"
-#include "Camera.h"
+#include "SampleFramework/Display/ApplicationWindow.h"
+#include "SampleFramework/Renderer/Renderer.h"
+#include "SampleFramework/Camera.h"
 
 
-#include "EditorImGui.h"
+#include "SampleFramework/EditorImGui.h"
 
-#include "Collision/Shapes/Shape.h"
+#include "Vortrix/Collision/Shapes/Shape.h"
 
-#include "ApplicationUtil.h"
+#include "SampleFramework/ApplicationUtil.h"
 
 #include "Vortrix/Visuals/RenderSettings.h"
 
@@ -90,6 +90,7 @@ namespace vx {
 	}
 	class Body;
 	class PhysicsWorld;
+	//class DebugGizmosRenderer;
 }
 class Scenario;
 
@@ -100,8 +101,8 @@ private:
 
 
 	//Remove later
-	Renderer mRenderer;
-	class DebugGizmosRenderer* mDebugGizmos = nullptr;
+	RendererImpl mRenderer;
+	vx::DebugGizmosRenderer* mDebugGizmos = nullptr;
 
 	Camera mCamera;
 

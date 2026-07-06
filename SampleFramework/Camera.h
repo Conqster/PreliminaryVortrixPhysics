@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Maths/VortrixMaths.h"
+#include "Vortrix/Maths/VortrixMaths.h"
 #include "Vortrix/Core/Assertion.h"
 
 class Camera

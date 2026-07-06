@@ -1,7 +1,7 @@
 #pragma once
 #include "SolverBodyIndex.h"
-#include "Maths/Vec3.h"
-#include "Maths/Float3.h"
+#include "Vortrix/Maths/Vec3.h"
+#include "Vortrix/Maths/Float3.h"
 
 #include "Body/Body.h"
 

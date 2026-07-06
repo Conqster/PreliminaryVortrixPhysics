@@ -1,7 +1,7 @@
 #pragma once
 
 #include "BodySimStats.h"
-#include "Core/StackString.h"
+#include "Vortrix/Core/StackString.h"
 #include "BodyID.h"
 namespace vx{
 	/// the goal is to remove debug info, 

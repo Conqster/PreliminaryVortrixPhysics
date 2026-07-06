@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Vortrix.h"
-#include "Geometry/AABB.h"
+#include "Vortrix/Vortrix.h"
+#include "Vortrix/Geometry/AABB.h"
 
 namespace vx
 {

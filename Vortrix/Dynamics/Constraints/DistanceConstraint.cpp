@@ -1,8 +1,8 @@
 #include "DistanceConstraint.h"
-#include "PhysicsWorldSettings.h"
-#include "Core/Profiler.h"
-
-#include "Dynamics/ConstraintSolver.h"
+#include "Vortrix/PhysicsWorldSettings.h"
+#include "Vortrix/Core/Profiler.h"
+		  
+#include "Vortrix/Dynamics/ConstraintSolver.h"
 
 
 namespace vx{
@@ -302,8 +302,8 @@ namespace vx{
 			////if(Contains(EConstraintFlags::SolvePosition, mFlags))
 			//	DrawConstraintBounds(debug_renderer, rAw, rBw);
 
-			debug_renderer->DrawSphere<4, 4>(rAw, draw_settings.anchorSize, Colour(1.0f, 0.2f, 0.2f));
-			debug_renderer->DrawSphere<4, 4>(rBw, draw_settings.anchorSize, Colour(0.2f, 1.0f, 0.6f));
+			debug_renderer->DrawSphere4x4(rAw, draw_settings.anchorSize, Colour(1.0f, 0.2f, 0.2f));
+			debug_renderer->DrawSphere4x4(rBw, draw_settings.anchorSize, Colour(0.2f, 1.0f, 0.6f));
 
 			//boundaries
 			if (mMinDistance == mMaxDistance)

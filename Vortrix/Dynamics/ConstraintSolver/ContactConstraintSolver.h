@@ -2,8 +2,8 @@
 
 #include "Vortrix/PhysicsWorldSettings.h"
 
-#include "Collision/ContactManifold.h"
-#include "Core/Profiler.h"
+#include "Vortrix/Collision/ContactManifold.h"
+#include "Vortrix/Core/Profiler.h"
 
 #include <array>
 #include <algorithm>
@@ -13,16 +13,16 @@
 #define CONTACT_USE_SOLVERBODY 1
 
 #if CONTACT_USE_SOLVERBODY
-#include "Dynamics/SolverBodyIndex.h"
-#include "Dynamics/Body/BodyManager.h"
+#include "Vortrix/Dynamics/SolverBodyIndex.h"
+#include "Vortrix/Dynamics/Body/BodyManager.h"
 #endif // CONTACT_USE_SOLVERBODY
 
 
-#include "Core/HashMap.h"
+#include "Vortrix/Core/HashMap.h"
 
-#include "Dynamics/Body/BodyID.h"
+#include "Vortrix/Dynamics/Body/BodyID.h"
 
-class DebugGizmosRenderer;
+
 namespace vx {
 
 
@@ -140,8 +140,7 @@ namespace vx {
 	/// end func3
 	/// 
 
-
-
+	class DebugGizmosRenderer;
 	struct ContactManifold;
 	
 

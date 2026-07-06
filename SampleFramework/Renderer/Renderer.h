@@ -2,7 +2,7 @@
 
 
 
-#include "Display/ApplicationWindow.h"
+#include "SampleFramework/Display/ApplicationWindow.h"
 
 #include "Shader.h"
 #include "GPUVertexData.h"
@@ -30,7 +30,11 @@
 //	vx::Vec3 direction;
 //	vx::Vec3 colour;
 //};
+#include "Vortrix/Visuals/Renderers.h"
 #include "Vortrix/Visuals/ERenderInstanceFlags.h"
+
+#include <Vortrix/Core/Colours.h>
+
 
 #include "Font.h"
 
@@ -39,40 +43,40 @@
 class Texture;
 class Sampler;
 class Camera;
-class Renderer
+class RendererImpl : public vx::Renderer
 {
 public:
-	Renderer() = default;
-	~Renderer() = default;
+	RendererImpl() = default;
+	~RendererImpl() = default;
 
-	Renderer(ApplicationWindow* display_window);
+	RendererImpl(ApplicationWindow* display_window);
 	void Initialise(ApplicationWindow* display_window);
 
 	//This is just test renderable entity functionality 
 	//Helpers
-	void SubmitSpherePrimitive(const RenderableEntity entity, const vx::ERenderInstanceFlags flags) 
+	void SubmitSpherePrimitive(const vx::RenderableEntity entity, const vx::ERenderInstanceFlags flags) override 
 	{
 		DrawGeometry(entity.transform, entity.colour, mSphereGeometry, (entity.plainTexture) ? mPlainTexSamplerBindless : mCheckersTexSamplerBindless, flags);
 	}
-	void SubmitCubePrimitive(const RenderableEntity entity, const vx::ERenderInstanceFlags flags)
+	void SubmitCubePrimitive(const vx::RenderableEntity entity, const vx::ERenderInstanceFlags flags) override
 	{
 		DrawGeometry(entity.transform, entity.colour, mBoxGeometry, (entity.plainTexture) ? mPlainTexSamplerBindless : mCheckersTexSamplerBindless, flags);
 	}
-	void SubmitQuadPrimitive(const RenderableEntity entity, const vx::ERenderInstanceFlags flags)
+	void SubmitQuadPrimitive(const vx::RenderableEntity entity, const vx::ERenderInstanceFlags flags) override
 	{
 		//if(mUseNewRendering)
 			DrawGeometry(entity.transform, entity.colour, mQuadGeometry, (entity.plainTexture) ? mPlainTexSamplerBindless : mCheckersTexSamplerBindless, flags);
 		//else
 			//AddFrameRenderableEntity({&mQuadPrimitive, entity.transform, entity.solidRender, entity.canCastShadow, entity.colour, entity.plainTexture});
 	}
-	void SubmitQuadXZPrimitive(const RenderableEntity entity, const vx::ERenderInstanceFlags flags)
+	void SubmitQuadXZPrimitive(const vx::RenderableEntity entity, const vx::ERenderInstanceFlags flags) override
 	{
 		//if(mUseNewRendering)
 			DrawGeometry(entity.transform, entity.colour, mQuadXZGeometry, (entity.plainTexture) ? mPlainTexSamplerBindless : mCheckersTexSamplerBindless, flags);
 		//else
 //AddFrameRenderableEntity({ &mQuadXZPrimitive, entity.transform, entity.solidRender, entity.canCastShadow, entity.colour, entity.plainTexture });
 	}
-	void SubmitCapsulePrimitive(const RenderableEntity entity, const vx::ERenderInstanceFlags flags)
+	void SubmitCapsulePrimitive(const vx::RenderableEntity entity, const vx::ERenderInstanceFlags flags) override
 	{
 		//if(mUseNewRendering)
 			DrawGeometry(entity.transform, entity.colour, mCapsuleGeometry, (entity.plainTexture) ? mPlainTexSamplerBindless : mCheckersTexSamplerBindless, flags);
@@ -83,12 +87,12 @@ public:
 	void DrawText3D(const std::string_view& text,
 		const vx::Vec3& pos, float scale,
 		const vx::Colour& col,
-		ETextAlignment align = ETextAlignment::Left);
+		ETextAlignment align = ETextAlignment::Left) override;
 
 	void DrawText3D_DynScale(const std::string_view& text,
 		const vx::Vec3& pos, float scale,
 		const vx::Colour& col,
-		ETextAlignment align = ETextAlignment::Left);
+		ETextAlignment align = ETextAlignment::Left) override;
 
 	DirectionalLight& GetDirectionalLight() { return mDirLight; }
 	void SetDirectionalLight(const DirectionalLight& light) { mDirLight = light; }
@@ -1153,7 +1157,7 @@ private:
 			"assets/shaders/shadowDepth.frag"); //fragment shader
 
 		//mGeometryShader->Bind();
-		mCameraUBO.Generate(BufferUsage::Uniform, sizeof(DebugGizmosRenderer::CameraData) + sizeof(vx::Vec4));///sizeof(vx::Float3) hack 
+		mCameraUBO.Generate(BufferUsage::Uniform, sizeof(GizmosCameraData) + sizeof(vx::Vec4));///sizeof(vx::Float3) hack 
 		mCameraUBO.Bind(0);
 		mCameraUBO.AssignGPULabel("Camera");
 

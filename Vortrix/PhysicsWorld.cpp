@@ -17,8 +17,7 @@
 #include "Geometry/OBB.h"
 #include "Collision/Broadphase/BVHBroadphase.h"
 
-#include "Renderer/DebugGizmosRenderer.h"
-#include "Renderer/Renderer.h"
+#include "Vortrix/Visuals/Renderers.h"
 
 
 #include "Collision/Broadphase/BruteforceBroadphase.h"

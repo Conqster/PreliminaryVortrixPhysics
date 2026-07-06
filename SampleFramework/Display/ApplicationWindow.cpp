@@ -1,4 +1,4 @@
-#include <SampleFramework.h>
+#include <SampleFramework/SampleFramework.h>
 #include "ApplicationWindow.h"
 
 #include <GL/glew.h>

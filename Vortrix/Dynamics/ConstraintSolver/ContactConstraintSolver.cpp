@@ -1,12 +1,13 @@
 #include "ContactConstraintSolver.h"
 
-#include "Dynamics/Body/Body.h"
-#include "Collision/Shapes/Shape.h"
-#include "Renderer/DebugGizmosRenderer.h"
+#include "Vortrix/Dynamics/Body/Body.h"
+#include "Vortrix/Collision/Shapes/Shape.h"
 
-#include "SimulationContexts.h"
+#include "Vortrix/Visuals/Renderers.h"
 
-#include "Dynamics/ConstraintSolver.h"
+#include "Vortrix/SimulationContexts.h"
+
+#include "Vortrix/Dynamics/ConstraintSolver.h"
 
 
 namespace vx {

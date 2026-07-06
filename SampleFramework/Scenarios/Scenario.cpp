@@ -1,6 +1,6 @@
 #include "Scenario.h"
 
-#include "PhysicsWorld.h"
+#include "Vortrix/PhysicsWorld.h"
 #include "Vortrix/Collision/Shapes/PlaneShape.h"
 #include "Vortrix/Collision/Shapes/BoxShape.h"
 #include "Vortrix/Collision/Shapes/SphereShape.h"
@@ -10,10 +10,10 @@
 #include "SampleFramework/EditorImGui.h"
 #include "SampleFramework/Display/ApplicationWindow.h"
 
-#include "SampleFramework/Renderer/DebugGizmosRenderer.h"
+#include <Vortrix/Visuals/Renderers.h>
 
 #include "SampleFramework/Input/InputSystem.h"
-#include "Dynamics/Constraints/DistanceConstraint.h"
+#include "Vortrix/Dynamics/Constraints/DistanceConstraint.h"
 
 using namespace InputSystem;
 
@@ -130,8 +130,8 @@ void Scenario::MouseCastRay()
 				body.WakeUp(-ray_cast.direction * 5.0f);
 			mBody = hit.body;
 			//transform point to body local
-			mPointBodyFrame = Mat44::TransformInverse(
-				Mat44::RotationTranslation(body.GetOrientation(), body.GetPosition()), point);
+			mPointBodyFrame = vx::Mat44::TransformInverse(
+				vx::Mat44::RotationTranslation(body.GetOrientation(), body.GetPosition()), point);
 
 			if(mHasMouseConstraint)
 			{

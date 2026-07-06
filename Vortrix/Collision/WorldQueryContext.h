@@ -1,12 +1,12 @@
 #pragma once 
 
-#include "Geometry/GeometricAlgorithms.h"
+#include "Vortrix/Geometry/GeometricAlgorithms.h"
 #include "WorldQuery.h"
-#include "Dynamics/Body/Body.h"
+#include "Vortrix/Dynamics/Body/Body.h"
 
 #include "RayCast.h"
 
-#include "SampleFramework/Renderer/DebugGizmosRenderer.h"
+#include "Vortrix/Visuals/Renderers.h"
 //#include "Core/Colours.h"
 
 namespace vx {

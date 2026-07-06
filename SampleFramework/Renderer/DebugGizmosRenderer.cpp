@@ -1,24 +1,18 @@
 #include "DebugGizmosRenderer.h"
-#include "Camera.h"
+#include "SampleFramework/Camera.h"
 
 
-#include "Framebuffer.h"
+#include "SampleFramework/Renderer/Framebuffer.h"
 #include <array>
 
 #include "Vortrix/Geometry/AABB.h"
 
-#include "Display/ApplicationWindow.h"
+#include "SampleFramework/Display/ApplicationWindow.h"
 
 #include "Vortrix/Core/Profiler.h"
 
-bool DebugGizmosRenderer::Init(ApplicationWindow* window)
+bool DebugGizmosRendererImpl::Init(ApplicationWindow* window)
 {
-	if (!this)
-	{
-		VX_LOG_WARN("Failed to initialise debug gizmos renderer, memory error.");
-		return false;
-	}
-
 	mActiveWindow = window;
 	//bool success = SetShader(nullptr);
 
@@ -36,7 +30,7 @@ bool DebugGizmosRenderer::Init(ApplicationWindow* window)
 
 
 
-	mCameraUBO.Generate(sizeof(CameraData));
+	mCameraUBO.Generate(sizeof(GizmosCameraData));
 	mCameraUBO.Bind(0);
 
 
@@ -87,7 +81,7 @@ bool DebugGizmosRenderer::Init(ApplicationWindow* window)
 }
 
 
-void DebugGizmosRenderer::DrawLine(const vx::Vec3& v0, const vx::Vec3& v1, const vx::Colour& colour)
+void DebugGizmosRendererImpl::DrawLine(const vx::Vec3& v0, const vx::Vec3& v1, const vx::Colour& colour)
 {
 	if (!this)
 	{
@@ -105,7 +99,7 @@ void DebugGizmosRenderer::DrawLine(const vx::Vec3& v0, const vx::Vec3& v1, const
 	mLineBatches.push_back(line);
 }
 
-void DebugGizmosRenderer::DrawWireTriangle(const vx::Vec3& v1, const vx::Vec3& v2, const vx::Vec3& v3, const vx::Colour& colour)
+void DebugGizmosRendererImpl::DrawWireTriangle(const vx::Vec3& v1, const vx::Vec3& v2, const vx::Vec3& v3, const vx::Colour& colour)
 {
 	if (!this)
 	{
@@ -117,7 +111,7 @@ void DebugGizmosRenderer::DrawWireTriangle(const vx::Vec3& v1, const vx::Vec3& v
 	DrawLine(v2, v3, colour);
 }
 
-void DebugGizmosRenderer::DrawSolidTriangle(const vx::Vec3& v0, const vx::Vec3& v1, const vx::Vec3& v2, const vx::Colour& colour)
+void DebugGizmosRendererImpl::DrawSolidTriangle(const vx::Vec3& v0, const vx::Vec3& v1, const vx::Vec3& v2, const vx::Colour& colour)
 {
 	if (!this)
 	{
@@ -135,30 +129,30 @@ void DebugGizmosRenderer::DrawSolidTriangle(const vx::Vec3& v0, const vx::Vec3& 
 	mTriangleBatches.push_back(tri);
 }
 
-void DebugGizmosRenderer::DrawSolidWireTriangle(const vx::Vec3& v0, const vx::Vec3& v1, const vx::Vec3& v2, const vx::Colour& colour)
+void DebugGizmosRendererImpl::DrawSolidWireTriangle(const vx::Vec3& v0, const vx::Vec3& v1, const vx::Vec3& v2, const vx::Colour& colour)
 {
 	DrawSolidTriangle(v0, v1, v2, colour);
 	DrawWireTriangle(v0, v1, v2, colour);
 }
 
-void DebugGizmosRenderer::DrawWireSphereDiscs(const vx::Vec3& center, float radius, const vx::Colour col, int segments)
+void DebugGizmosRendererImpl::DrawWireSphereDiscs(const vx::Vec3& center, float radius, const vx::Colour col, int segments)
 {
 	DrawWireDisc(center, radius, vx::kVxTau, col, vx::Vec3::Right(), vx::Vec3::Up(), segments);
 	DrawWireDisc(center, radius, vx::kVxTau, col, vx::Vec3::Forward(), vx::Vec3::Right(), segments);
 	DrawWireDisc(center, radius, vx::kVxTau, col, vx::Vec3::Up(), vx::Vec3::Forward(), segments);
 }
 
-void DebugGizmosRenderer::DrawWireDisc(const vx::Vec3& center, float radius, const vx::Colour col, const vx::Vec3& plane_axis_x, const vx::Vec3& plane_axis_y, int segments)
+void DebugGizmosRendererImpl::DrawWireDisc(const vx::Vec3& center, float radius, const vx::Colour col, const vx::Vec3& plane_axis_x, const vx::Vec3& plane_axis_y, int segments)
 {
 	DrawWireDisc(center, radius, vx::kVxTau, col, plane_axis_x, plane_axis_y, segments);
 }
 
-void DebugGizmosRenderer::DrawHalfWireDisc(const vx::Vec3& center, float radius, const vx::Colour col, const vx::Vec3& plane_axis_x, const vx::Vec3& plane_axis_y, int segments)
+void DebugGizmosRendererImpl::DrawHalfWireDisc(const vx::Vec3& center, float radius, const vx::Colour col, const vx::Vec3& plane_axis_x, const vx::Vec3& plane_axis_y, int segments)
 {
 	DrawWireDisc(center, radius, vx::kVxPi, col, plane_axis_x, plane_axis_y, segments);
 }
 
-void DebugGizmosRenderer::DrawWireDisc(const vx::Vec3& center, float radius, float ratio, const vx::Colour col, const vx::Vec3& plane_axis_x, const vx::Vec3& plane_axis_y, int segments)
+void DebugGizmosRendererImpl::DrawWireDisc(const vx::Vec3& center, float radius, float ratio, const vx::Colour col, const vx::Vec3& plane_axis_x, const vx::Vec3& plane_axis_y, int segments)
 {
 	if (!this)
 	{
@@ -198,7 +192,7 @@ void DebugGizmosRenderer::DrawWireDisc(const vx::Vec3& center, float radius, flo
 
 }
 
-void DebugGizmosRenderer::DrawArrow(const vx::Vec3& v0, const vx::Vec3& v1, const vx::Vec3& base_axis, float width, float height, vx::Colour col)
+void DebugGizmosRendererImpl::DrawArrow(const vx::Vec3& v0, const vx::Vec3& v1, const vx::Vec3& base_axis, float width, float height, vx::Colour col)
 {
 	if (!this)
 	{
@@ -229,7 +223,7 @@ void DebugGizmosRenderer::DrawArrow(const vx::Vec3& v0, const vx::Vec3& v1, cons
 	DrawLine(v0 + n0 * width, v0 - n0 * width, col);
 }
 
-void DebugGizmosRenderer::DrawCone(const vx::Vec3& apex, const vx::Vec3& base_center, float radius, int segments, vx::Colour col)
+void DebugGizmosRendererImpl::DrawCone(const vx::Vec3& apex, const vx::Vec3& base_center, float radius, int segments, vx::Colour col)
 {
 	vx::Vec3 axis = (apex - base_center).Normalised();
 
@@ -267,7 +261,7 @@ void DebugGizmosRenderer::DrawCone(const vx::Vec3& apex, const vx::Vec3& base_ce
 	}
 }
 
-void DebugGizmosRenderer::DrawArrowCone(const vx::Vec3& start, const vx::Vec3& end, float shaft_radius, float head_height, float head_radius, int cone_segment, vx::Colour col)
+void DebugGizmosRendererImpl::DrawArrowCone(const vx::Vec3& start, const vx::Vec3& end, float shaft_radius, float head_height, float head_radius, int cone_segment, vx::Colour col)
 {
 	//shadft
 	DrawLine(start, end, col);
@@ -277,7 +271,7 @@ void DebugGizmosRenderer::DrawArrowCone(const vx::Vec3& start, const vx::Vec3& e
 	DrawCone(end, cone_base, head_radius, cone_segment, col);
 }
 
-void DebugGizmosRenderer::DrawBox(const std::array<vx::Vec3, 8>& corners, const vx::Colour& col, bool wireframe)
+void DebugGizmosRendererImpl::DrawBox(const std::array<vx::Vec3, 8>& corners, const vx::Colour& col, bool wireframe)
 {
 	if(wireframe)
 	{
@@ -310,7 +304,7 @@ void DebugGizmosRenderer::DrawBox(const std::array<vx::Vec3, 8>& corners, const 
 	}
 }
 
-void DebugGizmosRenderer::DrawAABB(const vx::Vec3& min, const vx::Vec3& max, const vx::Colour& col, bool wireframe)
+void DebugGizmosRendererImpl::DrawAABB(const vx::Vec3& min, const vx::Vec3& max, const vx::Colour& col, bool wireframe)
 {
 	const std::array<vx::Vec3, 8> corners = { 
 		vx::Vec3(min.X(), min.Y(), min.Z()),
@@ -326,13 +320,13 @@ void DebugGizmosRenderer::DrawAABB(const vx::Vec3& min, const vx::Vec3& max, con
 	DrawBox(corners, col, wireframe);
 }
 
-void DebugGizmosRenderer::DrawAABB(const vx::AABB& aabb, const vx::Colour& col, bool wireframe)
+void DebugGizmosRendererImpl::DrawAABB(const vx::AABB& aabb, const vx::Colour& col, bool wireframe)
 {
 	DrawAABB(aabb.mMin, aabb.mMax, col, wireframe);
 }
 
 template<size_t Sector, size_t Stack>
-void DebugGizmosRenderer::DrawSphere(const vx::Vec3& center, float radius, vx::Colour col)
+void DebugGizmosRendererImpl::DrawSphere(const vx::Vec3& center, float radius, vx::Colour col)
 {
 	constexpr size_t sector_count = Sector;
 	constexpr size_t stack_count = Stack;
@@ -386,20 +380,20 @@ void DebugGizmosRenderer::DrawSphere(const vx::Vec3& center, float radius, vx::C
 	}
 }
 
-template void DebugGizmosRenderer::DrawSphere<8, 6>(const Vec3&, float, vx::Colour);
-template void DebugGizmosRenderer::DrawSphere<16, 12>(const Vec3&, float, vx::Colour);
-template void DebugGizmosRenderer::DrawSphere<4, 4>(const Vec3&, float, vx::Colour);
+template void DebugGizmosRendererImpl::DrawSphere<8, 6>(const Vec3&, float, vx::Colour);
+template void DebugGizmosRendererImpl::DrawSphere<16, 12>(const Vec3&, float, vx::Colour);
+template void DebugGizmosRendererImpl::DrawSphere<4, 4>(const Vec3&, float, vx::Colour);
 
-//void DebugGizmosRenderer::DrawAABB(const vx::AABB& aabb, const vx::Colour& col, bool wireframe)
+//void DebugGizmosRendererImpl::DrawAABB(const vx::AABB& aabb, const vx::Colour& col, bool wireframe)
 //{
 //}
 
-void DebugGizmosRenderer::DrawAACross(const vx::Vec3& pos, const Colour* colour, int colour_count, float scale)
+void DebugGizmosRendererImpl::DrawAACross(const vx::Vec3& pos, const Colour* colour, int colour_count, float scale)
 {
 	DrawCross(pos, vx::Vec3::Right(), vx::Vec3::Up(), vx::Vec3::Forward(), colour, colour_count, scale);
 }
 
-void DebugGizmosRenderer::DrawCross(const vx::Vec3& pos, const vx::Vec3& rt, const vx::Vec3& up, const vx::Vec3& fwd, const vx::Colour* colour, int colour_count, float scale)
+void DebugGizmosRendererImpl::DrawCross(const vx::Vec3& pos, const vx::Vec3& rt, const vx::Vec3& up, const vx::Vec3& fwd, const vx::Colour* colour, int colour_count, float scale)
 {
 	int col_count = (colour) ? colour_count : 0;
 	vx::Colour cols[3] =
@@ -419,7 +413,7 @@ void DebugGizmosRenderer::DrawCross(const vx::Vec3& pos, const vx::Vec3& rt, con
 	DrawLine(pos - dfwd, pos+dfwd, cols[2]);
 }
 
-void DebugGizmosRenderer::DrawBasis(const vx::Vec3& pos, const vx::Vec3& rt, const vx::Vec3& up,
+void DebugGizmosRendererImpl::DrawBasis(const vx::Vec3& pos, const vx::Vec3& rt, const vx::Vec3& up,
 	const vx::Vec3& fwd, float arrow_width, float arrow_height, bool b_draw_plane, uint32_t cone_segment)
 {
 	//DrawArrow(pos + rt, pos, up, arrow_width, arrow_height, vx::Colour::sRed);
@@ -454,14 +448,14 @@ void DebugGizmosRenderer::DrawBasis(const vx::Vec3& pos, const vx::Vec3& rt, con
 	}
 }
 
-void DebugGizmosRenderer::DrawBasis(const vx::Mat44 transform, float arrow_width, float arrow_height, bool b_draw_plane, uint32_t cone_segment)
+void DebugGizmosRendererImpl::DrawBasis(const vx::Mat44 transform, float arrow_width, float arrow_height, bool b_draw_plane, uint32_t cone_segment)
 {
 	DrawBasis(transform.GetTranslation(), transform.GetAxisX(), transform.GetAxisY(), transform.GetAxisZ(), arrow_width, arrow_height, b_draw_plane, cone_segment);
 }
 
 //template<template T>
-template<DebugGizmosRenderer::EVertexPrimitiveMode T>
-void DebugGizmosRenderer::Upload(VertexGroup<T>& target_vertex_buff, uint32_t vertices_per_shape, size_t buffer_shape_count, const void* buffer_data)
+template<DebugGizmosRendererImpl::EVertexPrimitiveMode T>
+void DebugGizmosRendererImpl::Upload(VertexGroup<T>& target_vertex_buff, uint32_t vertices_per_shape, size_t buffer_shape_count, const void* buffer_data)
 {
 	//GLCall(glBindVertexArray(target_vertex_buff.VAO));
 	//GLCall(glBindBuffer(GL_ARRAY_BUFFER, target_vertex_buff.VBO));
@@ -484,13 +478,13 @@ void DebugGizmosRenderer::Upload(VertexGroup<T>& target_vertex_buff, uint32_t ve
 }
 
 
-void DebugGizmosRenderer::UploadIfDirty()
+void DebugGizmosRendererImpl::UploadIfDirty()
 {
 	if (mLineVertexGrp.bBufferDirty) Upload(mLineVertexGrp, 1, mLineBatches.size(), mLineBatches.data());
 	if (mTriVertexGrp.bBufferDirty) Upload(mTriVertexGrp, 3, mTriangleBatches.size(), mTriangleBatches.data());
 }
 
-void DebugGizmosRenderer::ExecuteDraws()
+void DebugGizmosRendererImpl::ExecuteDraws()
 {
 	VX_VARIABLE_PROFILE_FUNCTION();
 	if (mLineBatches.size() <= 0 && mTriangleBatches.size() <= 0)
@@ -520,7 +514,7 @@ void DebugGizmosRenderer::ExecuteDraws()
 	glUseProgram(0);
 }
 
-bool DebugGizmosRenderer::PushDrawCommand(DrawCommand cmd)
+bool DebugGizmosRendererImpl::PushDrawCommand(DrawCommand cmd)
 {
 	EndCurrentDrawCommand();
 
@@ -530,13 +524,13 @@ bool DebugGizmosRenderer::PushDrawCommand(DrawCommand cmd)
 	return true;
 }
 
-bool DebugGizmosRenderer::PushDrawCommand(vx::Mat44 proj, vx::Mat44 view, IRenderTarget* render_target)
+bool DebugGizmosRendererImpl::PushDrawCommand(vx::Mat44 proj, vx::Mat44 view, IRenderTarget* render_target)
 {
 	PushDrawCommand({ proj, view, 0, 0, 0, 0, render_target });
 	return true;
 }
 
-bool DebugGizmosRenderer::EndCurrentDrawCommand()
+bool DebugGizmosRendererImpl::EndCurrentDrawCommand()
 {
 	if (mDrawCommands.empty()) return false;
 
@@ -548,13 +542,13 @@ bool DebugGizmosRenderer::EndCurrentDrawCommand()
 	return true;
 }
 
-void DebugGizmosRenderer::RemoveDrawCommand(DrawCommand& cmd)
+void DebugGizmosRendererImpl::RemoveDrawCommand(DrawCommand& cmd)
 {
 	std::swap(cmd, mDrawCommands.back());
 	mDrawCommands.pop_back();
 }
 
-bool DebugGizmosRenderer::ExecuteDraw(IRenderTarget* render_target)
+bool DebugGizmosRendererImpl::ExecuteDraw(IRenderTarget* render_target)
 {
 	DrawCommand* cmd = nullptr;
 
@@ -572,7 +566,7 @@ bool DebugGizmosRenderer::ExecuteDraw(IRenderTarget* render_target)
 	return (cmd) ? ExecuteDraw(*cmd) : false;
 }
 
-bool DebugGizmosRenderer::ExecuteDraw(const DrawCommand& cmd)
+bool DebugGizmosRendererImpl::ExecuteDraw(const DrawCommand& cmd)
 {
 	if (mLineBatches.size() <= 0 && mTriangleBatches.size() <= 0) return false;
 
@@ -633,7 +627,7 @@ bool DebugGizmosRenderer::ExecuteDraw(const DrawCommand& cmd)
 	return true;
 }
 
-bool DebugGizmosRenderer::Flush(IRenderTarget* render_target)
+bool DebugGizmosRendererImpl::Flush(IRenderTarget* render_target)
 {
 	DrawCommand* cmd = nullptr;
 	int cmd_idx = 0;

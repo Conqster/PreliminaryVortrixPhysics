@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Vortrix.h"
+#include "Vortrix/Vortrix.h"
 
 namespace vx 
 {

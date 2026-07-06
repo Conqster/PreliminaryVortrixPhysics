@@ -21,7 +21,7 @@ namespace vx::Particles
 		SpringConstraint(Particle* particle_a, Particle* particle_b, float rest_length, float stiffness, float critical_damp_ratio = 0.5);
 
 		virtual void UpdateSolver(float time_step) override;
-		virtual void DebugGizmos(class DebugGizmosRenderer* debug_renderer = nullptr);
+		virtual void DebugGizmos(DebugGizmosRenderer* debug_renderer = nullptr);
 
 		inline void SetParticles(Particle* particle_a, Particle* particle_b) {
 			mParticleA = particle_a;

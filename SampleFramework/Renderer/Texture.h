@@ -3,7 +3,7 @@
 #include <string>
 #include "TextureParemeter.h"
 
-#include "Display/ApplicationWindow.h"
+#include "SampleFramework/Display/ApplicationWindow.h"
 
 /// Image data
 /// Store/cache image data i.e from loaded data, gpu texture creation, physics 

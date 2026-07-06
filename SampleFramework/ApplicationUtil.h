@@ -80,7 +80,7 @@ struct SpawnObjectCanon
 
 
 
-#include "Dynamics/Body/BodyDebug.h"
+#include "Vortrix/Dynamics/Body/BodyDebug.h"
 
 struct ExternalEffectDynamicBodyInfo
 {

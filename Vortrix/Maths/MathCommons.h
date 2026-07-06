@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Core/Core.h"
-#include "Core/Assertion.h"
-#include "ScalarMath.h"
+#include "Vortrix/Core/Core.h"
+#include "Vortrix/Core/Assertion.h"
+#include "Vortrix/Maths/ScalarMath.h"
 
 #define VPHX_USE_GLM 0
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Vortrix.h>
+#include <Vortrix/Vortrix.h>
 
 #include "Vortrix/Dynamics/ConstraintSolver/CombineFrictionRestitution.h"
 

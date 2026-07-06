@@ -1,14 +1,14 @@
 #include "RagdollScenario.h"
-#include "PhysicsWorld.h"
+#include "Vortrix/PhysicsWorld.h"
 
 #include "external/imgui/imgui.h"
 
-#include "Dynamics/RagdollBuilder.h"
+#include "Vortrix/Dynamics/RagdollBuilder.h"
 
 
 
 
-std::vector<Ragdoll> mRagdolls;
+std::vector<vx::Ragdoll> mRagdolls;
 
 void RagdollScenario::Init(vx::PhysicsWorld* i_world)
 {
@@ -24,7 +24,7 @@ void RagdollScenario::Init(vx::PhysicsWorld* i_world)
 	mRagdolls.clear();
 
 	mRagdolls.push_back(ragdoll_builder.Build({ vx::Vec3(-5.0f, 2.0f, 0.0f), 0.1f }));
-	mRagdolls.push_back(ragdoll_builder.Build({ vx::Vec3(5.0f, 2.0f, 0.0f), 0.1f, false, EShapeType::Capsule }));
+	mRagdolls.push_back(ragdoll_builder.Build({ vx::Vec3(5.0f, 2.0f, 0.0f), 0.1f, false, vx::EShapeType::Capsule }));
 	mRagdolls.push_back(ragdoll_builder.Build({ vx::Vec3(0.0f, 2.0f, 0.0f), 0.1f }));
 
 	mRagdolls.push_back(ragdoll_builder.Build({ vx::Vec3(-5.0f, 2.0f, -4.0f) }));

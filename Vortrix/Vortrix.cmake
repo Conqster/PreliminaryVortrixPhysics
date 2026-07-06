@@ -17,29 +17,35 @@ file(GLOB_RECURSE VX_PHY_FILES CONFIGURE_DEPENDS
 source_group(TREE ${VX_SRC_DIR} PREFIX "Vortrix" FILES ${VX_PHY_FILES})
 
 
-# if(VX_BUILD_SHARED_LIBS)
-	# add_library(Vortix SHARED ${VX_PHY_FILES})
-# else()
-	# add_library(Vortix STATIC ${VX_PHY_FILES})
-# endif()
+if(VX_BUILD_SHARED_LIBS)
+	add_library(Vortrix SHARED ${VX_PHY_FILES})
+else()
+	add_library(Vortrix STATIC ${VX_PHY_FILES})
+endif()
 
 
 #target instruction extension
-# if(USE_AVX2)
-	# message(STATUS "[Vortrix] Compiling with AVX2 hardware optimisations")
-	# target_compile_options(${PROJECT_NAME} PRIVATE "/arch:AVX2")
-# endif()
-	
+if(USE_AVX2)
+	message(STATUS "[Vortrix] Compiling with AVX2 hardware optimisations")
+	target_compile_options(Vortrix PRIVATE "/arch:AVX2")
+endif()
 
 
+if(PROFILE_NARROW)
+	target_compile_definitions(Vortrix PUBLIC VX_PROFILE_NARROW)
+endif()
+if(PROFILE_BROAD)
+	target_compile_definitions(Vortrix PUBLIC VX_PROFILE_BROAD)
+endif()
+if(PROFILE_SIM)
+	target_compile_definitions(Vortrix PUBLIC VX_PROFILE_SIM)
+endif()
 
 
-# if(PROFILE_NARROW)
-	# target_compile_definitions(${PROJECT_NAME} PUBLIC VX_PROFILE_NARROW)
-# endif()
-# if(PROFILE_BROAD)
-	# target_compile_definitions(${PROJECT_NAME} PUBLIC VX_PROFILE_BROAD)
-# endif()
-# if(PROFILE_SIM)
-	# target_compile_definitions(${PROJECT_NAME} PUBLIC VX_PROFILE_SIM)
-# endif()
+#additional include directory 
+#	project directory	
+# 	/external
+#	/vortrix
+target_include_directories(Vortrix PUBLIC ${VX_ROOT_DIR})
+												
+												

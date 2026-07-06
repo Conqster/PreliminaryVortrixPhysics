@@ -1,9 +1,9 @@
 #include "BoxPyramidStackScenario.h"
 
-#include "PhysicsWorld.h"
+#include "Vortrix/PhysicsWorld.h"
 #include "Vortrix/Collision/Shapes/BoxShape.h"
 
-#include "Camera.h"
+#include "SampleFramework/Camera.h"
 
 
 

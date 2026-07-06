@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Maths/Vec3.h"
+#include "Vortrix/Maths/Vec3.h"
 #include "Body/BodyID.h"
 #include "SolverBodyIndex.h"
 
@@ -8,7 +8,7 @@
 
 #include "Constraints/Constraint.h"
 
-#include "Core/Profiler.h"
+#include "Vortrix/Core/Profiler.h"
 
 #include "ConstraintSolverRow.h"
 

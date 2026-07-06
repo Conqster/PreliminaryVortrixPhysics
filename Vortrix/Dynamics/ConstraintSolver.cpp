@@ -1,6 +1,6 @@
 #include "ConstraintSolver.h"
 
-#include "Core/ScratchAllocator.h"
+#include "Vortrix/Core/ScratchAllocator.h"
 
 namespace vx {
 

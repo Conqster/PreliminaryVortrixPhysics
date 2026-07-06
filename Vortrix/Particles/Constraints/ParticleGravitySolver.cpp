@@ -1,6 +1,6 @@
 #include "ParticleGravitySolver.h"
 #include "Vortrix/Particles/Particle.h"
-#include "Renderer/DebugGizmosRenderer.h"
+#include "Vortrix/Visuals/Renderers.h"
 
 
 namespace vx::Particles

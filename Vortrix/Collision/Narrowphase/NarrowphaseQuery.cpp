@@ -1,18 +1,18 @@
 #include "NarrowphaseQuery.h"
 
-#include "Collision/Broadphase/BroadphasePair.h"
+#include "Vortrix/Collision/Broadphase/BroadphasePair.h"
 
 #include "CollisionAlgorithms.h"
-#include "Core/Profiler.h"
-#include "Dynamics/Body/EBodyDebugFlags.h"
+#include "Vortrix/Core/Profiler.h"
+#include "Vortrix/Dynamics/Body/EBodyDebugFlags.h"
 
-#include "Dynamics/Body/Body.h"
-#include "Dynamics/ConstraintSolver/ContactConstraintSolver.h"
+#include "Vortrix/Dynamics/Body/Body.h"
+#include "Vortrix/Dynamics/ConstraintSolver/ContactConstraintSolver.h"
 
-#include "Dynamics/Body/BodyManager.h"
-#include "Dynamics/Body/BodySimStats.h"
+#include "Vortrix/Dynamics/Body/BodyManager.h"
+#include "Vortrix/Dynamics/Body/BodySimStats.h"
 
-#include "SimulationContexts.h"
+#include "Vortrix/SimulationContexts.h"
 
 namespace vx {
 

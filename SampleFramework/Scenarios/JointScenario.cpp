@@ -1,16 +1,16 @@
 #include "JointScenario.h"
 
-#include "PhysicsWorld.h"
+#include "Vortrix/PhysicsWorld.h"
 
-#include "Collision/Shapes/Shape.h"
-#include "Collision/Shapes/SphereShape.h"
-#include "Collision/Shapes/BoxShape.h"
-#include "Collision/Shapes/CapsuleShape.h"
+#include "Vortrix/Collision/Shapes/Shape.h"
+#include "Vortrix/Collision/Shapes/SphereShape.h"
+#include "Vortrix/Collision/Shapes/BoxShape.h"
+#include "Vortrix/Collision/Shapes/CapsuleShape.h"
 
 #include "external/imgui/imgui.h"
 
-#include "Dynamics/Constraints/DistanceConstraint.h"
-#include "Dynamics/ConstraintCoordinator.h"
+#include "Vortrix/Dynamics/Constraints/DistanceConstraint.h"
+#include "Vortrix/Dynamics/ConstraintCoordinator.h"
 
 void RopeSetting(vx::DistanceConstraintSettings& constraint_settings)
 {
@@ -47,7 +47,7 @@ void HardBarSetting(vx::DistanceConstraintSettings& constraint_settings)
 void JointScenario::Init(vx::PhysicsWorld* i_world)
 {
 	Scenario::Init(i_world);
-
+	
 	vx::BodySettings dyn_bodies_settings = vx::BodySettings::DefaultDynamicConstruct();
 
 
@@ -103,8 +103,8 @@ void JointScenario::Init(vx::PhysicsWorld* i_world)
 		vx::DistanceConstraint(&mPhysicsWorld->GetBodies()[2], 
 							   &mPhysicsWorld->GetBodies()[3],
 								rope_constraint_settings));
-	new_joint2.SetLocalAnchorA(Vec3(0.0f, -1.0f, 0.0f)); //quick offset
-	new_joint2.SetLocalAnchorB(Vec3(0.5f)); //quick offset
+	new_joint2.SetLocalAnchorA(vx::Vec3(0.0f, -1.0f, 0.0f)); //quick offset
+	new_joint2.SetLocalAnchorB(vx::Vec3(0.5f)); //quick offset
 
 
 	vx::DistanceConstraintSettings constraint_hardbar_settings;
@@ -147,7 +147,7 @@ void JointScenario::Init(vx::PhysicsWorld* i_world)
 	shape_settings.SetDensity(0.0f);
 	static_bodies_settings.shape = vx::MakeRef<vx::BoxShape>(shape_settings);
 	static_bodies_settings.intialVelocity = vx::Vec3(1.0f);
-	uint32 static_body_idx = mPhysicsWorld->GetBodies().size();
+	vx::uint32 static_body_idx = mPhysicsWorld->GetBodies().size();
 	mPhysicsWorld->CreateBody(static_bodies_settings);
 
 	RopeSetting(rope_constraint_settings);
@@ -161,16 +161,16 @@ void JointScenario::Init(vx::PhysicsWorld* i_world)
 			rope_constraint_settings));
 
 	new_joint3.SetDistance(0.75f, 1.5f);
-	new_joint3.SetLocalAnchorA(Vec3(0.0f, -0.5f, 0.0f));
-	new_joint3.SetLocalAnchorB(Vec3(0.0f, 1.0f, 0.0f));
+	new_joint3.SetLocalAnchorA(vx::Vec3(0.0f, -0.5f, 0.0f));
+	new_joint3.SetLocalAnchorB(vx::Vec3(0.0f, 1.0f, 0.0f));
 
 	//quickk reverse, B already set
 	auto& new_joint4 = *mPhysicsWorld->CreateConstraintT(
 		vx::DistanceConstraint(body_d,
 			&mPhysicsWorld->GetBodies().back(),
 			rope_constraint_settings));
-	new_joint4.SetLocalAnchorB(Vec3(0.0f, -1.0f, 0.0f));
-	new_joint4.SetLocalAnchorA(Vec3(0.0f, 0.5f, 0.0f));
+	new_joint4.SetLocalAnchorB(vx::Vec3(0.0f, -1.0f, 0.0f));
+	new_joint4.SetLocalAnchorA(vx::Vec3(0.0f, 0.5f, 0.0f));
 
 
 	CreateLattice();
@@ -188,15 +188,15 @@ void JointScenario::PostPhysicsStep(float dt)
 //Constraint window
 void JointScenario::ConstaintPanel(vx::DistanceConstraint& constraint)
 {
-	const Body& bA = *constraint.BodyA();
-	const Body& bB = *constraint.BodyB();
+	const vx::Body& bA = *constraint.BodyA();
+	const vx::Body& bB = *constraint.BodyB();
 
 	const auto& body_manager = mPhysicsWorld->GetBodyManager();
 	ImGui::Text("Body A: [%s], id: %d \nBody B: [%s], id: %d", 
 		body_manager.GetBodyDebugName(bA), bA.GetID(),
 		body_manager.GetBodyDebugName(bB), bB.GetID() );
 
-	Vec3 _p = constraint.GetLocalAnchorA();
+	vx::Vec3 _p = constraint.GetLocalAnchorA();
 	if (ImGui::DragFloat3("Local Anchor A", &_p[0], 0.01f))
 		constraint.SetLocalAnchorA(_p);
 	_p = constraint.GetLocalAnchorB();

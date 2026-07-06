@@ -4,7 +4,7 @@
 #include <unordered_map>
 #include <GL/glew.h>
 
-#include "Maths/VortrixMaths.h"
+#include <Vortrix/Maths/VortrixMaths.h>
 
 class Shader
 {

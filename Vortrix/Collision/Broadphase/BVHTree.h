@@ -1,5 +1,5 @@
 #pragma once
-#include <Vortrix.h>
+#include <Vortrix/Vortrix.h>
 
 #include "Broadphase.h"
 

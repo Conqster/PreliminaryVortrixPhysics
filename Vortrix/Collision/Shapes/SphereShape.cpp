@@ -1,5 +1,5 @@
 #include "SphereShape.h"
-#include "Geometry/AABB.h"
+#include "Vortrix/Geometry/AABB.h"
 
 namespace vx {
 	AABB SphereShape::GetLocalBounds() const

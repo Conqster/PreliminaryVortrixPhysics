@@ -1,7 +1,7 @@
 #pragma once
 #include "Application.h"
 
-#include <SampleFramework.h>
+#include <SampleFramework/SampleFramework.h>
 
 static void CustomAssertHandler(const char* expr, const char* message,
 	const unsigned int lvl, const char* file, unsigned int line, const char* func)

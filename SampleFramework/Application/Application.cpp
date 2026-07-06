@@ -1,18 +1,19 @@
-#include "Core/HeapMemoryProfile.h"
+#include "Vortrix/Core/HeapMemoryProfile.h"
 
 #include "Application.h"
-#include "Input/InputSystem.h"
+#include "SampleFramework/Input/InputSystem.h"
 
 #include <GLFW/glfw3.h>
 
-#include "Utils/Util.h"
+#include "SampleFramework/Utils/Util.h"
 
 #include "Vortrix/Particles/ParticleWorld.h"
 #include "Vortrix/Particles/Particle.h"
 #include "Vortrix/PhysicsWorld.h"
 
 #include "Vortrix/Core/Profiler.h"
-#include "Renderer/DebugGizmosRenderer.h"
+#include "SampleFramework/Renderer/DebugGizmosRenderer.h"
+//#include <Vortrix/Visuals/Renderers.h>
 //#include "Vortrix/ForceSolver/Particle2PointOscillatingSpringSolver.h"
 
 
@@ -21,15 +22,15 @@
 #include <external/imgui/imgui_impl_glfw.h>
 #include <external/imgui/imgui_impl_opengl3.h>
 
-#include "Dynamics/Body/Body.h"
+#include "Vortrix/Dynamics/Body/Body.h"
 
-#include "Collision/Shapes/Shape.h"
-#include "Collision/Shapes/SphereShape.h"
-#include "Collision/Shapes/BoxShape.h"
-#include "Collision/Shapes/CapsuleShape.h"
+#include "Vortrix/Collision/Shapes/Shape.h"
+#include "Vortrix/Collision/Shapes/SphereShape.h"
+#include "Vortrix/Collision/Shapes/BoxShape.h"
+#include "Vortrix/Collision/Shapes/CapsuleShape.h"
 
-#include "Collision/Broadphase/BroadphasePair.h"
-#include "Collision/Broadphase/BVHBroadphase.h"
+#include "Vortrix/Collision/Broadphase/BroadphasePair.h"
+#include "Vortrix/Collision/Broadphase/BVHBroadphase.h"
 #include <algorithm>
 
 
@@ -39,25 +40,29 @@
 #include "Vortrix/Visuals/RenderSettings.h"
 
 
-#include "Scenarios/SimpleBasicScenario.h"
-#include "Scenarios/RestitutionScenario.h"
-#include "Scenarios/FrictionScenario.h"
-#include "Scenarios/BoxStackScenario.h"
-#include "Scenarios/BoxPyramidStackScenario.h"
-#include "Scenarios/JengaScenario.h"
-#include "Scenarios/WorldQueriesScenario.h"
-#include "Scenarios/JointScenario.h"
-#include "Scenarios/PersistentContactScenario.h"
-#include "Scenarios/RagdollScenario.h"
+#include "SampleFramework/Scenarios/SimpleBasicScenario.h"
+#include "SampleFramework/Scenarios/RestitutionScenario.h"
+#include "SampleFramework/Scenarios/FrictionScenario.h"
+#include "SampleFramework/Scenarios/BoxStackScenario.h"
+#include "SampleFramework/Scenarios/BoxPyramidStackScenario.h"
+#include "SampleFramework/Scenarios/JengaScenario.h"
+#include "SampleFramework/Scenarios/WorldQueriesScenario.h"
+#include "SampleFramework/Scenarios/JointScenario.h"
+#include "SampleFramework/Scenarios/PersistentContactScenario.h"
+#include "SampleFramework/Scenarios/RagdollScenario.h"
 
-#include "Core/ScratchAllocator.h"
+#include "Vortrix/Core/ScratchAllocator.h"
 
 Application* CreateApplication(const ApplicationSpecification& app_spec)
 {
 	return new Application(app_spec);
 }
 
-
+//template<typename Enum>
+//bool UICombo(const char* label, Enum& value, const char* items_separated_by_zeros, int height_in_items = -1)
+//{
+//	EditorImGui::Combo(label, value, items_separated_by_zeros, height_in_items);
+//}
 
 using namespace InputSystem;
 using namespace vx;
@@ -186,7 +191,7 @@ Application::Application(const ApplicationSpecification& app_spec)
 		//mRenderer.SetDirectionalLightDir(vx::Vec3(-0.074, -0.519f, 0.852f));
 		mRenderer.SetDirectionalLightDir(vx::Vec3(0.398f, -0.581f, -0.710f));
 
-		mDebugGizmos = new DebugGizmosRenderer();
+		mDebugGizmos = new DebugGizmosRendererImpl();
 		if (!mDebugGizmos->Init(&mWindow))
 		{
 			delete mDebugGizmos;

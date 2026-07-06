@@ -1,5 +1,5 @@
 #include "CombineFrictionRestitution.h"
-#include "Dynamics/Body/Body.h"
+#include "Vortrix/Dynamics/Body/Body.h"
 
 
 namespace vx {

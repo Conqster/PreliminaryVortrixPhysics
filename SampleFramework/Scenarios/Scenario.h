@@ -17,9 +17,10 @@
 namespace vx {
 	class PhysicsWorld;
 	struct BodySettings;
+	
+	class DebugGizmosRenderer;
 }
 class Camera;
-class DebugGizmosRenderer;
 class ApplicationWindow;
 class EditorImGui;
 
@@ -52,7 +53,7 @@ public:
 
 
 	void SetCamera(Camera* cam) { mAppCamera = cam; }
-	void SetDebugGizmos(DebugGizmosRenderer* debug_gizmos) { mDebugGizmos = debug_gizmos; }
+	void SetDebugGizmos(vx::DebugGizmosRenderer* debug_gizmos) { mDebugGizmos = debug_gizmos; }
 	void SetWindow(ApplicationWindow* app_win) { mAppWindow = app_win; }
 	void SetAppEditor(EditorImGui* ui) { mAppUI = ui; }
 
@@ -62,7 +63,7 @@ protected:
 	vx::PhysicsWorld* mPhysicsWorld = nullptr;
 	Camera* mAppCamera = nullptr;
 	ApplicationWindow* mAppWindow = nullptr;
-	DebugGizmosRenderer* mDebugGizmos = nullptr;
+	vx::DebugGizmosRenderer* mDebugGizmos = nullptr;
 
 	//hack for now
 	EditorImGui* mAppUI = nullptr;

@@ -1,5 +1,5 @@
 #pragma once
-#include "SampleFramework.h"
+#include "SampleFramework/SampleFramework.h"
 
 enum class TextureWrap : uint8
 {

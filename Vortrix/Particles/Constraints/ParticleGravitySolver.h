@@ -18,7 +18,7 @@ namespace vx::Particles
 			mParticles(particles), mGravity(gravity) {
 		}
 		virtual void UpdateSolver(float time_step) override;
-		virtual void DebugGizmos(class DebugGizmosRenderer* debug_renderer = nullptr);
+		virtual void DebugGizmos(DebugGizmosRenderer* debug_renderer = nullptr);
 
 		void SetParticle(ParticlePool* p_particle_pool);
 		void SetGravity(const Vec3& gravity);

@@ -3,11 +3,11 @@
 #include "Body.h"
 #include "BodySimStats.h"
 
-#include "Collision/Shapes/Shape.h"
+#include "Vortrix/Collision/Shapes/Shape.h"
 
 #include <set>
 
-#include "Core/Profiler.h"
+#include "Vortrix/Core/Profiler.h"
 namespace vx
 {
 	void BodyManager::Init(uint32 max_bodies)

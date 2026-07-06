@@ -9,8 +9,6 @@
 #endif // defined(VX_DEBUG) || defined(VX_DEV) || defined(VX_REL_ASAN)
 
 
-
-
 namespace vx
 {
 	//lvl 

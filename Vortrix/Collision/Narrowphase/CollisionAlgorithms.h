@@ -1,15 +1,15 @@
 #pragma once
 
-#include "Collision/BoxBoxContactDebug.h"
+#include "Vortrix/Collision/BoxBoxContactDebug.h"
 
-#include "Collision/Shapes/Shape.h"
-#include "Collision/Shapes/SphereShape.h"
-#include "Collision/Shapes/BoxShape.h"
-#include "Collision/Shapes/PlaneShape.h"
-#include "Collision/Shapes/CapsuleShape.h"
+#include "Vortrix/Collision/Shapes/Shape.h"
+#include "Vortrix/Collision/Shapes/SphereShape.h"
+#include "Vortrix/Collision/Shapes/BoxShape.h"
+#include "Vortrix/Collision/Shapes/PlaneShape.h"
+#include "Vortrix/Collision/Shapes/CapsuleShape.h"
 
-#include "Collision/ContactManifold.h"
-#include "Geometry/GeometricAlgorithms.h"
+#include "Vortrix/Collision/ContactManifold.h"
+#include "Vortrix/Geometry/GeometricAlgorithms.h"
 
 
 #define VX_DEBUG_CONTACT_GENERATION 0

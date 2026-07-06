@@ -1,12 +1,14 @@
 #include "WorldQueriesScenario.h"
 #include <external/imgui/imgui.h>
 
-#include "PhysicsWorld.h"
+#include "Vortrix/PhysicsWorld.h"
 
-#include "SampleFramework/Renderer/DebugGizmosRenderer.h"
+#include "SampleFramework/EditorImGui.h"
+
+#include <Vortrix/Visuals/Renderers.h>
 #include "Vortrix/Collision/Shapes/SphereShape.h"
 #include "Vortrix/Collision/Shapes/CapsuleShape.h"
-#include "Dynamics/Body/Body.h"
+#include "Vortrix/Dynamics/Body/Body.h"
 
 
 
@@ -80,7 +82,7 @@ void WorldQueriesScenario::CastRayClosest()
 			vx::RaycastHit hit = processor.Hit();
 
 			//Vec3 point = mExperimentRay.origin + (mExperimentRay.displacement * hit.fraction);
-			Vec3 point = mExperimentRay.PointAlongRay(hit.fraction);
+			vx::Vec3 point = mExperimentRay.PointAlongRay(hit.fraction);
 			ray_end_point = point;
 
 			vx::Body body = mPhysicsWorld->GetBodyManager().GetBody(hit.body);
@@ -155,7 +157,7 @@ void WorldQueriesScenario::CastRayAll()
 			body = mPhysicsWorld->GetBodyManager().GetBody(hit.body);
 			mDebugGizmos->DrawAABB(body.GetAABBWorld(), vx::Colour::sPurple);
 
-			Vec3 point = mExperimentRay.PointAlongRay(hit.fraction);
+			vx::Vec3 point = mExperimentRay.PointAlongRay(hit.fraction);
 			mDebugGizmos->DrawAACross(point, GetBasisAxisColourArray().data(), 3, 0.2f);
 			mDebugGizmos->DrawArrowCone(point, point + hit.normal, 0.05, 0.1, 0.05, 3, vx::Colour::sCyan);
 
@@ -168,7 +170,7 @@ void WorldQueriesScenario::CastRayAll()
 				vx::Body body = mPhysicsWorld->GetBodyManager().GetBody(hit.body);
 				mDebugGizmos->DrawAABB(body.GetAABBWorld(), vx::Colour::sDeepTeal);
 
-				Vec3 point = mExperimentRay.PointAlongRay(hit.fraction);
+				vx::Vec3 point = mExperimentRay.PointAlongRay(hit.fraction);
 				mDebugGizmos->DrawAACross(point, GetBasisAxisColourArray().data(), 3, 0.2f);
 				mDebugGizmos->DrawArrowCone(point, point + hit.normal, 0.05, 0.1, 0.05, 3, vx::Colour::sCyan);
 			}

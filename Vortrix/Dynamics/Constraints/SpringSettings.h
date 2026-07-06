@@ -1,5 +1,5 @@
 #pragma once
-#include "Maths/MathCommons.h"
+#include "Vortrix/Maths/MathCommons.h"
 
 namespace vx {
 

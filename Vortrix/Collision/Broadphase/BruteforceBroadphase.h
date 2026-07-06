@@ -4,7 +4,7 @@
 #include "BroadphasePair.h"
 
 #include "Dynamics/Body/Body.h"
-#include "Renderer/DebugGizmosRenderer.h"
+#include "Vortrix/Visuals/Renderers.h"
 
 #include "Dynamics/Body/BodyManager.h"
 

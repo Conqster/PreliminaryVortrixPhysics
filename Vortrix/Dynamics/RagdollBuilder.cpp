@@ -1,9 +1,9 @@
 #include "RagdollBuilder.h"
 
-#include "Collision/Shapes/BoxShape.h"
-#include "Collision/Shapes/CapsuleShape.h"
+#include "Vortrix/Collision/Shapes/BoxShape.h"
+#include "Vortrix/Collision/Shapes/CapsuleShape.h"
 
-#include "PhysicsWorld.h"
+#include "Vortrix/PhysicsWorld.h"
 
 #include "Constraints/PointConstraint.h"
 

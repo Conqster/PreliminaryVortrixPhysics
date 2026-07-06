@@ -1,28 +1,28 @@
-#include <SampleFramework.h>
+#include <SampleFramework/SampleFramework.h>
 
 #include "Renderer.h"
 
 #include "Texture.h"
-#include "Camera.h"
+#include "SampleFramework/Camera.h"
 
-#include "Utils/Util.h"
-#include "Utils/Loader.h"
+#include "SampleFramework/Utils/Util.h"
+#include "SampleFramework/Utils/Loader.h"
 
-#include "Input/InputSystem.h"
+#include "SampleFramework/Input/InputSystem.h"
 
-#include "Core/Profiler.h"
+#include "Vortrix/Core/Profiler.h"
 
 #include "Vortrix/Maths/ViewProjection.h"
 
 
 
 
-Renderer::Renderer(ApplicationWindow* display_window)
+RendererImpl::RendererImpl(ApplicationWindow* display_window)
 {
 	Initialise(display_window);
 }
 
-void Renderer::Initialise(ApplicationWindow* display_window)
+void RendererImpl::Initialise(ApplicationWindow* display_window)
 {
 	mWindow = display_window;
 
@@ -95,20 +95,20 @@ void Renderer::Initialise(ApplicationWindow* display_window)
 	mQuadGeometry->AssignGPULabel("Quad Geometry");
 }
 
-void Renderer::DrawText3D(const std::string_view& text, const vx::Vec3& pos, float scale, const vx::Colour& col, ETextAlignment align)
+void RendererImpl::DrawText3D(const std::string_view& text, const vx::Vec3& pos, float scale, const vx::Colour& col, ETextAlignment align)
 {
 	mFont->DrawText3D(text, pos, mCamera->GetRight(), mCamera->GetUp(), scale, col, align);
 }
 
 
-void Renderer::DrawText3D_DynScale(const std::string_view& text, const vx::Vec3& pos, float scale, const vx::Colour& col, ETextAlignment align)
+void RendererImpl::DrawText3D_DynScale(const std::string_view& text, const vx::Vec3& pos, float scale, const vx::Colour& col, ETextAlignment align)
 {
 	float dist = vx::VxAbs((mCamera->GetPosition() - pos).Length());
 	scale *= dist;
 	mFont->DrawText3D(text, pos, mCamera->GetRight(), mCamera->GetUp(), scale, col, align);
 }
 
-void Renderer::BeginFrame(Camera* p_camera, vx::Colour clear_colour)
+void RendererImpl::BeginFrame(Camera* p_camera, vx::Colour clear_colour)
 {
 	VX_VARIABLE_PROFILE_FUNCTION();
 
@@ -151,7 +151,7 @@ void Renderer::BeginFrame(Camera* p_camera, vx::Colour clear_colour)
 
 }
 
-void Renderer::EndFrame()
+void RendererImpl::EndFrame()
 {
 	VX_VARIABLE_PROFILE_FUNCTION();
 	//mDisplay.FlushAndSwapBuffer();
@@ -164,7 +164,7 @@ void Renderer::EndFrame()
 
 
 
-void Renderer::Destroy()
+void RendererImpl::Destroy()
 {
 	Camera* mCamera = nullptr;
 
@@ -183,7 +183,7 @@ void Renderer::Destroy()
 	mWindow->SetWindowResizeListener({});
 }
 
-void Renderer::ShadowPass()
+void RendererImpl::ShadowPass()
 {
 	VX_VARIABLE_PROFILE_FUNCTION();
 	//quick hack test
@@ -209,7 +209,7 @@ void Renderer::ShadowPass()
 	glViewport(0, 0, mWindow->GetWidth(), mWindow->GetHeight());
 }
 
-void Renderer::DrawPass()
+void RendererImpl::DrawPass()
 {
 	VX_VARIABLE_PROFILE_FUNCTION();
 	//Draw avaliable mesh geometry
@@ -276,7 +276,7 @@ void Renderer::DrawPass()
 
 }
 
-void Renderer::SetCallbacks()
+void RendererImpl::SetCallbacks()
 {
 
 	///Window Resize callback 
@@ -372,7 +372,7 @@ void Renderer::SetCallbacks()
 		});
 }
 
-void Renderer::DrawObjects(Shader& shader, bool only_depth)
+void RendererImpl::DrawObjects(Shader& shader, bool only_depth)
 {
 	shader.Bind();
 	//if (mFrameEntitiesCount <= 0)
@@ -448,7 +448,7 @@ void Renderer::DrawObjects(Shader& shader, bool only_depth)
 
 }
 
-//void Renderer::AddFrameRenderableEntity(const RenderableEntity entity)
+//void RendererImpl::AddFrameRenderableEntity(const RenderableEntity entity)
 //{
 //	if (mFrameEntitiesCount < mMaxFrameEntity)
 //	{
@@ -456,13 +456,13 @@ void Renderer::DrawObjects(Shader& shader, bool only_depth)
 //	}
 //}
 
-void Renderer::RenderGeometriesInstances(bool only_depth)
+void RendererImpl::RenderGeometriesInstances(bool only_depth)
 {
 	if(!only_depth)
 	{
 		struct CamHackData
 		{
-			DebugGizmosRenderer::CameraData cam;
+			GizmosCameraData cam;
 			vx::Vec4 pos;
 		};
 

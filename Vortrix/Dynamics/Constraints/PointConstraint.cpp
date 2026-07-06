@@ -1,6 +1,6 @@
 #include "PointConstraint.h"
 
-#include "Dynamics/ConstraintSolver.h"
+#include "Vortrix/Dynamics/ConstraintSolver.h"
 
 namespace vx {
 

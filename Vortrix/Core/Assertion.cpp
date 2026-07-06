@@ -2,10 +2,8 @@
 #include "Logger.h"
 
 
-
-#ifdef VX_CORE_ENABLE_ASSERTS
+#if defined(VX_CORE_ENABLE_ASSERTS)
 namespace vx {
-
 	VxAssertFailedFunction VxAssertionFailedFunc = internals::DefaultAssertHandler;
 
 	namespace internals {
@@ -26,5 +24,5 @@ namespace vx {
 				VX_LOG_ERROR(oss.str());
 		}
 	}
-}
-#endif // VX_CORE_ENABLE_ASSERTS
+} //namespace vx
+#endif // defined(VX_CORE_ENABLE_ASSERTS)

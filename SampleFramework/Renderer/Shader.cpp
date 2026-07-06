@@ -1,11 +1,11 @@
-#include <SampleFramework.h>
+#include <SampleFramework/SampleFramework.h>
 
 #include "Shader.h"
 #include <fstream>
 
 #include <string>
 #include "ErrorAssertion.h"
-#include "Display/ApplicationWindow.h"
+#include "SampleFramework/Display/ApplicationWindow.h"
 
 bool Shader::Create(const std::string_view name, const std::string_view  ver, const std::string_view  frag, const std::string_view  geo, bool force_debug)
 {

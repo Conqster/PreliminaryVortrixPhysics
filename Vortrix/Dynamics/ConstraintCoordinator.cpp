@@ -1,7 +1,7 @@
 #include "ConstraintCoordinator.h"
 
-#include "PhysicsWorldSettings.h"
-#include "Core/Profiler.h"
+#include "Vortrix/PhysicsWorldSettings.h"
+#include "Vortrix/Core/Profiler.h"
 
 #include "ConstraintSolver.h"
 namespace vx{
