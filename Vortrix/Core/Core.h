@@ -13,7 +13,8 @@
 #define VX_DEBUG_DRAW 1
 #define VX_PROFILING 1
 
-#define PROFILE_MEM_ALLOC 1
+//move
+#define PROFILE_MEM_ALLOC 0
 
 
 #define VX_STRINGIFY(x) #x

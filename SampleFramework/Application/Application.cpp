@@ -53,6 +53,8 @@
 
 #include "Vortrix/Core/ScratchAllocator.h"
 
+
+
 Application* CreateApplication(const ApplicationSpecification& app_spec)
 {
 	return new Application(app_spec);
@@ -1274,11 +1276,12 @@ void Application::OnDrawImGuiOverlays()
 			ImGui::SeparatorText("Utilies");
 			ImGui::Checkbox("Show Debug Rotation", &bShowDebugRotation);
 			
+#if PROFILE_MEM_ALLOC
 			ImGui::SeparatorText("Memory Usage");
 			size_t _bytes = vx::sMemoryProfile.CurrentAllocBytes();
 			ImGui::Text("Current Allocate Count: %llu.", vx::sMemoryProfile.CurrentAllocCount());
-			if(vx::ToKilobyte(_bytes) < 1e+3)
-				ImGui::Text("Current Allocate Bytes: %llu Bytes [%.2f kB | %.2f KiB].", 
+			if (vx::ToKilobyte(_bytes) < 1e+3)
+				ImGui::Text("Current Allocate Bytes: %llu Bytes [%.2f kB | %.2f KiB].",
 					_bytes, vx::ToKilobyte(_bytes), vx::ToKibibyte(_bytes));
 			else
 				ImGui::Text("Current Allocate Bytes: %llu Bytes [%.2f MB | %.2f MiB].",
@@ -1302,8 +1305,7 @@ void Application::OnDrawImGuiOverlays()
 			else
 				ImGui::Text("Total Deallocated Bytes: %llu Bytes [%.2f MB | %.2f MiB].",
 					_bytes, vx::ToMegabyte(_bytes), vx::ToMegabyte(_bytes));
-
-
+#endif // PROFILE_MEM_ALLOC
 		}
 		ImGui::End();
 	}

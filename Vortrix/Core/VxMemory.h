@@ -3,12 +3,12 @@
 
 namespace vx{
 
-	VX_INLINE void* Allocate(size_t size)
+	static void* Allocate(size_t size)
 	{
 		//static_assert(size > 0);
 		return malloc(size);
 	}
-	VX_INLINE void* AlignedAllocate(size_t size, size_t alignment)
+	static void* AlignedAllocate(size_t size, size_t alignment)
 	{
 		///static_assert(size > 0 && alignment > 0);
 #ifdef  _WIN32
@@ -18,11 +18,11 @@ namespace vx{
 #endif //  _WIN32
 
 	}
-	VX_INLINE void Deallocate(void* block)
+	static void Deallocate(void* block)
 	{
 		free(block);
 	}
-	VX_INLINE void AlignedDeallocate(void* block)
+	static void AlignedDeallocate(void* block)
 	{
 #ifdef  _WIN32
 		_aligned_free(block);
