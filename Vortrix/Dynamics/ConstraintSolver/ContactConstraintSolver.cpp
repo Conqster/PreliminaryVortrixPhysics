@@ -10,6 +10,9 @@
 #include "Vortrix/Dynamics/ConstraintSolver.h"
 
 
+#include "Vortrix/Dynamics/IslandCoordinator.h"
+
+
 namespace vx {
 
 
@@ -176,144 +179,50 @@ namespace vx {
 		//mManifoldCache->Init(max_constraints);
 		mManifoldCache[0].Init(max_constraints);
 		mManifoldCache[1].Init(max_constraints);
+
+		mStepWriteManifoldCache = new CachedManifold[max_constraints];
+
+		mMaxCacheContactPoints = max_constraints * 4; //if all boxes this create up to 4 contact points
+
+		if (!IsPowerof2(mMaxCacheContactPoints))
+		{
+			uint32 v = RoundUpPowerof2(mMaxCacheContactPoints);
+			VX_LOG_INFO(mMaxCacheContactPoints, " Was not a power to two, rounding up ", v);
+			mMaxCacheContactPoints = v;
+		}
+
+		VX_ASSERT(IsPowerof2(mMaxCacheContactPoints), "mMaxCacheContactPoints is needs to be power of 2");
+		mCacheContactPoint = new CacheContactPoint[mMaxCacheContactPoints];
+
+		/// at start tail is equal to the total count available 
+		/// or maybe half of total to make as its double linear buffer
+		/// 
+		/// after first step head = last + 1 from last step (i.e current location) 
+		/// tail end or start of last step (i.e last step/read manifold cache)
+		mCacheContactPointTail = mMaxCacheContactPoints;
 	}
 
 	void ContactConstraintSolver::SetupContactConstraint(const ContactManifold& _manifold, const CollisionContext& ctx)
 	{
+#if TEST_CONTACT_CONSTRAINT_MT
+		SetupContactConstraint2Mt(_manifold, ctx);
+#else
 		SetupContactConstraint2(_manifold, ctx);
-		return;
-//		ContactManifold manifold = _manifold;
-//
-//		/// for determintic simulation, enforce that 
-//		/// 1. if particpating bodies are a dynamic against a static
-//		/// 2. if both dynamic, for consitency id a < b
-//		/// 
-//		/// ensure that the A is the dynamic while B is the static 
-//		if(ctx.settings.consistentManifold)
-//		{
-//			int priority_a = static_cast<int>(manifold.a->GetMotionType());
-//			int priority_b = static_cast<int>(manifold.b->GetMotionType());
-//
-//			/// 1. dynamic > static
-//			if (priority_a < priority_b)
-//				manifold.Swap();
-//			else if (priority_a == priority_b)
-//			{
-//				/// 2. dynamic - dynamic 
-//				if (manifold.a->GetID() < manifold.b->GetID())
-//					manifold.Swap();
-//			}
-//		}
-//
-//		VX_ASSERT_WARN_VOID(manifold.a && manifold.b, "Either Bodies to not exists");
-//		//create constraint
-//		//allocate mem
-//		uint32 idx = mNumConstraints;
-//		VX_ASSERT_WARN_VOID(idx < mMaxConstraints, "Max frame contact constraint attianed returning");
-//		//mConstraints[idx] = {};
-//		ContactConstraint& constraint = mConstraints[idx];
-//		mNumConstraints++;
-//		mStats.numContactConstraints++;
-//
-//
-//		
-//		/// vaild tests 
-//		/// dyn - dyn 
-//		/// dyn - static 
-//		/// 
-//		/// 
-//		VX_ASSERT_WARN(manifold.a->IsDynamic(), "Contact Manifold body A is Static, while B is Dynamic");
-//
-//
-//#if CONTACT_USE_SOLVERBODY
-//		VX_ASSERT_WARN_VOID(ctx.constraintSolver, "trying to setup constact constraint from manifold, but solver/builder not available");
-//		
-//
-//		constraint.SetBodies(ctx.constraintSolver->GetOrCreateSolverBody(*manifold.a),
-//			ctx.constraintSolver->GetOrCreateSolverBody(*manifold.b));
-//
-//#else
-//		constraint.SetBodies(manifold.a, manifold.b);
-//#endif // CONTACT_USE_SOLVERBODY
-//
-//
-//		Body& body0 = *manifold.a;
-//		Body& body1 = *manifold.b;
-//
-//
-//		float fricition_coeff = CombinedCoefficient::GetFriction(mCombinedFrictionMode, body0, body1);
-//		float restitution_coff = CombinedCoefficient::GetRestitution(mCombinedRestitutionMode, body0, body1);
-//		constraint.FrictionCoeff(fricition_coeff);
-//		constraint.RestitutionCoeff(restitution_coff);
-//
-//		manifold.normal = manifold.normal.Normalised();
-//		constraint.Normal(manifold.normal);
-//		uint32 num_pts = VxMin(manifold.mPointCount, kMaxPoints);
-//
-//		///bodies inverse transforms 
-//		Mat44 transform0 = body0.ComputeWorldTransform();
-//		Mat44 transform1 = body1.ComputeWorldTransform();
-//
-//
-//		ContactConstraintAxesSetting constraint_axes_setting;
-//#if VX_DEBUG_DRAW
-//		constraint_axes_setting.debug_renderer = ctx.debugRenderer;
-//		constraint_axes_setting.debugDrawAxes = ctx.drawContactTBNs;
-//#endif // VX_DEBUG_DRAW
-//		constraint_axes_setting.timeStep = mPhysicsContext->stepDeltaTime;
-//
-//
-//		//create cache constrain
-//		//allocate mem
-//		uint32 _idx = mNumCachePoints;
-//		mNumCachePoints++;
-//		VX_ASSERT_WARN_VOID(_idx < mMaxConstraints, "Max frame contact constraint attianed returning");
-//		//mCachePoints[_idx] = {};
-//		CacheContactConstraint& cache_constraint = mCachePoints[_idx];
-//		//transfer points 
-//		for (int i = 0; i < num_pts; ++i)
-//		{
-//			const ManifoldPoint& mp = manifold.Points()[i];
-//
-//
-//			//add new constraint point
-//			ContactPointConstraint& constraint_pt = *constraint.CreatePointConstraint();
-//
-//
-//
-//			Vec3 p0_ls = transform0.TransformInverse(mp.pointA);
-//			Vec3 p1_ls = transform1.TransformInverse(mp.pointB);
-//			//later use this to check the cache 
-//
-//			//new cache 
-//			{
-//				constraint_pt.cacheLocalPoint = &cache_constraint.contactPoints[i];
-//				auto& clp = *constraint_pt.cacheLocalPoint;
-//				//clp = 
-//
-//				p0_ls.Store(clp.localPoint0);
-//				p1_ls.Store(clp.localPoint1);
-//
-//				clp.totalNormalLambda = 0.0f;
-//				clp.totalTangentLambda[0] = 0.0f;
-//				clp.totalTangentLambda[1] = 0.0f;
-//			}
-//			//Vec3 p = (mp.pointA + mp.pointB) * 0.5f;
-//			///// point relative to bodies
-//			//constraint.r0 = p - body0.GetPosition();
-//			//constraint.r1 = p - body1.GetPosition();
-//
-//			Vec3 pt = mp.pointB;
-//			//hack to ensure right penetration for now
-//			float depth_sq = (mp.pointA - mp.pointB).LengthSq();
-//			if (depth_sq < mp.peneration)
-//				pt = mp.pointA + manifold.normal * mp.peneration;
-//
-//			constraint_pt.SetupAxesVelocityConstraints(*manifold.a, *manifold.b, mp.pointA, mp.pointB, manifold.normal, restitution_coff, fricition_coeff, constraint_axes_setting);
-//		}
-
-		//VX_ASSERT_WARN(num_pts == constraint.NumConstraintPoints(), "Number of point stored needs to be equal compute attainable");
+#endif // TEST_CONTACT_CONSTRAINT_MT
 	}
+
+
+	ContactConstraintSolver::CachedManifold* ContactConstraintSolver::CreateNewManifold(const BodyPair key, BodyID a_id, BodyID b_id, uint32 num_contact_pts)
+	{
+		ManifoldMap& write_manifold_cache = mManifoldCache[mManifoldWriteCache];
+		ManifoldMapEntry new_manifold_entry = write_manifold_cache.Create(key, CachedManifold(a_id, b_id, num_contact_pts));
+
+		VX_ASSERT_WARN_RETURN(new_manifold_entry.Valid(), nullptr, "unable to create new cache manifold entry");
+
+		return &new_manifold_entry.Value();
+	}
+
+
 
 	void ContactConstraintSolver::SetupContactConstraint2(const ContactManifold& _manifold, const CollisionContext& ctx)
 	{
@@ -355,12 +264,8 @@ namespace vx {
 
 		uint32 num_contact_pts = VxMin(manifold.mPointCount, kMaxPoints);
 
-		ManifoldMap& write_manifold_cache = mManifoldCache[mManifoldWriteCache];
-		ManifoldMapEntry new_manifold_entry = write_manifold_cache.Create(key, CachedManifold(manifold.a->GetID(), manifold.b->GetID(), num_contact_pts));
-
-		VX_ASSERT_WARN_VOID(new_manifold_entry.Valid(), "unable to create new cache manifold entry");
-
-		CachedManifold* new_manifold = &new_manifold_entry.Value();
+		CachedManifold* new_manifold = CreateNewManifold(key, manifold.a->GetID(), manifold.b->GetID(), num_contact_pts);
+		VX_ASSERT_WARN_VOID(new_manifold != nullptr, "unable to create new cache manifold entry");
 
 		/// since body 2 is less dominates to 1 either static if static is part of 
 		/// participating body
@@ -375,8 +280,8 @@ namespace vx {
 
 
 
-		Body& body0 = *manifold.a;
-		Body& body1 = *manifold.b;
+		const Body& body0 = *manifold.a;
+		const Body& body1 = *manifold.b;
 
 		const CacheContactPoint* cache_pt_start;
 		uint32 cache_pt_count;
@@ -397,22 +302,35 @@ namespace vx {
 
 
 
-		//create constraint
-		//allocate mem
-		uint32 idx = mNumConstraints;
+		////create constraint
+		////allocate mem
+		//uint32 idx = mNumConstraints;
+		//VX_ASSERT_WARN_VOID(idx < mMaxConstraints, "Max frame contact constraint attianed returning");
+		////mConstraints[idx] = {};
+		//ContactConstraint& constraint = mConstraints[idx];
+		//mNumConstraints++;
+		//mStats.numContactConstraints++;
+
+		uint32 idx = mNumConstraints.fetch_add(1, std::memory_order_relaxed);
 		VX_ASSERT_WARN_VOID(idx < mMaxConstraints, "Max frame contact constraint attianed returning");
-		//mConstraints[idx] = {};
 		ContactConstraint& constraint = mConstraints[idx];
-		mNumConstraints++;
-		mStats.numContactConstraints++;
+		mStats.numContactConstraints++; //need to fix
 
 
 #if CONTACT_USE_SOLVERBODY
 		VX_ASSERT_WARN_VOID(ctx.constraintSolver, "trying to setup constact constraint from manifold, but solver/builder not available");
 
 
-		constraint.SetBodies(ctx.constraintSolver->GetOrCreateSolverBody(*manifold.a),
-					ctx.constraintSolver->GetOrCreateSolverBody(*manifold.b));
+		{
+			SolverBodyIndex solver_body_idx0 = ctx.constraintSolver->GetOrCreateSolverBody(*manifold.a);
+			SolverBodyIndex solver_body_idx1 = ctx.constraintSolver->GetOrCreateSolverBody(*manifold.b);
+
+			constraint.SetBodies(solver_body_idx0, solver_body_idx1);
+
+			/// a is alway dynam,ic
+			if (manifold.a->IsDynamic() && manifold.b->IsDynamic())
+				ctx.islandCoord->LinkBodies(manifold.a->activeIdx, manifold.b->activeIdx);
+		}
 
 #else
 		constraint.SetBodies(manifold.a, manifold.b);
@@ -512,6 +430,271 @@ namespace vx {
 		VX_ASSERT_WARN(num_contact_pts == constraint.NumConstraintPoints(), "Number of point stored needs to be equal compute attainable");
 	}
 
+
+	void ContactConstraintSolver::SetupContactConstraint2Mt(const ContactManifold& _manifold, const CollisionContext& ctx)
+	{
+		VX_PROFILE_FUNCTION();
+		///Copy manifold for easy modification
+		ContactManifold manifold = _manifold;
+
+		/// for determintic simulation, enforce that 
+		/// 1. if particpating bodies are a dynamic against a static
+		/// 2. if both dynamic, for consitency id a < b
+		/// 
+		/// ensure that the A is the dynamic while B is the static 
+		if (ctx.settings.consistentManifold)
+		{
+			int priority_a = static_cast<int>(manifold.a->GetMotionType());
+			int priority_b = static_cast<int>(manifold.b->GetMotionType());
+
+			/// 1. dynamic > static
+			if (priority_a < priority_b)
+				manifold.Swap();
+			else if (priority_a == priority_b)
+			{
+				/// 2. dynamic - dynamic 
+				if (manifold.a->GetID() < manifold.b->GetID())
+					manifold.Swap();
+			}
+		}
+
+		VX_ASSERT_WARN_VOID(manifold.a && manifold.b, "Either Bodies to not exists");
+
+		/// vaild tests 
+		/// dyn - dyn 
+		/// dyn - static 
+		VX_ASSERT_WARN(manifold.a->IsDynamic(), "Contact Manifold body A is Static, while B is Dynamic");
+
+
+
+
+
+		/// Create new manifold during setup
+		//uint32 new_manifold_cache_idx = mWriteManifoldCacheIdx.fetch_add(1, std::memory_order_relaxed);
+		/// should not try to copy the address (ref to element) as this might thrash cache line on every modification 
+		/// of ref
+		/// so it better to full complete manifold cache generation
+		
+		uint32 num_contact_pts = VxMin(manifold.mPointCount, kMaxPoints);
+
+		CachedManifold new_manifold_cache(manifold.a->GetID(), manifold.b->GetID(), num_contact_pts);
+
+		/// befoer this 
+		/// 	CacheContactPoint& cp = new_manifold->ContactPointPtr()[i];
+		///		p0_ls.Store(cp.localPoint0);
+		///		p1_ls.Store(cp.localPoint1);
+		/// 
+		/// create required local pts with 
+		///acquire solts 
+		//uint32 required_count = num_contact_pts;
+		//uint32 contact_pt_head_idx = mCacheContactPointHead.fetch_add(required_count, std::memory_order_relaxed);
+
+		//VX_LOG_INFO("Last head indx, ", contact_pt_head_idx);
+		//VX_LOG_INFO("wrap returned, ", WrapPowerof2(contact_pt_head_idx, mMaxCacheContactPoints - 1)); //this might break, if we are at the end it would break
+		////as it need to jump to the start not contigous. quick solution; detect break then jump to sytart intead
+		/////quick sample 
+		//uint32 new_end = mCacheContactPointHead.load(std::memory_order_relaxed);
+		//if (WrapPowerof2(new_end, mMaxCacheContactPoints - 1) < WrapPowerof2(contact_pt_head_idx, mMaxCacheContactPoints - 1))
+		//{
+		//	///wrap inbetween required range 
+		//	if (mCacheContactPointHead.compare_exchange_strong(new_end, 0 + required_count)) ///<-- already wrap failed so much easiler making 0 over max plus required slots 
+		//	{
+		//		/// but if failed acq new value and atomic increment,
+		//		/// another thread as progress
+		//		contact_pt_head_idx = mCacheContactPointHead.fetch_add(required_count, std::memory_order_relaxed);
+		//	}
+		//}
+		//CacheContactPoint* contact_pt_head_pt = &mCacheContactPoint[WrapPowerof2(contact_pt_head_idx, mMaxCacheContactPoints - 1)];
+
+		uint32 required_count = num_contact_pts;
+		uint32 contact_pt_head_idx;
+		for (;;)
+		{
+			uint32 head = mCacheContactPointHead.load(std::memory_order_relaxed);
+			uint32 wrapped = WrapPowerof2(head, mMaxCacheContactPoints - 1);
+
+			uint32 new_buff_head;
+			uint32 alloc_head;
+
+			///check if fits before end
+			if (wrapped + required_count <= mMaxCacheContactPoints)
+			{
+				alloc_head = wrapped;
+				new_buff_head = head + required_count;
+			}
+			else //would fit, skip to very beginning of buffer
+			{
+				alloc_head = 0;
+				new_buff_head = head + (mMaxCacheContactPoints - wrapped) + required_count;
+			}
+
+			if (mCacheContactPointHead.compare_exchange_weak(head, new_buff_head, std::memory_order_relaxed))
+			{
+				contact_pt_head_idx = alloc_head;
+				break;
+			}
+		}
+
+		CacheContactPoint* contact_pt_head_pt = &mCacheContactPoint[contact_pt_head_idx];
+		new_manifold_cache.SetContactPointPtr(contact_pt_head_pt);
+
+
+
+		/// since body 2 is less dominates to 1 either static if static is part of 
+		/// participating body
+		Vec3 norBl = manifold.b->GetOrientation().InverseRotate(manifold.normal);
+		norBl.Store(new_manifold_cache.mNormal);
+
+		BodyPair key = new_manifold_cache.CreatePairKey();
+
+		/// read cache manifold map for persistency 
+		ManifoldMap& read_manifold_cache = mManifoldCache[mManifoldWriteCache ^ 1];
+		ManifoldMapEntry old_manifold_entry = read_manifold_cache.Find(key);
+
+		const Body& body0 = *manifold.a;
+		const Body& body1 = *manifold.b;
+
+		const CacheContactPoint* cache_pt_start;
+		uint32 cache_pt_count;
+		//persistent
+		if (old_manifold_entry.Valid())
+		{
+			CachedManifold* old_manifold = &old_manifold_entry.Value();
+			cache_pt_start = old_manifold->ContactPointPtr();
+			cache_pt_count = old_manifold->NumPoints();
+			//old_manifold->mPersistent = true;
+		}
+		else
+		{
+			//not persistent, new 
+			cache_pt_start = nullptr;
+			cache_pt_count = 0;
+		}
+
+
+
+
+		//create constraint
+//allocate mem
+		uint32 idx = mNumConstraints.fetch_add(1, std::memory_order_relaxed);
+		VX_ASSERT_WARN_VOID(idx < mMaxConstraints, "Max frame contact constraint attianed returning");
+		ContactConstraint& constraint = mConstraints[idx];
+		mStats.numContactConstraints++; //need to fix
+
+
+#if CONTACT_USE_SOLVERBODY
+		VX_ASSERT_WARN_VOID(ctx.constraintSolver, "trying to setup constact constraint from manifold, but solver/builder not available");
+
+
+		{
+			SolverBodyIndex solver_body_idx0 = ctx.constraintSolver->GetOrCreateSolverBody(*manifold.a);
+			SolverBodyIndex solver_body_idx1 = ctx.constraintSolver->GetOrCreateSolverBody(*manifold.b);
+
+			constraint.SetBodies(solver_body_idx0, solver_body_idx1);
+
+			/// a is alway dynam,ic
+			if (manifold.a->IsDynamic() && manifold.b->IsDynamic())
+				ctx.islandCoord->LinkBodies(manifold.a->activeIdx, manifold.b->activeIdx);
+		}
+
+
+#else
+		constraint.SetBodies(manifold.a, manifold.b);
+#endif // CONTACT_USE_SOLVERBODY
+
+
+		float fricition_coeff = CombinedCoefficient::GetFriction(mCombinedFrictionMode, body0, body1);
+		float restitution_coff = CombinedCoefficient::GetRestitution(mCombinedRestitutionMode, body0, body1);
+		constraint.FrictionCoeff(fricition_coeff);
+		constraint.RestitutionCoeff(restitution_coff);
+
+		manifold.normal.Normalise();
+		constraint.Normal(manifold.normal);
+
+		Quat qA = manifold.a->GetOrientation();
+		Vec3 tA = manifold.a->GetPosition();
+		Quat qB = manifold.b->GetOrientation();
+		Vec3 tB = manifold.b->GetPosition();
+
+
+		ContactConstraintAxesSetting constraint_axes_setting;
+#if VX_DEBUG_DRAW
+		constraint_axes_setting.debug_renderer = ctx.debugRenderer;
+		constraint_axes_setting.debugDrawAxes = ctx.drawContactTBNs;
+#endif // VX_DEBUG_DRAW
+		constraint_axes_setting.timeStep = mPhysicsContext->stepDeltaTime;
+
+
+
+
+		//transfer points 
+		mStats.actualPointCounts = cache_pt_count;
+		for (int i = 0; i < num_contact_pts; ++i)
+		{
+			const ManifoldPoint& mp = manifold.Points()[i];
+
+			///constraint point constraitn part
+			//ContactPointConstraint& point_constraint = constraint.contactPoints[constraint.numConstraintPoints++];
+			ContactPointConstraint& point_constraint = *constraint.CreatePointConstraint();
+
+
+			Vec3 p0_ls = qA.InverseRotate(mp.pointA - tA);
+			Vec3 p1_ls = qB.InverseRotate(mp.pointB - tB);
+
+			//check if close to any contact pt if any
+			bool was_close = false;
+			for (const CacheContactPoint* cache_pt = cache_pt_start;
+				cache_pt < (cache_pt_start + cache_pt_count); cache_pt++)
+			{
+				if (p0_ls.IsApprox(Vec3::LoadFloat3Raw(cache_pt->localPoint0), VxSqr(0.01)) &&
+					p1_ls.IsApprox(Vec3::LoadFloat3Raw(cache_pt->localPoint1), VxSqr(0.01)))
+				{
+					point_constraint.normal.totalLamda = cache_pt->totalNormalLambda;
+					point_constraint.lateralTangent[0].totalLamda = cache_pt->totalTangentLambda[0];
+					point_constraint.lateralTangent[1].totalLamda = cache_pt->totalTangentLambda[1];
+
+					was_close = true;
+					mStats.actualPersistentPointCounts++;
+					break;
+				}
+			}
+
+			if (!was_close)
+			{
+				point_constraint.normal.totalLamda = 0.0f;
+				point_constraint.lateralTangent[0].totalLamda = 0.0f;
+				point_constraint.lateralTangent[1].totalLamda = 0.0f;
+			}
+
+
+
+			/// now only copy the local points 
+			CacheContactPoint& cp = new_manifold_cache.ContactPointPtr()[i];
+			p0_ls.Store(cp.localPoint0);
+			p1_ls.Store(cp.localPoint1);
+
+
+			//solving constraint point also points to the cache 
+			point_constraint.cacheLocalPoint = &cp; ///later make this const to prevent modification outside
+
+
+			Vec3 pt = mp.pointB;
+			//hack to ensure right penetration for now
+			float depth_sq = (mp.pointA - mp.pointB).LengthSq();
+			if (depth_sq < mp.peneration)
+				pt = mp.pointA + manifold.normal * mp.peneration;
+
+			point_constraint.SetupAxesVelocityConstraints(*manifold.a, *manifold.b, mp.pointA, mp.pointB, manifold.normal, restitution_coff, fricition_coeff, constraint_axes_setting);
+		}
+
+
+		/// now the Manifold Cache; is ready
+		uint32 new_manifold_cache_idx = mWriteManifoldCacheIdx.fetch_add(1, std::memory_order_relaxed);
+		mStepWriteManifoldCache[new_manifold_cache_idx] = new_manifold_cache;
+
+		VX_ASSERT_WARN(num_contact_pts == constraint.NumConstraintPoints(), "Number of point stored needs to be equal compute attainable");
+		
+	}
 
 	void ContactConstraintSolver::WarmStart()
 	{
@@ -768,6 +951,7 @@ namespace vx {
 
 
 #if CONTACT_USE_SOLVERBODY
+
 	void ContactConstraintSolver::WarmStart(const ContactConstraint& contact_constraint, SolverBody& body0, SolverBody& body1)
 	{
 

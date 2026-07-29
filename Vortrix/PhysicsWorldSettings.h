@@ -42,6 +42,8 @@ namespace vx
 		uint32 maxBroadphasePair = 10240;
 
 		class ScratchAllocator* mScratchAllocator;
+
+		bool simFirstStep = false;
 	};
 
 
@@ -53,9 +55,10 @@ namespace vx
 		ShapeType,		/// for now - complexity 0 --> x; plane grey (not low but rarely used), Sphere Cyan, Capsule Light green, Box yellow, {Cylinder Orange}
 		Collision,		/// Colliding(dyn-dyn/dyn-static) / not
 		Phase,			/// Broad / Narrow / Colliding convert this to heat based
+		IslandIdx,
 	};
 
-	static constexpr const char* BodyColourModeLabels = "Instance\0""MotionState\0""MotionType\0""ShapeType\0""Collision\0""Phase\0""\0";
+	static constexpr const char* BodyColourModeLabels = "Instance\0""MotionState\0""MotionType\0""ShapeType\0""Collision\0""Phase\0""IslandIdx\0""\0";
 
 	/// BodyColour 
 	/// Motion type

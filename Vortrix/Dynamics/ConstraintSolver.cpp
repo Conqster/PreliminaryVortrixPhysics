@@ -33,6 +33,13 @@ namespace vx {
 		if (solver_idx.IsValid())
 			return solver_idx;
 
+#if TEST_CONTACT_CONSTRAINT_MT
+		std::lock_guard lock(mSolverBodyMutex);
+
+		/// check againt another thread might beat us to creation
+		if (solver_idx.IsValid())
+			return solver_idx;
+#endif // TEST_CONTACT_CONSTRAINT_MT
 
 		const Body& body = ctx.bodyManager->GetBody(physics_body_id);
 
@@ -63,11 +70,23 @@ namespace vx {
 
 	SolverBodyIndex ConstraintSolver::GetOrCreateSolverBody(const Body& body)
 	{
+		VX_PROFILE_FUNCTION();
+		/// retriving need to be thread protected 
+		/// after is fine 
 		SolverBodyIndex& solver_idx = mBodyToSolverBody[body.GetID().Idx()];
 
 		//if (solver_idx.Value() >= 0)
 		if (solver_idx.IsValid())
 			return solver_idx;
+
+
+#if TEST_CONTACT_CONSTRAINT_MT
+		std::lock_guard lock(mSolverBodyMutex);
+
+		/// check againt another thread might beat us to creation
+		if (solver_idx.IsValid())
+			return solver_idx;
+#endif // TEST_CONTACT_CONSTRAINT_MT
 
 
 		SolverBody solver_body;

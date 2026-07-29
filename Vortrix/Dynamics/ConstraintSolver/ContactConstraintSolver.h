@@ -23,6 +23,9 @@
 #include "Vortrix/Dynamics/Body/BodyID.h"
 
 
+
+
+
 namespace vx {
 
 
@@ -151,6 +154,8 @@ namespace vx {
 		~ContactConstraintSolver()
 		{
 			delete[] mConstraints;
+			delete[] mStepWriteManifoldCache;
+			delete[] mCacheContactPoint;
 		}
 
 		void Init(uint32 max_constraints);
@@ -163,11 +168,20 @@ namespace vx {
 				std::memset(mConstraints, 0, mNumConstraints * sizeof(ContactConstraint));
 			mNumConstraints = 0;
 
+			if (mWriteManifoldCacheIdx > 0)
+				std::memset(mStepWriteManifoldCache, 0, mWriteManifoldCacheIdx * sizeof(CachedManifold));
+			mWriteManifoldCacheIdx = 0;
+
 			mStats.StepReset();
 		}
 
 		void SetupContactConstraint(const ContactManifold& manifold, const struct CollisionContext& ctx);
+
+
+		
 		void SetupContactConstraint2(const ContactManifold& manifold, const struct CollisionContext& ctx);
+		/// attempting to write a thread safe version for multi threading
+		void SetupContactConstraint2Mt(const ContactManifold& manifold, const struct CollisionContext& ctx);
 		void WarmStart();
 
 
@@ -438,7 +452,19 @@ namespace vx {
 		//std::array<ContactConstraint, kMaxConstraints> mConstraints;
 		ContactConstraint* mConstraints = nullptr;
 		//std::array<ContactConstraint, kMaxConstraints> mCacheConstraints;
-		uint32 mNumConstraints = 0; ///current frame constraint to solve 
+		//uint32 mNumConstraints = 0; ///current frame constraint to solve 
+		std::atomic<uint32> mNumConstraints;
+
+		std::atomic<uint32> mCacheContactPointHead = 0;
+		uint32 mMaxCacheContactPoints = 1024;
+		/// at start tail is equal to the total count available 
+		/// or maybe half of total to make as its double linear buffer
+		/// 
+		/// after first step head = last + 1 from last step (i.e current location) 
+		/// tail end or start of last step (i.e last step/read manifold cache)
+		std::atomic<uint32> mCacheContactPointTail = mMaxCacheContactPoints;
+		CacheContactPoint* mCacheContactPoint = nullptr;
+
 
 		ECombineMode mCombinedFrictionMode = ECombineMode::SquareRoot;
 		ECombineMode mCombinedRestitutionMode = ECombineMode::Maximum;
@@ -482,6 +508,9 @@ namespace vx {
 			CachedManifold(BodyID id0, BodyID id1, uint32 num_contact) : 
 				mBody0(id0), mBody1(id1), mNumContacts(num_contact){ }
 
+
+			BodyPair CreatePairKey() const { return BodyPair::Create(mBody0, mBody1); }
+
 			BodyID GetBodyA() const { return mBody0; }
 			BodyID GetBodyB() const { return mBody1; }
 
@@ -489,7 +518,22 @@ namespace vx {
 
 			Float3 Normal() const { return mNormal; }
 
-			CacheContactPoint* ContactPointPtr() { return mContactPoints.data(); }
+			CacheContactPoint* ContactPointPtr() 
+			{ 
+#if TEST_CONTACT_CONSTRAINT_MT
+				return mContactPoints;
+#else
+				return mContactPoints.data(); 
+#endif // TEST_CONTACT_CONSTRAINT_MT
+
+			}
+
+			void SetContactPointPtr(CacheContactPoint* head)
+			{
+#if TEST_CONTACT_CONSTRAINT_MT
+				mContactPoints = head;
+#endif // TEST_CONTACT_CONSTRAINT_MT
+			}
 
 			Float3 mNormal;
 
@@ -499,15 +543,26 @@ namespace vx {
 			BodyID mBody1;
 			uint32 mNumContacts = 0;
 
-		
+#if TEST_CONTACT_CONSTRAINT_MT
+			CacheContactPoint* mContactPoints = nullptr;
+#else
 			//point to first cache point, then end = mContactPoints + mNumContact
 			std::array<CacheContactPoint, 4> mContactPoints{};
+#endif // TEST_CONTACT_CONSTRAINT_MT
+
 		};
 
 		using ManifoldMap = HashMap<BodyPair, CachedManifold>;
 		using ManifoldMapEntry = ManifoldMap::Entry;
 		ManifoldMap mManifoldCache[2];
 		uint32 mManifoldWriteCache = 0;
+
+		/// index head for writing into write manifold cache
+		/// before tranferring into hash map 
+		std::atomic<uint32> mWriteManifoldCacheIdx = 0;
+		CachedManifold* mStepWriteManifoldCache = nullptr;
+
+		CachedManifold* CreateNewManifold(const BodyPair key, BodyID a_id, BodyID b_id, uint32 num_contact_pts);
 
 	public:
 
@@ -542,6 +597,15 @@ namespace vx {
 		uint32 NumContactConstraints() const { return mNumConstraints; }
 
 
+		void FinaliseWriteManifoldCache()
+		{
+			for (CachedManifold* manifold_cache = mStepWriteManifoldCache;
+				manifold_cache < (mStepWriteManifoldCache + mWriteManifoldCacheIdx); manifold_cache++)
+			{
+				BodyPair key = manifold_cache->CreatePairKey();
+				mManifoldCache[mManifoldWriteCache].Emplace(key, std::move(*manifold_cache));
+			}
+		}
 		//bool ValidateManifoldContactTransfer(CachedManifold& manifold, const BodyManager& body_manager)
 		//{
 		//	auto& body0 = body_manager.GetBody(manifold.GetBodyA());

@@ -108,6 +108,12 @@ namespace vx {
 			return e;
 		}
 
+		template<class... Args>
+		VX_INLINE void Emplace(const _Key& key, Args&&... args)
+		{
+			mMap.emplace(key, std::forward<Args>(args)...);
+		}
+
 	private:
 		MapType mMap;
 	};

@@ -217,5 +217,9 @@ namespace vx
 		size_t testAllocationSize;
 	public:
 		class ScratchAllocator* mScratchAllocator = nullptr;
+
+		class TaskCoordinator* mTaskCoordinator = nullptr;
+		std::vector<class Task*> mProcessPairAndTrySetupContactConstraintTasks;
+		class IslandCoordinator* mIslandCoordinator = nullptr;
 	};
 }

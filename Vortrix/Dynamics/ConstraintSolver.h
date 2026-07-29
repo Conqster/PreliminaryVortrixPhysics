@@ -12,6 +12,10 @@
 
 #include "ConstraintSolverRow.h"
 
+#include <mutex>
+
+#include "Vortrix/Core/ScratchAllocator.h"
+
 namespace vx {
 
 
@@ -39,7 +43,7 @@ namespace vx {
 		std::vector <SolverBody> mBodies;
 		std::vector<SolverBodyIndex> mBodyToSolverBody;
 		
-
+		std::mutex mSolverBodyMutex;
 	public:
 
 		void Init(const BodyManager& body_manager);

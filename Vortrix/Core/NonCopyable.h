@@ -1,7 +1,6 @@
 #pragma once
 
-namespace vx
-{
+namespace vx{
 	class NonCopyable
 	{
 	public:

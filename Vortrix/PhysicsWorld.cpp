@@ -33,10 +33,10 @@
 #include "Dynamics/ConstraintCoordinator.h"
 #include "Dynamics/ConstraintSolver.h"
 
-
-#include "Dynamics/Constraints/PointConstraint.h"
-
 #include "Core/ScratchAllocator.h"
+
+#include "Core/TaskCoordinator.h"
+#include "Dynamics/IslandCoordinator.h"
 
 
 namespace vx
@@ -47,6 +47,7 @@ namespace vx
 	PhysicsWorld::PhysicsWorld(const PhysicsWorldSettings& in_settings) :
 		mSettings(in_settings)
 	{
+		mContext.simFirstStep = true;
 	}
 
 	PhysicsWorld::~PhysicsWorld()
@@ -58,8 +59,13 @@ namespace vx
 
 		delete mConstraintSolver;
 
+		delete mIslandCoordinator;
+
 		mScratchAllocator->Free(testAllocation, testAllocationSize);
 		delete mScratchAllocator;
+
+		mTaskCoordinator->Quit();
+		delete mTaskCoordinator;
 	}
 
 	void PhysicsWorld::CreateSimpleWorld(PhysicsWorld* io_world)
@@ -265,6 +271,14 @@ namespace vx
 			//sizeof(BroadphasePair) * max_body_pairs +
 			sizeof(Constraint*) * 250;
 		testAllocation = mScratchAllocator->Allocate(testAllocationSize);
+
+		int num_threads = 0;
+		num_threads = std::thread::hardware_concurrency() - 1;
+		mTaskCoordinator = new TaskCoordinatorMt();
+
+
+		mIslandCoordinator = new IslandCoordinator;
+		mIslandCoordinator->Init(mBodyManager.MaxBodies());
 	}
 
 	Body* PhysicsWorld::CreateBody(const BodySettings& body_setting)
@@ -303,14 +317,10 @@ namespace vx
 		mWorldQuery.SetDrawBroadphaseNodesWalked(mSettings.drawSettings.drawWalkedTreeQuery);
 
 
-		static bool first_sim_step = true;
 		/// this is to ensure that bodies are set to activation list 
 		/// later move into body manager as for manager to handle
-		if (first_sim_step)
-		{
+		if (mContext.simFirstStep)
 			UpdateBodiesActivationState(dt);
-			first_sim_step = false;
-		}
 
 
 		{
@@ -354,11 +364,110 @@ namespace vx
 		{
 			mSettings.collision, mHackDebugRenderer,
 			mSettings.drawSettings.drawContactConstraintSolverTBNs,
-			mFrameIdx, mBroadpairCount, mConstraintSolver
+			mFrameIdx, mBroadpairCount, mConstraintSolver,
+			mIslandCoordinator
 		};
 		//Narrowphase: collision detection & contact generations
 		
+		//mNarrowphaseQuery.ProcessPairs(mBroadphaseBuffer.data, mStepManifolds, mContactConstraintSolver, collision_ctx);
+
+
+		mIslandCoordinator->PrepareIslands((uint32)mBodyManager.GetBodies().size());
+
+#if TEST_CONTACT_CONSTRAINT_MT
+#define USE_MULTITHREAD 0
+#endif // TEST_CONTACT_CONSTRAINT_MT
+
+#if USE_MULTITHREAD
+		{
+			VX_PROFILE_SCOPE("Processing and contact constraint setup multithreading");
+			///multithreading
+			struct QuickPairProcessAndConstraintSetupContext
+			{
+				BroadphasePair* pairs;
+				NarrowphaseQuery& narrowphase_query;
+				ContactConstraintSolver& contact_solver;
+				const CollisionContext& collision_ctx;
+			};
+
+			QuickPairProcessAndConstraintSetupContext pair_process_and_constraint_setup_ctx =
+			{
+				mBroadphaseBuffer.data,
+				mNarrowphaseQuery,
+				mContactConstraintSolver,
+				collision_ctx
+			};
+
+
+			//mProcessPairAndTrySetupContactConstraintTasks.clear();
+
+			//for (BroadphasePair* bp = mBroadphaseBuffer.data,
+			//	*bp_end = mBroadphaseBuffer.data + collision_ctx.broadphasePairCount;
+			//	bp < bp_end; ++bp)
+			//{
+			//	/// create tasks 
+			//	mProcessPairAndTrySetupContactConstraintTasks.push_back(mTaskCoordinator->ConstructTask([body_a = (*bp).a, body_b = (*bp).b, ctx = &pair_process_and_constraint_setup_ctx]()
+			//		{
+			//			ctx->narrowphase_query.ProcessPairAndTrySetupContactConstraint(body_a, body_b, ctx->contact_solver, ctx->collision_ctx);
+			//		}, 0)); /// no dependancies
+			//}
+
+			constexpr uint32 k_pair_per_task = 32;
+
+			mTaskCoordinator->ParallelFor(
+				collision_ctx.broadphasePairCount,
+				k_pair_per_task,
+				///Range Task
+				{
+					&pair_process_and_constraint_setup_ctx,
+					[](void* user_data, uint32 begin, uint32 end)
+					{
+						auto& ctx = *static_cast<QuickPairProcessAndConstraintSetupContext*>(user_data);
+						for (uint32 i = begin; i < end; ++i)
+						{
+							auto& pair = ctx.pairs[i];
+
+							ctx.narrowphase_query.ProcessPairAndTrySetupContactConstraint(
+								pair.a,
+								pair.b,
+								ctx.contact_solver, ctx.collision_ctx);
+						}
+					}
+				});
+
+			/*for (uint32 i = 0; i < collision_ctx.broadphasePairCount; i += k_pair_per_task)
+			{
+				uint32 begin = i;
+				uint32 end = std::min(i + k_pair_per_task, collision_ctx.broadphasePairCount);
+
+				mTaskCoordinator->ConstructTask([=, ctx = &pair_process_and_constraint_setup_ctx]()
+					{
+						for (uint32 j = begin; j < end; ++j)
+						{
+							auto& pair = mBroadphaseBuffer.data[j];
+
+							ctx->narrowphase_query.ProcessPairAndTrySetupContactConstraint(
+								pair.a,
+								pair.b,
+								ctx->contact_solver, ctx->collision_ctx);
+						}
+					}, 0); /// no dependancies
+			}*/
+
+			//tasks to emplace 
+			//mTaskCoordinator->RemoveTasksDependency(mProcessPairAndTrySetupContactConstraintTasks.data(), mProcessPairAndTrySetupContactConstraintTasks.size());
+
+			mTaskCoordinator->WaitForTasks();
+		}
+#else
 		mNarrowphaseQuery.ProcessPairs(mBroadphaseBuffer.data, mStepManifolds, mContactConstraintSolver, collision_ctx);
+#endif // USE_MULTITHREAD
+
+#if TEST_CONTACT_CONSTRAINT_MT
+		mContactConstraintSolver.FinaliseWriteManifoldCache();
+#endif // TEST_CONTACT_CONSTRAINT_MT
+
+		mIslandCoordinator->FinaliseIslands(*mConstraintSolver, mActiveBodies, mNumActiveBodies, mBodyManager);
 
 		mScratchAllocator->Free(mBroadphaseBuffer.data, sizeof(BroadphasePair) * mBroadphaseBuffer.maxPairs);
 		mBroadphaseBuffer.data = nullptr;
@@ -490,7 +599,7 @@ namespace vx
 
 		
 
-
+		mContext.simFirstStep = false;
 		PhysicsWorld::mFrameIdx++;
 	}
 
@@ -619,6 +728,13 @@ namespace vx
 				c = shape_col_type[(int)it->GetShape()->GetType()];
 			else if (draw_settings.bodyColourMode == vx::EBodyColourMode::Phase)
 				c = GetBodySimphaseDebugColour(*it);
+			else if (draw_settings.bodyColourMode == vx::EBodyColourMode::IslandIdx)
+			{
+				if (it->islandIdx == 0xffffffff)
+					c = Colour(0.5f);
+				else
+					c = Colour::GetRandomColour(it->islandIdx);
+			}
 
 			//int shape_enum_idx = (int)(it->GetShape()->GetType());
 			///// a quick hack to get sphere shape to render with tex 
@@ -942,6 +1058,7 @@ namespace vx
 			{
 				VX_ASSERT_WARN(mNumActiveBodies < mMaxActiveBodies, "Reach max bodies limits");
 				if (mNumActiveBodies >= mMaxActiveBodies) continue;
+				body.activeIdx = mNumActiveBodies;
 				mActiveBodies[mNumActiveBodies++] = body.GetID();
 			}
 		}

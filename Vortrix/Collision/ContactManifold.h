@@ -23,17 +23,11 @@ namespace vx{
 	{
 		static constexpr int kMaxPoints = 4;
 
-		ContactManifold(Body* _a, Body* _b) :
+		ContactManifold(const Body* _a, const Body* _b) :
 			a(_a), b(_b), normal(Vec3::Up()),
 			mPoints({}), mPointCount(0) {}
 
 		~ContactManifold() = default;
-
-		Body* a = nullptr;
-		Body* b = nullptr;
-
-		Vec3 normal = Vec3::Up();
-
 
 		VX_INLINE int PointCount() const { return mPointCount; }
 
@@ -69,6 +63,12 @@ namespace vx{
 		}
 
 		VX_INLINE void Clear() { mPointCount = 0; }
+	private:
+		const Body* a = nullptr;
+		const Body* b = nullptr;
+
+	public:
+		Vec3 normal = Vec3::Up();
 	private:
 
 		std::array<ManifoldPoint, kMaxPoints> mPoints{};

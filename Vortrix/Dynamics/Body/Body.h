@@ -398,7 +398,13 @@ namespace vx
 		/////////////////////////////////////////////////////////////////////////
 		////////////////////////////////hack padding/////////////////////////////
 		EDynamicsDofs mAllowedDynamicsDof; //1 bytes	[31 bytes] 
-		char padding[1 + 4*3];								//1 bytes	[32 bytes] //later sort this out when sleep time is removed padding will reduce
+		//char padding[1 + 4*3];								//1 bytes	[32 bytes] //later sort this out when sleep time is removed padding will reduce
+
+		char padding[1 + 4*1];								//1 bytes	[32 bytes] //later sort this out when sleep time is removed padding will reduce
+		public:
+		uint32 islandIdx = 0xffffffff;
+		uint32 activeIdx = 0xffffffff;
+		private:
 		///World space linear velocity (m/s)
 		Vec3 mLinearVelocity = Vec3(0.0f);							//16 bytes	[48 bytes]
 		///World space angular velocity (rad/s)
@@ -432,4 +438,4 @@ namespace vx
 		friend class BodyManager;
 		friend EditorImGui;
 	};
-} //namespace VPHX
+} //namespace vx

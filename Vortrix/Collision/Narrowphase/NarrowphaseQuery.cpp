@@ -48,6 +48,42 @@ namespace vx {
 		mBodyManager = in_body_manager;
 	}
 
+	void NarrowphaseQuery::ProcessPairAndTrySetupContactConstraint(const Body* a, const Body* b, ContactConstraintSolver& contact_solver, const CollisionContext& ctx)
+	{
+		VX_PROFILE_FUNCTION();
+		BodySimStats& body_a_stat = mBodyManager->GetBodySimStats(*a);
+		BodySimStats& body_b_stat = mBodyManager->GetBodySimStats(*b);
+
+		body_a_stat.phase |= EBodySimphaseFlags::InNarrowphase;
+		body_b_stat.phase |= EBodySimphaseFlags::InNarrowphase;
+
+		if (a != nullptr && b != nullptr)
+		{
+			const auto& shape_a = a->GetShape();
+			const auto& shape_b = b->GetShape();
+			const auto& collision_fn = mDispatcher.Get(shape_a->GetType(), shape_b->GetType());
+
+			ContactManifold manifold{ a, b };
+
+			if (collision_fn(shape_a, a->GetPosition(), a->GetOrientation(),
+				shape_b, b->GetPosition(), b->GetOrientation(),
+				manifold))
+			{
+				//use opptunity to add to contact constaint
+				contact_solver.SetupContactConstraint(manifold, ctx);
+
+				//later move in collision fn when check if static
+				body_a_stat.phase |= EBodySimphaseFlags::IsColliding;
+				body_b_stat.phase |= EBodySimphaseFlags::IsColliding;
+
+				BodySimStats* colliding_static_stat = (b->IsStatic()) ? &body_a_stat : (a->IsStatic()) ? &body_b_stat : nullptr;
+
+				(colliding_static_stat != nullptr) ? (colliding_static_stat->phase |= EBodySimphaseFlags::IsTouchingStatic) : EBodySimphaseFlags::None;
+			}
+		}
+	}
+
+
 	void NarrowphaseQuery::ProcessPairs(BroadphasePair* in_pairs, std::vector<ContactManifold>& out_manifolds, ContactConstraintSolver& contact_solver, const CollisionContext& ctx)
 	{
 		VX_PROFILE_FUNCTION();
@@ -63,43 +99,46 @@ namespace vx {
 		for (BroadphasePair* bp = in_pairs, *bp_end = in_pairs+ctx.broadphasePairCount; 
 			bp < bp_end; ++bp)
 		{
-			Body* a = (*bp).a;
-			Body* b = (*bp).b;
 
-			BodySimStats& body_a_stat = mBodyManager->GetBodySimStats(*a); 
-			BodySimStats& body_b_stat = mBodyManager->GetBodySimStats(*b); 
+			ProcessPairAndTrySetupContactConstraint((*bp).a, (*bp).b, contact_solver, ctx);
 
-			body_a_stat.phase |= EBodySimphaseFlags::InNarrowphase;
-			body_b_stat.phase |= EBodySimphaseFlags::InNarrowphase;
-
-			if (a != nullptr && b != nullptr)
-			{
-				//Shape* shape_a = a->GetShape();
-
-				const auto& shape_a = a->GetShape();
-				const auto& shape_b = b->GetShape();
-				const auto& collision_fn = mDispatcher.Get(shape_a->GetType(), shape_b->GetType());
-
-				ContactManifold manifold{ (*bp).a, (*bp).b };
-				if (collision_fn(shape_a, a->GetPosition(), a->GetOrientation(),
-					shape_b, b->GetPosition(), b->GetOrientation(),
-					manifold))
-				{
-					//use opptunity to add to contact constaint
-					contact_solver.SetupContactConstraint(manifold, ctx);
-
-					//later move in collision fn when check if static
-					body_a_stat.phase|= EBodySimphaseFlags::IsColliding;
-					body_b_stat.phase|= EBodySimphaseFlags::IsColliding;
-
-					BodySimStats* colliding_static_stat = (b->IsStatic()) ? &body_a_stat : (a->IsStatic()) ? &body_b_stat : nullptr;
-
-					(colliding_static_stat != nullptr) ? (colliding_static_stat->phase |= EBodySimphaseFlags::IsTouchingStatic) : EBodySimphaseFlags::None;
-#if NEED_REMOVE
-					out_manifolds.push_back(manifold);
-#endif // NEED_REMOVE
-				}
-			}
+//			Body* a = (*bp).a;
+//			Body* b = (*bp).b;
+//
+//			BodySimStats& body_a_stat = mBodyManager->GetBodySimStats(*a); 
+//			BodySimStats& body_b_stat = mBodyManager->GetBodySimStats(*b); 
+//
+//			body_a_stat.phase |= EBodySimphaseFlags::InNarrowphase;
+//			body_b_stat.phase |= EBodySimphaseFlags::InNarrowphase;
+//
+//			if (a != nullptr && b != nullptr)
+//			{
+//				//Shape* shape_a = a->GetShape();
+//
+//				const auto& shape_a = a->GetShape();
+//				const auto& shape_b = b->GetShape();
+//				const auto& collision_fn = mDispatcher.Get(shape_a->GetType(), shape_b->GetType());
+//
+//				ContactManifold manifold{ (*bp).a, (*bp).b };
+//				if (collision_fn(shape_a, a->GetPosition(), a->GetOrientation(),
+//					shape_b, b->GetPosition(), b->GetOrientation(),
+//					manifold))
+//				{
+//					//use opptunity to add to contact constaint
+//					contact_solver.SetupContactConstraint(manifold, ctx);
+//
+//					//later move in collision fn when check if static
+//					body_a_stat.phase|= EBodySimphaseFlags::IsColliding;
+//					body_b_stat.phase|= EBodySimphaseFlags::IsColliding;
+//
+//					BodySimStats* colliding_static_stat = (b->IsStatic()) ? &body_a_stat : (a->IsStatic()) ? &body_b_stat : nullptr;
+//
+//					(colliding_static_stat != nullptr) ? (colliding_static_stat->phase |= EBodySimphaseFlags::IsTouchingStatic) : EBodySimphaseFlags::None;
+//#if NEED_REMOVE
+//					out_manifolds.push_back(manifold);
+//#endif // NEED_REMOVE
+//				}
+//			}
 		}
 
 		mStats.numContactPair = out_manifolds.size();

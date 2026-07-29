@@ -64,32 +64,4 @@ target_link_directories(${VX_TARGET_SAMPLE_EXE} PUBLIC
 					
 target_compile_definitions(${VX_TARGET_SAMPLE_EXE} PRIVATE
 					PROJECT_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
-					
-					
-if(USE_TRACY_PROFILER)
-
-	set(TRACY_ZIP_SRC "${CMAKE_CURRENT_SOURCE_DIR}/external/TracyProfiler.zip")
-	set(TRACY_TARGET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external")
-	
-	
-	if(NOT EXISTS "${TRACY_TARGET_DIR}/TracyProfiler")
-		message(STATUS "Extracting ${TRACY_ZIP_SRC}...")
-		
-		file(ARCHIVE_EXTRACT
-			INPUT "${TRACY_ZIP_SRC}"
-			DESTINATION "${TRACY_TARGET_DIR}"
-			)
-			
-	else()
-		message(STATUS "Folder already extracted, skipping.")
-	endif()
-	
-	# need to include TracyClient.cpp
-	target_sources(${VX_TARGET_SAMPLE_EXE} PRIVATE ${TRACY_TARGET_DIR}/TracyProfiler/TracyClient.cpp)
-	source_group(TREE "${TRACY_TARGET_DIR}/TracyProfiler" PREFIX "TracyClient" FILES "${TRACY_TARGET_DIR}/TracyProfiler/TracyClient.cpp")
-	
-	# unzip trace profiler folder
-	target_compile_definitions(${VX_TARGET_SAMPLE_EXE} PUBLIC VX_ENABLE_TRACY)
-	target_compile_definitions(${VX_TARGET_SAMPLE_EXE} PUBLIC TRACY_ENABLE)
-endif()
 

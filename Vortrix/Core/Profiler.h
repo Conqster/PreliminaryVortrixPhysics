@@ -15,10 +15,8 @@
 #include <unordered_map>
 
 #if defined(TRACY_ENABLE)
-#define VX_USE_TRACY 1
-
 #if VX_USE_TRACY
-#include "TracyProfiler/tracy/Tracy.hpp"
+#include "external/TracyProfiler/tracy/Tracy.hpp"
 #endif // VX_USE_TRACY
 
 #endif // defined(TRACY_ENABLE)
@@ -219,71 +217,79 @@ namespace vx
 
 		//#define CORE_FUNCTION_NAME __FUNCTION__
 		//argument scope name, 2nd arg memory address (float) to write scope duration
-#define VX_SELECT_2(arg1, arg2, TARGET_MACRO, ...) TARGET_MACRO
-
-#define VX_PROFILER_FUNCTION_NO_PARAM(name, mode) \
-	Profiler::TimeTaken scope_time(name, mode)
-
-#define VX_PROFILER_FUNCTION_WITH_PARAM(name, mode, ...) \
-	Profiler::TimeTaken scope_time(name, __VA_ARGS__, mode)
-
-
-
-#if VX_USE_TRACY
-
-#define VX_MARK_NEW_FRAME FrameMark
-
-#define VX_PROFILE_SCOPE(name, ...) ZoneScopedN(name)
-
-#define VX_PROFILE_FUNCTION(...) ZoneScoped
-
-#define VX_VARIABLE_PROFILE_SCOPE(name, ...) ZoneScopedN(name)
-
-#define VX_VARIABLE_PROFILE_FUNCTION(...) ZoneScoped
+	#define VX_SELECT_2(arg1, arg2, TARGET_MACRO, ...) TARGET_MACRO
+	
+	#define VX_PROFILER_FUNCTION_NO_PARAM(name, mode) \
+		Profiler::TimeTaken scope_time(name, mode)
+	
+	#define VX_PROFILER_FUNCTION_WITH_PARAM(name, mode, ...) \
+		Profiler::TimeTaken scope_time(name, __VA_ARGS__, mode)
+	
+	
+	
+	#if VX_USE_TRACY
+	
+		#define VX_MARK_NEW_FRAME FrameMark
+		
+		#define VX_PROFILE_SCOPE(name, ...) ZoneScopedN(name)
+		
+		#define VX_PROFILE_FUNCTION(...) ZoneScoped
+		
+		#define VX_VARIABLE_PROFILE_SCOPE(name, ...) ZoneScopedN(name)
+		
+		#define VX_VARIABLE_PROFILE_FUNCTION(...) ZoneScoped
+	
+	#else
+	
+		#define VX_MARK_NEW_FRAME
+		
+		#define VX_PROFILE_SCOPE(name, ...) \
+			VX_SELECT_2(name, VX_PROFILER_FUNCTION_NO_PARAM, VX_PROFILER_FUNCTION_WITH_PARAM) \
+			(name, Profiler::EProfileMode::Deterministic, __VA_ARGS__) 
+		
+		
+		#define VX_PROFILE_FUNCTION(...) \
+			EXPAND_MACRO(VX_SELECT_2(__FUNCTION__, VX_PROFILER_FUNCTION_NO_PARAM, VX_PROFILER_FUNCTION_WITH_PARAM) \
+			(__FUNCTION__, Profiler::EProfileMode::Deterministic, __VA_ARGS__) )
+		
+		
+		
+		#define VX_VARIABLE_PROFILE_SCOPE(name, ...) \
+			VX_SELECT_2(name, VX_PROFILER_FUNCTION_NO_PARAM, VX_PROFILER_FUNCTION_WITH_PARAM) \
+				(name, Profiler::EProfileMode::VariableRate, __VA_ARGS__)
+		
+		#define VX_VARIABLE_PROFILE_FUNCTION(...) \
+			VX_SELECT_2(__FUNCTION__, VX_PROFILER_FUNCTION_NO_PARAM, VX_PROFILER_FUNCTION_WITH_PARAM) \
+				(__FUNCTION__, Profiler::EProfileMode::VariableRate, __VA_ARGS__)
+	
+	#endif // VX_USE_TRACY
+	
+	#define SET_VX_PROFILER_GLOBAL_SAMPLE_RATE(rate) Profiler::TimeTaken::SetDefaultGlobalSampleRate(rate)
+	#define SET_VX_PROFILER_SAMPLE_INTERVAL_SECONDS(rate) Profiler::TimeTaken::SetSampleIntervalSeconds(rate)
+	#define SET_VX_PROFILER_FILTER(filter) Profiler::TimeTaken::SetProfileFilter(filter)
+	#define SET_VX_PROFILER_ALLOW_CONSOLE_LOG(value) Profiler::TimeTaken::SetAllowConsoleLog(value)
+	
+	#define VX_PROFILER_DETERMINISTIC Profiler::EProfileMode::Deterministic
+	#define VX_PROFILER_VARIABLERATE Profiler::EProfileMode::VariableRate
 
 #else
 
-#define VX_MARK_NEW_FRAME
+	#define VX_MARK_NEW_FRAME
 
-#define VX_PROFILE_SCOPE(name, ...) \
-	VX_SELECT_2(name, VX_PROFILER_FUNCTION_NO_PARAM, VX_PROFILER_FUNCTION_WITH_PARAM) \
-	(name, Profiler::EProfileMode::Deterministic, __VA_ARGS__) 
+	#define VX_PROFILE_SCOPE(...) ((void)0)
+	#define VX_PROFILE_FUNCTION(...) ((void)0)
 
+	#define VX_VARIABLE_PROFILE_FUNCTION(...) ((void)0)
+	#define VX_VARIABLE_PROFILE_SCOPE(...) 
 
-#define VX_PROFILE_FUNCTION(...) \
-	EXPAND_MACRO(VX_SELECT_2(__FUNCTION__, VX_PROFILER_FUNCTION_NO_PARAM, VX_PROFILER_FUNCTION_WITH_PARAM) \
-	(__FUNCTION__, Profiler::EProfileMode::Deterministic, __VA_ARGS__) )
-
-
-
-#define VX_VARIABLE_PROFILE_SCOPE(name, ...) \
-	VX_SELECT_2(name, VX_PROFILER_FUNCTION_NO_PARAM, VX_PROFILER_FUNCTION_WITH_PARAM) \
-		(name, Profiler::EProfileMode::VariableRate, __VA_ARGS__)
-
-#define VX_VARIABLE_PROFILE_FUNCTION(...) \
-	VX_SELECT_2(__FUNCTION__, VX_PROFILER_FUNCTION_NO_PARAM, VX_PROFILER_FUNCTION_WITH_PARAM) \
-		(__FUNCTION__, Profiler::EProfileMode::VariableRate, __VA_ARGS__)
-
-#endif // VX_USE_TRACY
-
-#define SET_VX_PROFILER_GLOBAL_SAMPLE_RATE(rate) Profiler::TimeTaken::SetDefaultGlobalSampleRate(rate)
-#define SET_VX_PROFILER_SAMPLE_INTERVAL_SECONDS(rate) Profiler::TimeTaken::SetSampleIntervalSeconds(rate)
-#define SET_VX_PROFILER_FILTER(filter) Profiler::TimeTaken::SetProfileFilter(filter)
-#define SET_VX_PROFILER_ALLOW_CONSOLE_LOG(value) Profiler::TimeTaken::SetAllowConsoleLog(value)
-
-#define VX_PROFILER_DETERMINISTIC Profiler::EProfileMode::Deterministic
-#define VX_PROFILER_VARIABLERATE Profiler::EProfileMode::VariableRate
-#else
-#define VX_PROFILE_SCOPE(...) ((void)0)
-#define VX_PROFILE_FUNCTION(...) ((void)0)
-#define PROFILE_FUNCTION_SAMPLE(...) ((void)0)
-#define SET_VX_PROFILER_GLOBAL_SAMPLE_RATE(rate) ((void)0)
-#define SET_VX_PROFILER_SAMPLE_INTERVAL_SECONDS(rate) ((void)0)
-#define SET_VX_PROFILER_FILTER(filter) ((void)0)
-#define SET_VX_PROFILER_ALLOW_CONSOLE_LOG(value) ((void)0)
-
-#define VX_PROFILER_DETERMINISTIC 0
-#define VX_PROFILER_VARIABLERATE 0
+	#define PROFILE_FUNCTION_SAMPLE(...) ((void)0)
+	#define SET_VX_PROFILER_GLOBAL_SAMPLE_RATE(rate) ((void)0)
+	#define SET_VX_PROFILER_SAMPLE_INTERVAL_SECONDS(rate) ((void)0)
+	#define SET_VX_PROFILER_FILTER(filter) ((void)0)
+	#define SET_VX_PROFILER_ALLOW_CONSOLE_LOG(value) ((void)0)
+	
+	#define VX_PROFILER_DETERMINISTIC 0
+	#define VX_PROFILER_VARIABLERATE 0
 #endif // VX_ENABLE_PROFILING
 	} //Profiler namespace
 } //vx namespace

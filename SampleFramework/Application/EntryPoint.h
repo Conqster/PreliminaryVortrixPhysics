@@ -39,6 +39,7 @@ int main(int argc, char** argv)
 	app_spec.windowSize[1] = 1080;
 	app_spec.windowPos[0] = 0;
 	app_spec.windowPos[1] = 0;
+	app_spec.centralisedWindow = false;
 	///Parse command line parameter
 	///Learning about "int main(int argc, char** argv)"
 	for (int arg_idx = 0; arg_idx < argc; ++arg_idx)
@@ -84,6 +85,12 @@ int main(int argc, char** argv)
 
 		if (strncmp(arg, "--disable_gfx_bindless", 23) == 0)
 			app_spec.disableBindlessSupport = true;
+
+		if (strncmp(arg, "--centre_screen", 16) == 0)
+		{
+			VX_LOG_WARN("Enable Centered Screen");
+			app_spec.centralisedWindow = true;
+		}
 	}
 
 	auto app = CreateApplication(app_spec);

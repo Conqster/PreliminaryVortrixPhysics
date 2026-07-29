@@ -53,6 +53,7 @@
 
 #include "Vortrix/Core/ScratchAllocator.h"
 
+#include "Vortrix/Dynamics/IslandCoordinator.h"
 
 
 Application* CreateApplication(const ApplicationSpecification& app_spec)
@@ -158,6 +159,7 @@ Application::Application(const ApplicationSpecification& app_spec)
 	wind_spec.windowPos[0] = app_spec.windowPos[0];
 	wind_spec.windowPos[1] = app_spec.windowPos[1];
 	wind_spec.disableBindlessSupport = app_spec.disableBindlessSupport;
+	wind_spec.centerWindow = app_spec.centralisedWindow;
 
 
 	ImageData img_data;
@@ -280,7 +282,7 @@ void Application::Run()
 
 		/// Event handling
 		{
-			VX_VARIABLE_PROFILE_SCOPE("Poll and Handling Events")
+			VX_VARIABLE_PROFILE_SCOPE("Poll and Handling Events");
 			if (mPtrInputEventHandle)
 				mPtrInputEventHandle->FlushFrameInputs();
 			mWindow.PollEvents();
@@ -1522,6 +1524,24 @@ void Application::PhysicsSettingItemOverlays()
 	if (!mPhysicsWorld)
 		return;
 
+	if (ImGui::Begin("Island Coordinator"))
+	{
+		auto& islands = mPhysicsWorld->mIslandCoordinator->islands;
+		for (uint32 i = 0; i < islands.size(); ++i)
+		{
+			vx::StackString txt("island ");
+			txt << i << ": ";
+			auto& _island = islands[i];
+			for (auto& idx : _island.idx)
+				txt << idx << ",";
+
+			ImGui::Text("%s", txt.Data());
+
+			txt.Clear();
+		}
+	}
+	ImGui::End();
+
 	///quick testing other window is get crowded 
 	auto Contact_Solver_Win = [&](bool* p_open)
 	{
@@ -1802,6 +1822,17 @@ void Application::PhysicsSettingItemOverlays()
 		imgui_colour_edit("Neural Collision", draw_settings.neuralPhaseColour);
 		imgui_colour_edit("Linear Velocity Draw Colour", draw_settings.bodyLinearVelocityCol);
 		imgui_colour_edit("Angular Velocity Draw Colour", draw_settings.bodyAngularVelocityCol);
+
+
+		ImGui::SeparatorText("Random Colour");
+		for(uint32 i = 0; i < 32; ++i)
+		{
+			//vx::StackString<16> text("colour ");
+			//text << i;
+			imgui_colour_edit((vx::StackString<16>("colour ") << i).Data(), vx::Colour::GetRandomColour(i));
+		}
+		
+
 		ImGui::TreePop();
 	}
 }

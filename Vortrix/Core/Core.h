@@ -11,10 +11,19 @@
 #endif
 
 #define VX_DEBUG_DRAW 1
-#define VX_PROFILING 1
+#define VX_PROFILING 0
+
+#if VX_PROFILING
+	#if defined(TRACY_ENABLE)
+		#define VX_USE_TRACY 1
+	#endif // defined(TRACY_ENABLE)
+#endif // VX_PROFILING
 
 //move
 #define PROFILE_MEM_ALLOC 0
+
+
+#define TEST_CONTACT_CONSTRAINT_MT 0
 
 
 #define VX_STRINGIFY(x) #x
@@ -113,7 +122,6 @@
 #define VX_STACK_ALLOC(n)		alloca(n)
 
 
-
 ///  a lot i do not know, about compiler warning 
 /// could not use flags /Wall /WX
 /// as it break when treating all warnings as Error 
@@ -201,6 +209,43 @@ namespace vx
 	{
 		return static_cast<double>(bytes) / (1024 * 1024);
 	}
+
+
+
+	template<typename T>
+	constexpr T WrapPowerof2(const T& value, const T& end) { return value & end; }
+
+	template<typename T>
+	constexpr bool IsPowerof2(T value) { return value > 0 && (value & (value - 1)) == 0; }
+
+	/// rounding about the power of 2 
+	/// See https://graphics.stanford.edu/%7Eseander/bithacks.html#RoundUpPowerOf2
+	/// https://codeforces.com/blog/entry/138850
+	template<typename T>
+	constexpr T RoundUpPowerof2(T value) 
+	{ 
+		value--;
+		value |= value >> 1;
+		value |= value >> 2;
+		value |= value >> 4;
+		value |= value >> 8;
+		value |= value >> 16;
+		return ++value;
+	}
+	/// rounding about the power of 2 
+	/// See https://graphics.stanford.edu/%7Eseander/bithacks.html#RoundUpPowerOf2
+	/// https://codeforces.com/blog/entry/138850
+	template<typename T>
+	constexpr T RoundDownPowerof2(T value)
+	{
+		value |= value >> 1;
+		value |= value >> 2;
+		value |= value >> 4;
+		value |= value >> 8;
+		value |= value >> 16;
+		return (value >> 1) + 1;
+	}
+
 
 	//template<typename T>
 	//inline constexpr T Clamp(T value, T min_val, T max_val)  {  return std::min(std::max(value, min_val), max_val); }

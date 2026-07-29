@@ -14,5 +14,6 @@ namespace vx {
 
 		//might become island builder/coordinator
 		class ConstraintSolver* constraintSolver = nullptr;
+		class IslandCoordinator* islandCoord = nullptr;
 	};
 }
