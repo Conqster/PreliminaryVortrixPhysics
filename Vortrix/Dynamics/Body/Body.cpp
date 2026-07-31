@@ -202,32 +202,30 @@ namespace vx
 		VX_ASSERT(&b1 != &b0, "b0 & b1 are of the same object should not try to collide!!!.");
 
 
-		const bool b0_can_move = b0.IsDynamic() && b0.IsAwake();
-		const bool b1_can_move = b1.IsDynamic() && b1.IsAwake();
+		//const bool b0_can_move = b0.IsDynamic() && b0.IsAwake();
+		//const bool b1_can_move = b1.IsDynamic() && b1.IsAwake();
 
-		if (!b0_can_move && !b1_can_move)
-			return false;
-
-		return true;
-
-
-		//if (!b0.IsDynamic() && !b1.IsDynamic())
-		//	return false;
-
-		//if (!b0.IsDynamic() || (b0.IsDynamic() && b0.IsSleeping()))
-		//	return false;
-
-
-		///// bodies can't collide if below 
-		///// 1. both bodies are dynamic but sleeping
-		///// 2. b0 dynamic and sleeping but b1 is static 
-		///// 3. b1 dynamic and sleeping but b0 is static
-		//if (b0.IsDynamic() && b0.IsSleeping() && b1.IsDynamic() && b1.IsSleeping() ||
-		//	(b0.IsDynamic() && b0.IsSleeping() && !b1.IsDynamic()) ||
-		//	(b1.IsDynamic() && b1.IsSleeping() && !b0.IsDynamic()))
+		//if (!b0_can_move && !b1_can_move)
 		//	return false;
 
 		//return true;
+
+		/// one of the bodies needs to be dynamic
+		if (!b0.IsDynamic() && !b1.IsDynamic()) return false;
+
+		const bool b0_dyn_active = b0.IsDynamic() && b0.IsAwake();
+		const bool b1_dyn_active = b1.IsDynamic() && b1.IsAwake();
+
+		/// at least one of the bodies need to be active
+		if (b0_dyn_active || b1_dyn_active)
+			return true;
+
+		/// a body is active while the other is inactive(static nondynamic/dynamic and sleeping)
+		const bool b0_inactive = !b0.IsDynamic() || (b0.IsDynamic() && b0.IsSleeping());
+		const bool b1_inactive = !b1.IsDynamic() || (b1.IsDynamic() && b1.IsSleeping());
+
+		//one of the bodies needs to be able to simulable and active 
+		return ((b0_dyn_active && b1_inactive) || (b1_dyn_active && b0_inactive));
 	}
 
 

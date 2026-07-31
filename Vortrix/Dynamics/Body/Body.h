@@ -205,15 +205,27 @@ namespace vx
 
 
 
+		/// Static bodies is not allowed to go to sleep 
+		/// for optimisation 
+		/// Broad refits dynamic bodies node when aawake
+		VX_INLINE bool IsAwake() const 
+		{
+			/// static is always awkae
+			///return (mMotionType != EMotionType::Dynamic) || mAwake;
+			/// 
+			/// for now let just returen mAwake as static bodies are forced to not awake 
+			/// on creation 
+			return mAwake;
+		}
+		/// Static bodies is not allowed to go to sleep 
+		/// for optimisation 
+		/// Broad refits dynamic bodies node when aawake
+		VX_INLINE bool IsSleeping() const 
+		{ 
+			//return (mMotionType == EMotionType::Dynamic) && !mAwake;
+			return !mAwake;
+		}
 
-		/// Static bodies is not allowed to go to sleep 
-		/// for optimisation 
-		/// Broad refits dynamic bodies node when aawake
-		bool IsSleeping() const { return !mAwake; }
-		/// Static bodies is not allowed to go to sleep 
-		/// for optimisation 
-		/// Broad refits dynamic bodies node when aawake
-		bool IsAwake() const { return mAwake; }
 		///to participate in simulation id needs to be valid
 		bool IsIDValid() const { return mID.IsValid(); }
 		float GetInverseMass() const { return mInverseMass; }
@@ -249,10 +261,11 @@ namespace vx
 		/// hack for capsule as most shapes like sphere as a unified size on xyz similar to unit box
 		/// but capsule is more close to a compound shape were y is usually twice xz (0.5, 1.0, 0.5)
 	
-		void WakeUp()
+
+		void WakeUp(bool reset_timer = true)
 		{
 			mAwake = (mMotionType != EMotionType::Static) ? true : false;
-			mSleepTimer = 0.0f;
+			(reset_timer) ? mSleepTimer = 0.0f : (void)0;
 		}
 		void WakeUp(const Vec3& jolt)
 		{
@@ -402,8 +415,9 @@ namespace vx
 
 		char padding[1 + 4*1];								//1 bytes	[32 bytes] //later sort this out when sleep time is removed padding will reduce
 		public:
-		uint32 islandIdx = 0xffffffff;
-		uint32 activeIdx = 0xffffffff;
+		static constexpr uint32 kInvalidActiveIdx = 0xffffffff;
+		uint32 islandIdx = kInvalidActiveIdx;
+		uint32 activeIdx = kInvalidActiveIdx;
 		private:
 		///World space linear velocity (m/s)
 		Vec3 mLinearVelocity = Vec3(0.0f);							//16 bytes	[48 bytes]

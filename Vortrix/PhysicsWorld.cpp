@@ -281,15 +281,26 @@ namespace vx
 		mIslandCoordinator->Init(mBodyManager.MaxBodies());
 	}
 
-	Body* PhysicsWorld::CreateBody(const BodySettings& body_setting)
+	Body* PhysicsWorld::CreateBody(const BodySettings& body_setting, bool activate_body)
 	{
 		const BodyID body_id = mBodyManager.AddBody(body_setting);
-		if(body_id.IsValid() && body_setting.inBroadphase)
+		
+		if (!body_id.IsValid())
+			return nullptr;
+
+		if (body_setting.inBroadphase)
 		{
 			VX_ASSERT(mBroadphase);
 			mBroadphase->InsertBody(&mBodyManager.GetBody(body_id));
+
+			if (activate_body && body_setting.motionType != EMotionType::Static)
+				ActivateBodies(&body_id, 1);
 		}
-		return (body_id.IsValid()) ? &mBodyManager.GetBody(body_id) : nullptr;
+		else
+			VX_ASSERT(!activate_body, "To activate Body has to participate in broadphase");
+
+
+		return &mBodyManager.GetBody(body_id);
 	}
 
 	void PhysicsWorld::RemoveBody(const BodyID& id)
@@ -365,7 +376,7 @@ namespace vx
 			mSettings.collision, mHackDebugRenderer,
 			mSettings.drawSettings.drawContactConstraintSolverTBNs,
 			mFrameIdx, mBroadpairCount, mConstraintSolver,
-			mIslandCoordinator
+			mIslandCoordinator, this
 		};
 		//Narrowphase: collision detection & contact generations
 		
@@ -542,9 +553,14 @@ namespace vx
 				mContactConstraintSolver.ContactConstraintsPtr(), mContactConstraintSolver.NumContactConstraints());
 		}
 
-
+#if USE_ISLAND_COORD
+		UpdateBodiesIslandActivationState(dt);
+#else
 		UpdateBodiesActivationState(dt);
 		//mBodyManager.UpdateBodiesActiveState(0.0f, mSettings.sleeping); //prevent extra time update
+		//mBodyManager.UpdateBodiesActiveState(dt, mSettings.sleeping); //prevent extra time update
+#endif // USE_ISLAND_COORD
+
 
 
 
@@ -730,8 +746,10 @@ namespace vx
 				c = GetBodySimphaseDebugColour(*it);
 			else if (draw_settings.bodyColourMode == vx::EBodyColourMode::IslandIdx)
 			{
-				if (it->islandIdx == 0xffffffff)
+				if (it->IsStatic())
 					c = Colour(0.5f);
+				else if (it->islandIdx == 0xffffffff)
+					c = draw_settings.sleepingColour;
 				else
 					c = Colour::GetRandomColour(it->islandIdx);
 			}
@@ -1047,6 +1065,8 @@ namespace vx
 		mNumActiveBodies = 0;
 		for (auto& body : GetBodies())
 		{
+			body.activeIdx = 0xffffffff;
+
 			//quick hack 
 			if (!body.GetID().IsValid())
 				continue;
@@ -1061,6 +1081,98 @@ namespace vx
 				body.activeIdx = mNumActiveBodies;
 				mActiveBodies[mNumActiveBodies++] = body.GetID();
 			}
+			else
+				body.islandIdx = 0xffffffff;
+		}
+	}
+
+	void PhysicsWorld::UpdateBodiesIslandActivationState(float dt)
+	{
+		/// citeria to put bodies to sleep 
+		/// for island to sleep all its bodies need to meet this citeria 
+		/// 
+		
+		/// i.e if a body in island is a wake all is awake 
+
+		///or maybe 2 loops 
+
+		/// 1. check island state
+		/// 2. update bodies in islands
+		/// 
+		auto& islands = mIslandCoordinator->islands;
+
+		auto Get_BodyID_ActivationIdx = [active_list = mActiveBodies](uint32 idx)
+			{
+				return active_list[idx];
+			};
+
+		std::vector<uint32> islands_to_sleep;
+		std::vector<uint32> islands_awake;
+		for (uint32 i = 0; i < islands.size(); ++i)
+		{
+			auto& island = islands[i];
+
+			bool put_to_sleep = true;
+			for (auto& body_id : island.bodyIds)
+			{
+				//BodyID id = Get_BodyID_ActivationIdx(body_active_idx);
+
+				Body& body = mBodyManager.GetBody(body_id);
+				//if (mSettings.sleeping.enable)
+				
+				body.UpdateSleepState(dt, mSettings.sleeping);
+
+				if (body.IsAwake())
+				{
+					put_to_sleep = false;
+					break;
+				}
+			}
+
+			if (put_to_sleep)
+				islands_to_sleep.push_back(i);
+			else
+				islands_awake.push_back(i);
+
+		}
+
+
+		//// haxk for bodies in the awake list force wake up 
+		/// as some bodies are trying to sleep 
+		for (auto& island_idx : islands_awake)
+		{
+			auto& island = islands[island_idx];
+			for (auto& body_id : island.bodyIds)
+			{
+				//BodyID id = Get_BodyID_ActivationIdx(body_active_idx);
+				Body& body = mBodyManager.GetBody(body_id);
+				body.WakeUp(false);
+			}
+		}
+
+
+		/// re-add bodies to active list
+		mNumActiveBodies = 0;
+		for (auto& body : GetBodies())
+		{
+			//quick hack 
+			if (!body.GetID().IsValid())
+				continue;
+
+			if (body.IsAwake())
+			{
+				VX_ASSERT_WARN(mNumActiveBodies < mMaxActiveBodies, "Reach max bodies limits");
+				if (mNumActiveBodies >= mMaxActiveBodies) continue;
+				body.activeIdx = mNumActiveBodies;
+				mActiveBodies[mNumActiveBodies++] = body.GetID();
+			}
+			else
+			{
+				/// not awake invalidate idxs
+				body.activeIdx = 0xffffffff;
+				body.islandIdx = 0xffffffff;
+			}
+
 		}
 	}
 

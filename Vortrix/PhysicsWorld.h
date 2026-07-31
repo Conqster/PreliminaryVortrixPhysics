@@ -19,6 +19,8 @@
 
 #include "Collision/Narrowphase/NarrowphaseQuery.h"
 
+#include <mutex>
+
 ////Things to do 
 /// Implement 
 ///		MotionDynamics
@@ -108,7 +110,7 @@ namespace vx
 		static void GenerateWorldDefaultConfig(int& o_max_bodies, int& o_max_body_pairs, int& o_max_contact_constraint);
 		void Init(float max_bodies, float max_body_pairs, float max_contact_constraint);
 
-		Body* CreateBody(const BodySettings& body_setting);
+		Body* CreateBody(const BodySettings& body_setting, bool activate_body = true);
 		void RemoveBody(const BodyID& id);
 
 		////////////////////////////////////////////////////////////////////////
@@ -173,6 +175,40 @@ namespace vx
 
 		BodyID* GetActiveBodies() const { return mActiveBodies; }
 		uint32 GetNumActiveBodies() const { return mNumActiveBodies; }
+
+#if TEST_CONTACT_CONSTRAINT_MT
+		std::mutex mBodiesActivationMutex;
+#endif // TEST_CONTACT_CONSTRAINT_MT
+
+		void ActivateBodies(const BodyID* body_ids, uint32 count)
+		{
+#if TEST_CONTACT_CONSTRAINT_MT
+			std::lock_guard lock(mBodiesActivationMutex);
+#endif // TEST_CONTACT_CONSTRAINT_MT
+
+			VX_ASSERT(body_ids && count > 0);
+
+			for (uint32 i = 0; i < count; ++i)
+			{
+				VX_ASSERT_WARN(mNumActiveBodies < mMaxActiveBodies, "Reach max bodies limits");
+				if (mNumActiveBodies >= mMaxActiveBodies) return;
+
+				BodyID id = body_ids[i];
+				if (!id.IsValid())
+				{
+					VX_LOG_WARN("Invalid id for boddy activation");
+					continue;
+				}
+
+				auto& body = mBodyManager.GetBody(id);
+				
+				if (body.IsStatic()) continue;
+
+				body.activeIdx = mNumActiveBodies;
+				body.WakeUp();
+				mActiveBodies[mNumActiveBodies++] = id;
+			}
+		}
 	private:
 		PhysicsWorldSettings mSettings;
 		PhysicsStepContext mContext;
@@ -183,7 +219,10 @@ namespace vx
 		uint32 mMaxActiveBodies = 256;
 		BodyID* mActiveBodies = nullptr;
 		uint32 mNumActiveBodies = 0;
+		//use for fist step
 		void UpdateBodiesActivationState(float dt);
+
+		void UpdateBodiesIslandActivationState(float dt);
 
 
 		Broadphase* mBroadphase = nullptr;

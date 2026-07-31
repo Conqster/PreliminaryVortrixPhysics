@@ -218,7 +218,7 @@ namespace vx
 		bool drawContactConstraintSolverTBNs = false;
 		
 		/// bodies
-		EBodyColourMode bodyColourMode = EBodyColourMode::MotionType;
+		EBodyColourMode bodyColourMode = EBodyColourMode::IslandIdx;
 		//bool drawBounds = false; //for drawAABB, drawOBB
 		bool drawAABB = false;
 		bool drawOBB = false;

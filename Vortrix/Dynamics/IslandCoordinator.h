@@ -3,6 +3,8 @@
 #include "SolverBodyIndex.h"
 
 #include "ConstraintSolver.h"
+
+#include "Vortrix/Core/Atomics.h"
 namespace vx {
 
 	class IslandCoordinator
@@ -10,7 +12,7 @@ namespace vx {
 	public:
 		void Init(uint32 max_bodies)
 		{
-			mBodiesIdxs = new uint32[max_bodies];
+			mBodiesIdxs = new std::atomic<uint32>[max_bodies];
 			//mIslandIdxs = new uint32[max_bodies];
 
 			mIslandIdxs.resize(max_bodies);
@@ -20,31 +22,76 @@ namespace vx {
 		{
 			for (uint32 i = 0; i < body_count; ++i)
 				mBodiesIdxs[i] = i;
+
+			islands.clear();
 		}
 
 
-		uint32 Find(uint32 idx)
+		uint32 ComputeActiveBodyLowestIdx(uint32 idx)
 		{
-			uint32 v = mBodiesIdxs[idx];
+  	//		uint32 v = mBodiesIdxs[idx];
 
-			while (mBodiesIdxs[v] != v)
-				v = mBodiesIdxs[v];
+			//while (mBodiesIdxs[v] != v)
+			//	v = mBodiesIdxs[v];
 
+			//return v;
+
+
+			uint32 v = idx;
+			while (true)
+			{
+				uint32 body_links_to = mBodiesIdxs[v].load(std::memory_order_relaxed);
+				if (body_links_to == v)
+					break;
+				v = body_links_to;
+			}
 			return v;
 		}
 
 		void UnionFind(uint32 idx0, uint32 idx1)
 		{
-			uint32 l0 = Find(idx0);
-			uint32 l1 = Find(idx1);
+			//uint32 l0 = ComputeActiveBodyLowestIdx(idx0);
+			//uint32 l1 = ComputeActiveBodyLowestIdx(idx1);
 
-			if (l0 > l1)
-				std::swap(l0, l1);
+			//if (l0 > l1)
+			//	std::swap(l0, l1);
 
-			mBodiesIdxs[l1] = l0;
+			//mBodiesIdxs[l1] = l0;
 
-			mBodiesIdxs[idx0] = l0;
-			mBodiesIdxs[idx1] = l0;
+			//mBodiesIdxs[idx0] = l0;
+			//mBodiesIdxs[idx1] = l0;
+
+			uint32 l0 = idx0;
+			uint32 l1 = idx1;
+
+			for (;;)
+			{
+				l0 = ComputeActiveBodyLowestIdx(l0);
+				l1 = ComputeActiveBodyLowestIdx(l1);
+
+				if (l0 != l1)
+				{
+
+					if (l0 < l1)
+					{
+						if (!mBodiesIdxs[l1].compare_exchange_weak(l1, l0, std::memory_order_relaxed))
+							continue;
+					}
+					else
+					{
+						if (!mBodiesIdxs[l0].compare_exchange_weak(l0, l1, std::memory_order_relaxed))
+							continue;
+					}
+				}
+
+				uint32 lowest_link = VxMin(l0, l1);
+				atomic::Min(mBodiesIdxs[idx0], lowest_link, std::memory_order_relaxed);
+				atomic::Min(mBodiesIdxs[idx1], lowest_link, std::memory_order_relaxed);
+				break;
+			}
+
+
+
 		}
 
 
@@ -53,9 +100,13 @@ namespace vx {
 			UnionFind(body_activeA, body_activeB);
 		}
 
+
+
+
+
+
 		void FinaliseIslands(ConstraintSolver& constraint_solver, BodyID* active_bodies, uint32 count, BodyManager& body_manager)
 		{
-
 
 			uint32 next_island_idx = 0;
 
@@ -70,7 +121,7 @@ namespace vx {
 				else
 				{
 					///not with self, Find 
-					uint32 v = Find(body_links);
+					uint32 v = ComputeActiveBodyLowestIdx(body_links);
 					if (v < i) //if behind, left side, already solve 
 						mIslandIdxs[i] = mIslandIdxs[v];
 					/// its ahead and need to be resolved
@@ -109,6 +160,8 @@ namespace vx {
 
 				//SolverBody& solver_body = constraint_solver.GetSolverBody(SolverBodyIndex(i));
 				body_manager.GetBody(active_bodies[i]).islandIdx = mIslandIdxs[i];
+
+				
 			}
 
 
@@ -120,13 +173,13 @@ namespace vx {
 
 
 			for (auto& _island : islands)
-				_island.idx.clear();
+				_island.bodyIds.clear();
 
 			for (uint32 i = 0; i < count; ++i)
 			{
 				auto& body = body_manager.GetBody(active_bodies[i]);
 				uint32 idx = body.islandIdx;
-				islands[idx].idx.push_back(body.GetID().Idx());
+				islands[idx].bodyIds.push_back(body.GetID());
 
 			}
 
@@ -141,7 +194,8 @@ namespace vx {
 
 	private:
 		/// list would be invalid if not participanting or static 
-		uint32* mBodiesIdxs = nullptr;
+		//uint32* mBodiesIdxs = nullptr;
+		std::atomic<uint32>* mBodiesIdxs = nullptr;
 		//uint32* mIslandIdxs = nullptr;
 		std::vector<uint32> mIslandIdxs;
 
@@ -151,7 +205,7 @@ namespace vx {
 	public:
 		struct Island
 		{
-			std::vector<uint32> idx;
+			std::vector<BodyID> bodyIds;
 		};
 		std::vector<Island> islands;
 	};

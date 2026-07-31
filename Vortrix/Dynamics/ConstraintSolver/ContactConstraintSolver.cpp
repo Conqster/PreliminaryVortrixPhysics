@@ -12,6 +12,7 @@
 
 #include "Vortrix/Dynamics/IslandCoordinator.h"
 
+#include "Vortrix/PhysicsWorld.h"
 
 namespace vx {
 
@@ -327,9 +328,27 @@ namespace vx {
 
 			constraint.SetBodies(solver_body_idx0, solver_body_idx1);
 
+			/// in some cases; both are dynamic but one might be active while the other is not 
+			/// wake up bodies if sleeping
+			/// 
+			uint32 bodies_activate_count = 0;
+			BodyID body_ids[2];
+
+			if (manifold.a->IsDynamic() && !manifold.a->IsAwake())
+				body_ids[bodies_activate_count++] = manifold.a->GetID();
+			if (manifold.b->IsDynamic() && !manifold.b->IsAwake())
+				body_ids[bodies_activate_count++] = manifold.b->GetID();
+
+			if (bodies_activate_count > 0)
+				ctx.physicsWorld->ActivateBodies(body_ids, bodies_activate_count);
+				
+
 			/// a is alway dynam,ic
 			if (manifold.a->IsDynamic() && manifold.b->IsDynamic())
-				ctx.islandCoord->LinkBodies(manifold.a->activeIdx, manifold.b->activeIdx);
+			{
+ 				VX_ASSERT(manifold.a->activeIdx != Body::kInvalidActiveIdx && manifold.b->activeIdx != Body::kInvalidActiveIdx, "Invalid Body index");
+				ctx.islandCoordinator->LinkBodies(manifold.a->activeIdx, manifold.b->activeIdx);
+			}
 		}
 
 #else
@@ -592,9 +611,24 @@ namespace vx {
 
 			constraint.SetBodies(solver_body_idx0, solver_body_idx1);
 
+			/// in some cases; both are dynamic but one might be active while the other is not 
+			/// wake up bodies if sleeping
+			/// 
+			
+			uint32 bodies_activate_count = 0;
+			BodyID body_ids[2];
+
+			if (manifold.a->IsDynamic() && !manifold.a->IsAwake())
+				body_ids[bodies_activate_count++] = manifold.a->GetID();
+			if (manifold.b->IsDynamic() && !manifold.b->IsAwake())
+				body_ids[bodies_activate_count++] = manifold.b->GetID();
+
+			if (bodies_activate_count > 0)
+				ctx.physicsWorld->ActivateBodies(body_ids, bodies_activate_count);
+
 			/// a is alway dynam,ic
 			if (manifold.a->IsDynamic() && manifold.b->IsDynamic())
-				ctx.islandCoord->LinkBodies(manifold.a->activeIdx, manifold.b->activeIdx);
+				ctx.islandCoordinator->LinkBodies(manifold.a->activeIdx, manifold.b->activeIdx);
 		}
 
 

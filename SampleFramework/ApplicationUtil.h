@@ -19,7 +19,7 @@ struct CreatePhysicsObjectSettings
 		Particle
 	} type = EType::Body;
 
-	
+	bool pauseOnShoot = false;
 	vx::uint32 count = 1;
 
 	bool spawnFromView = true;

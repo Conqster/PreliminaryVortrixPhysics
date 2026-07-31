@@ -127,7 +127,11 @@ void Scenario::MouseCastRay()
 		if (!mBody.IsValid() && mMouseEvent != EClickEvent::None)
 		{
 			if (body.IsSleeping())
-				body.WakeUp(-ray_cast.direction * 5.0f);
+			{
+				//body.WakeUp(-ray_cast.direction * 5.0f);
+				mPhysicsWorld->ActivateBodies(&body.GetID(), 1);
+				body.ApplyImpulse(-ray_cast.direction * 5.0f);
+			}
 			mBody = hit.body;
 			//transform point to body local
 			mPointBodyFrame = vx::Mat44::TransformInverse(
@@ -135,7 +139,7 @@ void Scenario::MouseCastRay()
 
 			if(mHasMouseConstraint)
 			{
-				mMouseDragBody = mPhysicsWorld->CreateBody(mMouseDragBodySettings);
+				mMouseDragBody = mPhysicsWorld->CreateBody(mMouseDragBodySettings, false);
 
 				mMouseDragConstraintSettings.localAnchorA = body.GetOrientation().InverseRotate(point - body.GetPosition());
 				mMouseDragConstraint = new vx::DistanceConstraint(&body, mMouseDragBody, mMouseDragConstraintSettings);
@@ -324,7 +328,9 @@ void Scenario::PostPhysicsStep(float dt)
 			vx::Body& body = mPhysicsWorld->GetBodyManager().GetBody(mBody);
 			//might just release key jolt body 
 			//body.ApplyImpulse(vx::Vec3(0.0f, 1.0f, 0.0f) * 10.0f * (1.0f/body.GetInverseMass()));
-			body.WakeUp(vx::Vec3(0.0f, 1.0f, 0.0f) * 1000.0f);
+			//body.WakeUp(vx::Vec3(0.0f, 1.0f, 0.0f) * 1000.0f);
+			mPhysicsWorld->ActivateBodies(&body.GetID(), 1);
+			body.ApplyImpulse(vx::Vec3(0.0f, 1.0f, 0.0f) * 1000.0f);
 			mBody = vx::BodyID();
 		}
 		else

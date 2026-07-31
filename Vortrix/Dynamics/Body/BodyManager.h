@@ -53,6 +53,7 @@ namespace vx
 
 		VX_INLINE uint32 MaxBodies() const { return mMaxBodies; }
 
+		VX_INLINE uint32 BodyCount() const { return mBodies.size() - mFreedIdxs.size(); }
 
 		/// mainly only active bodies could go to sleep 
 		void UpdateBodiesActiveState(float dt, const SleepingSettings& sleeping_setting);

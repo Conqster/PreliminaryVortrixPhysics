@@ -73,7 +73,34 @@ namespace vx {
 	};
 
 
+	class TaskHandle
+	{
+	public:
 
+		void AddDependee(Task* task)
+		{
+			if (mComplete)
+				task->RemoveDependency();
+
+			mDependees.push_back(task);
+		}
+
+		void NotifyDependees()
+		{
+			for (auto& _task : mDependees)
+				_task->RemoveDependency();
+		}
+
+		void OnComplete()
+		{
+			NotifyDependees();
+			mComplete = true;
+		}
+	private:
+		Task* mTask;
+		std::vector<Task*> mDependees;
+		bool mComplete = false;
+	};
 
 
 	class TaskCoordinator : public NonCopyable

@@ -1056,10 +1056,11 @@ void Application::OnDrawImGuiOverlays()
 		{
 			BodyID* active_bodies = mPhysicsWorld->GetActiveBodies();
 
+			ImGui::Text("Broadphase Pair: %d", mPhysicsWorld->GetBroadphasePairsCount());
 			if (active_bodies)
 			{
 				vx::StackString<32> text("Num Bodies: ");
-				text << mPhysicsWorld->GetBodies().size();
+				text << mPhysicsWorld->GetBodyManager().BodyCount();
 				ImGui::Text(text.Data());
 				
 				uint32 num_active_bodies = mPhysicsWorld->GetNumActiveBodies();
@@ -1073,10 +1074,11 @@ void Application::OnDrawImGuiOverlays()
 				ImGui::Separator();
 				for (int i = 0; i < num_active_bodies; ++i)
 				{
-					vx::StackString<32> label("Body_");
+					vx::StackString<32> label;
+					label << i << ": Body_";
 					label << active_bodies[i].ID() <<
-						",Idx_" << active_bodies[i].Idx() <<//;
-						",gen_" << active_bodies[i].Generation();
+						",Idx_" << active_bodies[i].Idx();// <<//;
+						//",gen_" << active_bodies[i].Generation();
 					ImGui::Text(label.Data());
 				}
 			}
@@ -1527,13 +1529,14 @@ void Application::PhysicsSettingItemOverlays()
 	if (ImGui::Begin("Island Coordinator"))
 	{
 		auto& islands = mPhysicsWorld->mIslandCoordinator->islands;
+
 		for (uint32 i = 0; i < islands.size(); ++i)
 		{
 			vx::StackString txt("island ");
 			txt << i << ": ";
 			auto& _island = islands[i];
-			for (auto& idx : _island.idx)
-				txt << idx << ",";
+			for (auto& id : _island.bodyIds)
+				txt << id.ID() << "(" << vx::int32(mPhysicsWorld->GetBodyManager().GetBody(id).activeIdx) << "),";
 
 			ImGui::Text("%s", txt.Data());
 
@@ -2323,7 +2326,6 @@ void Application::PhysicsInteraction()
 			body_settings.restitution = mNewPhyObjectSettings.restitution;
 
 			
-
 			//CacheData out_cache_data;
 			vx::RefConst<Shape> shape = TryGetCreatedShape(mNewPhyObjectSettings.halfExtents,
 				mNewPhyObjectSettings.density, mNewPhyObjectSettings.bodyShape);
@@ -2374,6 +2376,9 @@ void Application::PhysicsInteraction()
 
 			for(int i = 0; i < mNewPhyObjectSettings.count; ++i)
 				mPhysicsWorld->CreateBody(body_settings);
+
+			if (mNewPhyObjectSettings.pauseOnShoot)
+				mPhysicsAppSetting.StateStats().paused = true;
 		}
 		else if(mParticleWorld)
 		{
@@ -2913,6 +2918,8 @@ void Application::CreateNewPhysicsBodyWindow()
 			mNewPhyObjectSettings.type = static_cast<CreatePhysicsObjectSettings::EType>(curr_type);
 
 		ImGui::Checkbox("Allow key held", &mNewPhyObjectSettings.allowKeyHeld);
+
+		ImGui::Checkbox("Pause On Shoot", &mNewPhyObjectSettings.pauseOnShoot);
 
 		//ImGui::SeparatorText("New Physics Body");
 		if (mNewPhyObjectSettings.type == CreatePhysicsObjectSettings::EType::Body)

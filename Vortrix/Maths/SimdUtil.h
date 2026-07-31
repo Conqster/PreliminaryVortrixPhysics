@@ -2,8 +2,7 @@
 #include "Core.h"
 #include "Axis.h"
 
-namespace vx::simd
-{
+namespace vx::simd {
 
 	//constant aliases
 	constexpr Axis X = kAxisX; 
