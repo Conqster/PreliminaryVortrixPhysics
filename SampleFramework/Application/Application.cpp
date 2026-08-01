@@ -1536,7 +1536,7 @@ void Application::PhysicsSettingItemOverlays()
 			txt << i << ": ";
 			auto& _island = islands[i];
 			for (auto& id : _island.bodyIds)
-				txt << id.ID() << "(" << vx::int32(mPhysicsWorld->GetBodyManager().GetBody(id).activeIdx) << "),";
+				txt << id.ID() << "(" << vx::int32(mPhysicsWorld->GetBodyManager().GetBody(id).GetIndexInActiveBodies()) << "),";
 
 			ImGui::Text("%s", txt.Data());
 

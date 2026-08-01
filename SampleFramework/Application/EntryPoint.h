@@ -3,6 +3,7 @@
 
 #include <SampleFramework/SampleFramework.h>
 
+
 static void CustomAssertHandler(const char* expr, const char* message,
 	const unsigned int lvl, const char* file, unsigned int line, const char* func)
 {
@@ -31,12 +32,20 @@ int main(int argc, char** argv)
 	vx::uint32 num_threads = std::thread::hardware_concurrency();
 	VX_LOG_INFO("Number of hardware threads: ", num_threads);
 
+
+	uint32 full_hd[2] = { 1920, 1080 };
+	uint32 hd[2] = { 1280, 720 };
+
+	bool is_full_hd = true;
+
+	uint32* screen_reso = (is_full_hd) ? full_hd : hd;
+
 	ApplicationSpecification app_spec;
 	app_spec.name = "Vortrix Physics";
 	app_spec.disableBindlessSupport = false;
 	app_spec.launchFullScreen = false;
-	app_spec.windowSize[0] = 1920;
-	app_spec.windowSize[1] = 1080;
+	app_spec.windowSize[0] = screen_reso[0];
+	app_spec.windowSize[1] = screen_reso[1];
 	app_spec.windowPos[0] = 0;
 	app_spec.windowPos[1] = 0;
 	app_spec.centralisedWindow = false;

@@ -15,6 +15,7 @@ namespace vx {
 		//might become island builder/coordinator
 		class ConstraintSolver* constraintSolver = nullptr;
 		class IslandCoordinator* islandCoordinator = nullptr;
-		class PhysicsWorld* physicsWorld = nullptr;
+		class BodyManager* bodyManager = nullptr;
+		//class PhysicsWorld* physicsWorld = nullptr;
 	};
 }

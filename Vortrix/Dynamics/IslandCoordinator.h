@@ -48,21 +48,22 @@ namespace vx {
 			return v;
 		}
 
-		void UnionFind(uint32 idx0, uint32 idx1)
-		{
-			//uint32 l0 = ComputeActiveBodyLowestIdx(idx0);
-			//uint32 l1 = ComputeActiveBodyLowestIdx(idx1);
 
+		void LinkBodies(uint32 body_activeA, uint32 body_activeB)
+		{
+			//uint32 l0 = ComputeActiveBodyLowestIdx(body_activeA);
+			//uint32 l1 = ComputeActiveBodyLowestIdx(body_activeB);
+			
 			//if (l0 > l1)
 			//	std::swap(l0, l1);
-
+			
 			//mBodiesIdxs[l1] = l0;
-
-			//mBodiesIdxs[idx0] = l0;
+			
+			//mBodiesIdxs[body_activeA] = l0;
 			//mBodiesIdxs[idx1] = l0;
 
-			uint32 l0 = idx0;
-			uint32 l1 = idx1;
+			uint32 l0 = body_activeA;
+			uint32 l1 = body_activeB;
 
 			for (;;)
 			{
@@ -85,33 +86,33 @@ namespace vx {
 				}
 
 				uint32 lowest_link = VxMin(l0, l1);
-				atomic::Min(mBodiesIdxs[idx0], lowest_link, std::memory_order_relaxed);
-				atomic::Min(mBodiesIdxs[idx1], lowest_link, std::memory_order_relaxed);
+				atomic::Min(mBodiesIdxs[body_activeA], lowest_link, std::memory_order_relaxed);
+				atomic::Min(mBodiesIdxs[body_activeB], lowest_link, std::memory_order_relaxed);
 				break;
 			}
 
 
+		}
+
+
+		void LinkConstraint(uint32 constraint_idx, uint32 active_body_idx)
+		{
 
 		}
 
 
-		void LinkBodies(uint32 body_activeA, uint32 body_activeB)
+
+
+
+		void FinaliseIslands(ConstraintSolver& constraint_solver, BodyManager& body_manager)
 		{
-			UnionFind(body_activeA, body_activeB);
-		}
-
-
-
-
-
-
-		void FinaliseIslands(ConstraintSolver& constraint_solver, BodyID* active_bodies, uint32 count, BodyManager& body_manager)
-		{
+			///
 
 			uint32 next_island_idx = 0;
+			const uint32 active_bodies_count = body_manager.GetNumActiveBodies();
 
 			///update island idxs 
-			for (uint32 i = 0; i < count; ++i)
+			for (uint32 i = 0; i < active_bodies_count; ++i)
 			{
 				uint32 body_links = mBodiesIdxs[i];
 
@@ -159,7 +160,8 @@ namespace vx {
 
 
 				//SolverBody& solver_body = constraint_solver.GetSolverBody(SolverBodyIndex(i));
-				body_manager.GetBody(active_bodies[i]).islandIdx = mIslandIdxs[i];
+				//body_manager.GetBody(active_bodies[i]).SetIslandIndex(mIslandIdxs[i]);
+				body_manager.GetBody(body_manager.GetActiveBodyID(i)).SetIslandIndex(mIslandIdxs[i]);
 
 				
 			}
@@ -175,10 +177,10 @@ namespace vx {
 			for (auto& _island : islands)
 				_island.bodyIds.clear();
 
-			for (uint32 i = 0; i < count; ++i)
+			for (uint32 i = 0; i < active_bodies_count; ++i)
 			{
-				auto& body = body_manager.GetBody(active_bodies[i]);
-				uint32 idx = body.islandIdx;
+				auto& body = body_manager.GetBody(body_manager.GetActiveBodyID(i));
+				uint32 idx = body.GetIslandIndex();
 				islands[idx].bodyIds.push_back(body.GetID());
 
 			}

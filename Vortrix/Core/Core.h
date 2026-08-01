@@ -11,8 +11,8 @@
 #endif
 
 #define VX_DEBUG_DRAW 1
-#define VX_PROFILING 0
 
+#define VX_PROFILING 0
 #if VX_PROFILING
 	#if defined(TRACY_ENABLE)
 		#define VX_USE_TRACY 1
@@ -26,6 +26,9 @@
 #define TEST_CONTACT_CONSTRAINT_MT 1
 #define USE_ISLAND_COORD 1
 
+#if TEST_CONTACT_CONSTRAINT_MT
+#define USE_MULTITHREAD 1
+#endif // TEST_CONTACT_CONSTRAINT_MT
 
 #define VX_STRINGIFY(x) #x
 

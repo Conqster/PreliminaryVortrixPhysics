@@ -5,6 +5,9 @@
 #include "BodyID.h"
 #include "BodyDebug.h"
 #include "Body.h"
+
+#include <mutex>
+
 namespace vx 
 {
 	class Body;
@@ -58,7 +61,22 @@ namespace vx
 		/// mainly only active bodies could go to sleep 
 		void UpdateBodiesActiveState(float dt, const SleepingSettings& sleeping_setting);
 
+		BodyID* GetActiveBodies() const { return mActiveBodies; }
+		BodyID GetActiveBodyID(uint32 idx) const
+		{
+			VX_ASSERT(idx < mNumActiveBodies);
+			return mActiveBodies[idx];
+		}
 		uint32 GetNumActiveBodies() const { return mNumActiveBodies; }
+
+		/// where possible its optimal to activate bodies as a group 
+		/// to reduce mutex locking
+		void ActivateBodies(const BodyID* body_ids, uint32 count);
+
+		void ResetActivateBodies() { mNumActiveBodies = 0; }
+
+		/// this re activate bodies from 
+		void AddBodiesToActivate(bool activate_sleeping);
 
 		//void ActivateBodies(BodyID* bodies_id, uint32 count);
 		//void DeactivateBodies(BodyID* bodies_id, uint32 count);
@@ -70,7 +88,13 @@ namespace vx
 
 		BodyID* mActiveBodies = nullptr;
 		uint32 mNumActiveBodies = 0;
-		uint32 mMaxActiveBodies = 32;
+		uint32 mMaxActiveBodies = 256;
+
+#if TEST_CONTACT_CONSTRAINT_MT
+		/// where possible its optimal to activate bodies as a group 
+		/// to reduce mutex locking
+		std::mutex mBodiesActivationMutex;
+#endif // TEST_CONTACT_CONSTRAINT_MT
 
 		std::vector<uint32> mFreedIdxs;
 		std::vector<uint8> mBodyIdxGenerations;

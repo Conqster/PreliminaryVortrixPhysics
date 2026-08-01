@@ -36,6 +36,8 @@ namespace vx
 		//
 		//for(auto& s : shapes)
 		//		delete s;
+
+		delete[] mActiveBodies;
 	}
 	const BodyID BodyManager::AddBody(const BodySettings& body_setting)
 	{
@@ -230,15 +232,26 @@ namespace vx
 		mNumActiveBodies = 0;
 		for (auto& body : GetBodies())
 		{
-			body.UpdateSleepState(dt, sleeping_setting);
+			body.SetIndexInActiveBodies(Body::kInvalidActiveIdx);
+
+			//quick hack 
+			if (!body.GetID().IsValid())
+				continue;
+
+			if (sleeping_setting.enable)
+				body.UpdateSleepState(dt, sleeping_setting);
 
 			if (body.IsAwake())
 			{
 				VX_ASSERT_WARN(mNumActiveBodies < mMaxActiveBodies, "Reach max bodies limits");
 				if (mNumActiveBodies >= mMaxActiveBodies) continue;
+				body.SetIndexInActiveBodies(mNumActiveBodies);
 				mActiveBodies[mNumActiveBodies++] = body.GetID();
 			}
+			else
+				body.SetIndexInActiveBodies(Body::kInvalidActiveIdx);
 		}
+
 
 
 		//VX_PROFILE_FUNCTION();
@@ -270,6 +283,71 @@ namespace vx
 
 
 	}
+
+	void BodyManager::ActivateBodies(const BodyID* body_ids, uint32 count)
+	{
+#if TEST_CONTACT_CONSTRAINT_MT
+		std::lock_guard lock(mBodiesActivationMutex);
+#endif // TEST_CONTACT_CONSTRAINT_MT
+
+		VX_ASSERT(body_ids && count > 0);
+
+		for (uint32 i = 0; i < count; ++i)
+		{
+			VX_ASSERT_WARN(mNumActiveBodies < mMaxActiveBodies, "Reach max bodies limits");
+			if (mNumActiveBodies >= mMaxActiveBodies) return;
+
+			BodyID id = body_ids[i];
+			if (!id.IsValid())
+			{
+				VX_LOG_WARN("Invalid id for boddy activation");
+				continue;
+			}
+
+			auto& body = GetBody(id);
+
+			if (body.IsStatic()) continue;
+
+			body.SetIndexInActiveBodies(mNumActiveBodies);
+			body.WakeUp();
+			mActiveBodies[mNumActiveBodies++] = id;
+		}
+
+	}
+
+	void BodyManager::AddBodiesToActivate(bool activate_sleeping)
+	{
+		for (auto& body : GetBodies())
+		{
+			//quick hack 
+			if (!body.GetID().IsValid())
+				continue;
+
+			VX_ASSERT_WARN(mNumActiveBodies < mMaxActiveBodies, "Reach max bodies limits");
+			if (mNumActiveBodies >= mMaxActiveBodies) return;
+
+			if (body.IsAwake())
+			{
+				body.SetIndexInActiveBodies(mNumActiveBodies);
+				mActiveBodies[mNumActiveBodies++] = body.GetID();
+			}
+			else if (activate_sleeping)
+			{
+				body.SetIndexInActiveBodies(mNumActiveBodies);
+				mActiveBodies[mNumActiveBodies++] = body.GetID();
+
+				body.WakeUp();
+			}
+			else
+			{
+				/// not awake invalidate idxs
+				body.SetIndexInActiveBodies(Body::kInvalidActiveIdx);
+				body.SetIslandIndex(Body::kInvalidIslandIdx);
+			}
+
+		}
+	}
+
 
 
 	//void BodyManager::DeactivateBodies(BodyID* bodies_id, uint32 count)

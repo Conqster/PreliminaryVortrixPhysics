@@ -340,14 +340,14 @@ namespace vx {
 				body_ids[bodies_activate_count++] = manifold.b->GetID();
 
 			if (bodies_activate_count > 0)
-				ctx.physicsWorld->ActivateBodies(body_ids, bodies_activate_count);
+				ctx.bodyManager->ActivateBodies(body_ids, bodies_activate_count);
 				
 
 			/// a is alway dynam,ic
 			if (manifold.a->IsDynamic() && manifold.b->IsDynamic())
 			{
- 				VX_ASSERT(manifold.a->activeIdx != Body::kInvalidActiveIdx && manifold.b->activeIdx != Body::kInvalidActiveIdx, "Invalid Body index");
-				ctx.islandCoordinator->LinkBodies(manifold.a->activeIdx, manifold.b->activeIdx);
+ 				VX_ASSERT(manifold.a->GetIndexInActiveBodies() != Body::kInvalidActiveIdx && manifold.b->GetIndexInActiveBodies() != Body::kInvalidActiveIdx, "Invalid Body index");
+				ctx.islandCoordinator->LinkBodies(manifold.a->GetIndexInActiveBodies(), manifold.b->GetIndexInActiveBodies());
 			}
 		}
 
@@ -624,11 +624,15 @@ namespace vx {
 				body_ids[bodies_activate_count++] = manifold.b->GetID();
 
 			if (bodies_activate_count > 0)
-				ctx.physicsWorld->ActivateBodies(body_ids, bodies_activate_count);
+				ctx.bodyManager->ActivateBodies(body_ids, bodies_activate_count);
+
 
 			/// a is alway dynam,ic
 			if (manifold.a->IsDynamic() && manifold.b->IsDynamic())
-				ctx.islandCoordinator->LinkBodies(manifold.a->activeIdx, manifold.b->activeIdx);
+			{
+				VX_ASSERT(manifold.a->GetIndexInActiveBodies() != Body::kInvalidActiveIdx && manifold.b->GetIndexInActiveBodies() != Body::kInvalidActiveIdx, "Invalid Body index");
+				ctx.islandCoordinator->LinkBodies(manifold.a->GetIndexInActiveBodies(), manifold.b->GetIndexInActiveBodies());
+			}
 		}
 
 

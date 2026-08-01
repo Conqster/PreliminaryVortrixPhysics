@@ -42,8 +42,6 @@ namespace vx
 		uint32 maxBroadphasePair = 10240;
 
 		class ScratchAllocator* mScratchAllocator;
-
-		bool simFirstStep = false;
 	};
 
 

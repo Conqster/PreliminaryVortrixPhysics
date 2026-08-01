@@ -47,14 +47,10 @@ namespace vx
 	PhysicsWorld::PhysicsWorld(const PhysicsWorldSettings& in_settings) :
 		mSettings(in_settings)
 	{
-		mContext.simFirstStep = true;
 	}
 
 	PhysicsWorld::~PhysicsWorld()
 	{
-		//mBodies.clear();
-		delete[] mActiveBodies;
-
 		delete mBroadphase;
 
 		delete mConstraintSolver;
@@ -239,8 +235,6 @@ namespace vx
 		//heavily using point to data in vector in Broadphase 
 		//at the moment so let reseve 
 		mBodyManager.Init(max_bodies);
-		mMaxActiveBodies = uint32(mBodyManager.MaxBodies() * 0.5f);
-		mActiveBodies = new BodyID[mMaxActiveBodies];
 		mContext.bodyManager = &mBodyManager;
 
 		BroadphaseInitInfo broad_init;
@@ -330,8 +324,9 @@ namespace vx
 
 		/// this is to ensure that bodies are set to activation list 
 		/// later move into body manager as for manager to handle
-		if (mContext.simFirstStep)
-			UpdateBodiesActivationState(dt);
+		//if (mContext.simFirstStep)
+		//	mBodyManager.UpdateBodiesActiveState(dt, mSettings.sleeping);
+		//	//UpdateBodiesActivationState(dt);
 
 
 		{
@@ -376,7 +371,7 @@ namespace vx
 			mSettings.collision, mHackDebugRenderer,
 			mSettings.drawSettings.drawContactConstraintSolverTBNs,
 			mFrameIdx, mBroadpairCount, mConstraintSolver,
-			mIslandCoordinator, this
+			mIslandCoordinator, &mBodyManager
 		};
 		//Narrowphase: collision detection & contact generations
 		
@@ -384,10 +379,6 @@ namespace vx
 
 
 		mIslandCoordinator->PrepareIslands((uint32)mBodyManager.GetBodies().size());
-
-#if TEST_CONTACT_CONSTRAINT_MT
-#define USE_MULTITHREAD 0
-#endif // TEST_CONTACT_CONSTRAINT_MT
 
 #if USE_MULTITHREAD
 		{
@@ -478,7 +469,7 @@ namespace vx
 		mContactConstraintSolver.FinaliseWriteManifoldCache();
 #endif // TEST_CONTACT_CONSTRAINT_MT
 
-		mIslandCoordinator->FinaliseIslands(*mConstraintSolver, mActiveBodies, mNumActiveBodies, mBodyManager);
+		mIslandCoordinator->FinaliseIslands(*mConstraintSolver, mBodyManager);
 
 		mScratchAllocator->Free(mBroadphaseBuffer.data, sizeof(BroadphasePair) * mBroadphaseBuffer.maxPairs);
 		mBroadphaseBuffer.data = nullptr;
@@ -556,9 +547,9 @@ namespace vx
 #if USE_ISLAND_COORD
 		UpdateBodiesIslandActivationState(dt);
 #else
-		UpdateBodiesActivationState(dt);
+		//UpdateBodiesActivationState(dt);
 		//mBodyManager.UpdateBodiesActiveState(0.0f, mSettings.sleeping); //prevent extra time update
-		//mBodyManager.UpdateBodiesActiveState(dt, mSettings.sleeping); //prevent extra time update
+		mBodyManager.UpdateBodiesActiveState(dt, mSettings.sleeping); //prevent extra time update
 #endif // USE_ISLAND_COORD
 
 
@@ -613,9 +604,6 @@ namespace vx
 
 		mContactConstraintSolver.FinaliseStepManifoldCache(mBodyManager);
 
-		
-
-		mContext.simFirstStep = false;
 		PhysicsWorld::mFrameIdx++;
 	}
 
@@ -746,12 +734,13 @@ namespace vx
 				c = GetBodySimphaseDebugColour(*it);
 			else if (draw_settings.bodyColourMode == vx::EBodyColourMode::IslandIdx)
 			{
+				uint32 island_idx = it->GetIslandIndex();
 				if (it->IsStatic())
 					c = Colour(0.5f);
-				else if (it->islandIdx == 0xffffffff)
+				else if (island_idx == Body::kInvalidIslandIdx)
 					c = draw_settings.sleepingColour;
 				else
-					c = Colour::GetRandomColour(it->islandIdx);
+					c = Colour::GetRandomColour(island_idx);
 			}
 
 			//int shape_enum_idx = (int)(it->GetShape()->GetType());
@@ -1059,32 +1048,7 @@ namespace vx
 		return mNarrowphaseQuery.Stats();
 	}
 
-	void PhysicsWorld::UpdateBodiesActivationState(float dt)
-	{
-		VX_PROFILE_FUNCTION();
-		mNumActiveBodies = 0;
-		for (auto& body : GetBodies())
-		{
-			body.activeIdx = 0xffffffff;
 
-			//quick hack 
-			if (!body.GetID().IsValid())
-				continue;
-
-			if (mSettings.sleeping.enable)
-				body.UpdateSleepState(dt, mSettings.sleeping);
-
-			if (body.IsAwake())
-			{
-				VX_ASSERT_WARN(mNumActiveBodies < mMaxActiveBodies, "Reach max bodies limits");
-				if (mNumActiveBodies >= mMaxActiveBodies) continue;
-				body.activeIdx = mNumActiveBodies;
-				mActiveBodies[mNumActiveBodies++] = body.GetID();
-			}
-			else
-				body.islandIdx = 0xffffffff;
-		}
-	}
 
 	void PhysicsWorld::UpdateBodiesIslandActivationState(float dt)
 	{
@@ -1100,11 +1064,6 @@ namespace vx
 		/// 2. update bodies in islands
 		/// 
 		auto& islands = mIslandCoordinator->islands;
-
-		auto Get_BodyID_ActivationIdx = [active_list = mActiveBodies](uint32 idx)
-			{
-				return active_list[idx];
-			};
 
 		std::vector<uint32> islands_to_sleep;
 		std::vector<uint32> islands_awake;
@@ -1152,28 +1111,8 @@ namespace vx
 
 
 		/// re-add bodies to active list
-		mNumActiveBodies = 0;
-		for (auto& body : GetBodies())
-		{
-			//quick hack 
-			if (!body.GetID().IsValid())
-				continue;
-
-			if (body.IsAwake())
-			{
-				VX_ASSERT_WARN(mNumActiveBodies < mMaxActiveBodies, "Reach max bodies limits");
-				if (mNumActiveBodies >= mMaxActiveBodies) continue;
-				body.activeIdx = mNumActiveBodies;
-				mActiveBodies[mNumActiveBodies++] = body.GetID();
-			}
-			else
-			{
-				/// not awake invalidate idxs
-				body.activeIdx = 0xffffffff;
-				body.islandIdx = 0xffffffff;
-			}
-
-		}
+		mBodyManager.ResetActivateBodies();
+		mBodyManager.AddBodiesToActivate(false);
 	}
 
 	Colour PhysicsWorld::GetBodySimphaseDebugColour(const Body& body) const

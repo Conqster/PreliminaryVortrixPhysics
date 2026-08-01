@@ -161,8 +161,8 @@ void EditorImGui::DrawBodyOverlayDetails(vx::Body& body, vx::BodyDebug& body_deb
 	auto& euler = cache_body_euler[body.GetID().Idx()];
 
 	Vec3 p = body.GetPosition();
-	ImGui::Text("Island Idx: %d", body.islandIdx);
-	ImGui::Text("Active Body Idx: %d", body.activeIdx);
+	ImGui::Text("Island Idx: %d", body.GetIslandIndex());
+	ImGui::Text("Active Body Idx: %d", body.GetIndexInActiveBodies());
 	if (ImGui::DragFloat3("Position ", &p[0], 0.01f))
 	{
 		///world -space

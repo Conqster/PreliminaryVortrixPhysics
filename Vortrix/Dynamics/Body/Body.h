@@ -332,6 +332,15 @@ namespace vx
 		void SetRestitution(float restitution) { mRestitution = restitution; }
 
 
+		static constexpr uint32 kInvalidIslandIdx = 0xffffffff;
+		uint32 GetIslandIndex() const { return mIslandIndex; }
+		void SetIslandIndex(uint32 island_idx) { mIslandIndex = island_idx; }
+
+		static constexpr uint32 kInvalidActiveIdx = 0xffffffff;
+		uint32 GetIndexInActiveBodies() const { return mActiveIndex; }
+		void SetIndexInActiveBodies(uint32 active_idx) { mActiveIndex = active_idx; }
+
+
 		float GetKineticEnergy() const
 		{
 			if (IsStatic())return 0.0f;
@@ -414,11 +423,10 @@ namespace vx
 		//char padding[1 + 4*3];								//1 bytes	[32 bytes] //later sort this out when sleep time is removed padding will reduce
 
 		char padding[1 + 4*1];								//1 bytes	[32 bytes] //later sort this out when sleep time is removed padding will reduce
-		public:
-		static constexpr uint32 kInvalidActiveIdx = 0xffffffff;
-		uint32 islandIdx = kInvalidActiveIdx;
-		uint32 activeIdx = kInvalidActiveIdx;
-		private:
+
+		uint32 mIslandIndex = kInvalidIslandIdx;
+		uint32 mActiveIndex = kInvalidActiveIdx;
+
 		///World space linear velocity (m/s)
 		Vec3 mLinearVelocity = Vec3(0.0f);							//16 bytes	[48 bytes]
 		///World space angular velocity (rad/s)
