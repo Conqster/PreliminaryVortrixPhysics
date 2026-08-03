@@ -114,6 +114,12 @@ namespace vx {
 		return solver_idx;
 	}
 
+	SolverBodyIndex ConstraintSolver::TryGetSolverBodyIndex(BodyID physics_body_id) const
+	{
+		VX_ASSERT(physics_body_id.IsValid());
+		return mBodyToSolverBody[physics_body_id.Idx()];
+	}
+
 	void ConstraintSolver::WriteBackBodies(const SolverBody* bodies, uint32 count, BodyManager& body_manager)
 	{
 		VX_PROFILE_FUNCTION();

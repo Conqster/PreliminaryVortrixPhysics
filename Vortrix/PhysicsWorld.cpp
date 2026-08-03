@@ -272,7 +272,7 @@ namespace vx
 
 
 		mIslandCoordinator = new IslandCoordinator;
-		mIslandCoordinator->Init(mBodyManager.MaxBodies());
+		mIslandCoordinator->Init(mBodyManager.MaxBodies(), mContactConstraintSolver.MaxConstraints());
 	}
 
 	Body* PhysicsWorld::CreateBody(const BodySettings& body_setting, bool activate_body)
@@ -321,13 +321,9 @@ namespace vx
 		mWorldQuery.SetDebugRender(mHackDebugRenderer);
 		mWorldQuery.SetDrawBroadphaseNodesWalked(mSettings.drawSettings.drawWalkedTreeQuery);
 
-
-		/// this is to ensure that bodies are set to activation list 
-		/// later move into body manager as for manager to handle
-		//if (mContext.simFirstStep)
-		//	mBodyManager.UpdateBodiesActiveState(dt, mSettings.sleeping);
-		//	//UpdateBodiesActivationState(dt);
-
+#if VX_DEBUG_ALLOCATOR
+		mScratchAllocator->ResetDebugAlloc();
+#endif // VX_DEBUG_ALLOCATOR
 
 		{
 			VX_PROFILE_SCOPE("Reset Simulation State");
@@ -365,7 +361,10 @@ namespace vx
 		/// for now need to invalidate previous frame local bodies 
 		/// so the bodies could be update for use by narrowphase handshake 
 		/// with contact constraint, fix later 
-		mConstraintSolver->HackClear();
+		{
+			VX_PROFILE_SCOPE("Clear Non contact constraint");
+			mConstraintSolver->HackClear();
+		}
 		CollisionContext collision_ctx
 		{
 			mSettings.collision, mHackDebugRenderer,
@@ -437,28 +436,6 @@ namespace vx
 					}
 				});
 
-			/*for (uint32 i = 0; i < collision_ctx.broadphasePairCount; i += k_pair_per_task)
-			{
-				uint32 begin = i;
-				uint32 end = std::min(i + k_pair_per_task, collision_ctx.broadphasePairCount);
-
-				mTaskCoordinator->ConstructTask([=, ctx = &pair_process_and_constraint_setup_ctx]()
-					{
-						for (uint32 j = begin; j < end; ++j)
-						{
-							auto& pair = mBroadphaseBuffer.data[j];
-
-							ctx->narrowphase_query.ProcessPairAndTrySetupContactConstraint(
-								pair.a,
-								pair.b,
-								ctx->contact_solver, ctx->collision_ctx);
-						}
-					}, 0); /// no dependancies
-			}*/
-
-			//tasks to emplace 
-			//mTaskCoordinator->RemoveTasksDependency(mProcessPairAndTrySetupContactConstraintTasks.data(), mProcessPairAndTrySetupContactConstraintTasks.size());
-
 			mTaskCoordinator->WaitForTasks();
 		}
 #else
@@ -469,13 +446,45 @@ namespace vx
 		mContactConstraintSolver.FinaliseWriteManifoldCache();
 #endif // TEST_CONTACT_CONSTRAINT_MT
 
-		mIslandCoordinator->FinaliseIslands(*mConstraintSolver, mBodyManager);
+		mIslandCoordinator->FinaliseIslands(*mConstraintSolver, mContactConstraintSolver.NumContactConstraints(), mBodyManager, mScratchAllocator);
 
 		mScratchAllocator->Free(mBroadphaseBuffer.data, sizeof(BroadphasePair) * mBroadphaseBuffer.maxPairs);
 		mBroadphaseBuffer.data = nullptr;
 
 		if (mSettings.solver.enable)
 		{
+
+			/// Requirements 
+			///
+			/// availabe parameters
+			///	- BodyID/actual body
+			/// - SolverBody & SolverIndex
+			/// 
+			/// - ContactConstraint
+			/// - Constraint (Non-Contact)
+			/// 
+			/// 
+			/// CONTACT section
+			/// - broadphase pair processed in narrowphase
+			/// - constructs contact constraint + solver body + LinkBodies() &/LinkContact()
+			/// 
+			/// requirement for solving
+			/// * get constraint to solve for (this helps for selective island specific solving) task based
+			/// 
+			/// 
+			/// * sort bodies, for instance 
+			/// | 0 | 1 | 1 | 1 | 0 | 1 | 0 | 0 | 0 
+			///  - to become 
+			/// | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 1 | 1
+			///  - for easy GetIslandBodies
+			/// * sort constraint, similar to bodies for GetIslandNonContactConstraints & GetIslandContactConstraints
+			/// 
+			/// * importantly its important to sort SolverBodyIdx to adhere with the island it leaves in
+			/// 
+
+
+
+
 
 
 #if CONTACT_USE_SOLVERBODY
@@ -547,8 +556,6 @@ namespace vx
 #if USE_ISLAND_COORD
 		UpdateBodiesIslandActivationState(dt);
 #else
-		//UpdateBodiesActivationState(dt);
-		//mBodyManager.UpdateBodiesActiveState(0.0f, mSettings.sleeping); //prevent extra time update
 		mBodyManager.UpdateBodiesActiveState(dt, mSettings.sleeping); //prevent extra time update
 #endif // USE_ISLAND_COORD
 
@@ -1060,53 +1067,96 @@ namespace vx
 
 		///or maybe 2 loops 
 
+		
 		/// 1. check island state
 		/// 2. update bodies in islands
-		/// 
-		auto& islands = mIslandCoordinator->islands;
-
-		std::vector<uint32> islands_to_sleep;
-		std::vector<uint32> islands_awake;
-		for (uint32 i = 0; i < islands.size(); ++i)
+		///
+		if(mSettings.sleeping.enable)
 		{
-			auto& island = islands[i];
+			//auto& islands = mIslandCoordinator->islands;
 
-			bool put_to_sleep = true;
-			for (auto& body_id : island.bodyIds)
+			std::vector<uint32> islands_to_sleep;
+			std::vector<uint32> islands_awake;
+			//for (uint32 i = 0; i < islands.size(); ++i)
+			//{
+			//	auto& island = islands[i];
+
+			//	bool put_to_sleep = true;
+			//	for (auto& body_id : island.bodyIds)
+			//	{
+			//		//BodyID id = Get_BodyID_ActivationIdx(body_active_idx);
+
+			//		Body& body = mBodyManager.GetBody(body_id);
+			//		//if (mSettings.sleeping.enable)
+
+			//		body.UpdateSleepState(dt, mSettings.sleeping);
+
+			//		if (body.IsAwake())
+			//		{
+			//			put_to_sleep = false;
+			//			break;
+			//		}
+			//	}
+
+			//	if (put_to_sleep)
+			//		islands_to_sleep.push_back(i);
+			//	else
+			//		islands_awake.push_back(i);
+
+			//}
+
+
+			////// haxk for bodies in the awake list force wake up 
+			///// as some bodies are trying to sleep 
+			//for (auto& island_idx : islands_awake)
+			//{
+			//	auto& island = islands[island_idx];
+			//	for (auto& body_id : island.bodyIds)
+			//	{
+			//		//BodyID id = Get_BodyID_ActivationIdx(body_active_idx);
+			//		Body& body = mBodyManager.GetBody(body_id);
+			//		body.WakeUp(false);
+			//	}
+			//}
+
+
+			for (uint32 island = 0; island < mIslandCoordinator->mIslandCount; ++island)
 			{
-				//BodyID id = Get_BodyID_ActivationIdx(body_active_idx);
+				IslandCoordinator::IslandRange<BodyID> body_island = mIslandCoordinator->GetIslandBodyIDs(island);
 
-				Body& body = mBodyManager.GetBody(body_id);
-				//if (mSettings.sleeping.enable)
-				
-				body.UpdateSleepState(dt, mSettings.sleeping);
+				bool put_to_sleep = true;
 
-				if (body.IsAwake())
+				for (BodyID* body_id = body_island.begin; body_id < body_island.end; ++body_id)
 				{
-					put_to_sleep = false;
-					break;
+					Body& body = mBodyManager.GetBody(*body_id);
+					//if (mSettings.sleeping.enable)
+
+					body.UpdateSleepState(dt, mSettings.sleeping);
+
+					if (body.IsAwake())
+					{
+						put_to_sleep = false;
+						break;
+					}
+				}
+				if (put_to_sleep)
+					islands_to_sleep.push_back(island);
+				else
+					islands_awake.push_back(island);
+			}
+
+			//// haxk for bodies in the awake list force wake up 
+			/// as some bodies are trying to sleep 
+			for (auto& island_idx : islands_awake)
+			{
+				IslandCoordinator::IslandRange<BodyID> body_island = mIslandCoordinator->GetIslandBodyIDs(island_idx);
+				for (BodyID* body_id = body_island.begin; body_id < body_island.end; ++body_id)
+				{
+					Body& body = mBodyManager.GetBody(*body_id);
+					body.WakeUp(false);
 				}
 			}
 
-			if (put_to_sleep)
-				islands_to_sleep.push_back(i);
-			else
-				islands_awake.push_back(i);
-
-		}
-
-
-		//// haxk for bodies in the awake list force wake up 
-		/// as some bodies are trying to sleep 
-		for (auto& island_idx : islands_awake)
-		{
-			auto& island = islands[island_idx];
-			for (auto& body_id : island.bodyIds)
-			{
-				//BodyID id = Get_BodyID_ActivationIdx(body_active_idx);
-				Body& body = mBodyManager.GetBody(body_id);
-				body.WakeUp(false);
-			}
 		}
 
 

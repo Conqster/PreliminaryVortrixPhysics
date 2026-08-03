@@ -144,6 +144,11 @@ namespace vx
 		VX_INLINE float B() const { return static_cast<float>(b) / 255.0f; }
 		VX_INLINE float A() const { return static_cast<float>(a) / 255.0f; }
 
+		VX_INLINE uint8 R8() const { return r; }
+		VX_INLINE uint8 G8() const { return g; }
+		VX_INLINE uint8 B8() const { return b; }
+		VX_INLINE uint8 A8() const { return a; }
+
 
 		static const Colour sWhite;
 		static const Colour sBlack;

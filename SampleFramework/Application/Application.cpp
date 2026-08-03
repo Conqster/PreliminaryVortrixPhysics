@@ -50,6 +50,8 @@
 #include "SampleFramework/Scenarios/JointScenario.h"
 #include "SampleFramework/Scenarios/PersistentContactScenario.h"
 #include "SampleFramework/Scenarios/RagdollScenario.h"
+#include "SampleFramework/Scenarios/EmptyScenario.h"
+
 
 #include "Vortrix/Core/ScratchAllocator.h"
 
@@ -220,6 +222,7 @@ Application::Application(const ApplicationSpecification& app_spec)
 	mScenarioCatergoies.scenarios.push_back(vx::MakeScope<JointScenario>());
 	mScenarioCatergoies.scenarios.push_back(vx::MakeScope<PersistentContactScenario>());
 	mScenarioCatergoies.scenarios.push_back(vx::MakeScope<RagdollScenario>());
+	mScenarioCatergoies.scenarios.push_back(vx::MakeScope<EmptyScenario>());
 	
 	ScenarioCatergory solver_scenarios;
 	solver_scenarios.name = "Solvers";
@@ -236,7 +239,7 @@ Application::Application(const ApplicationSpecification& app_spec)
 	mScenarioCatergoies.catergories.push_back(std::move(stacking_scenarios));
 
 
-	mCurrScenario = mScenarioCatergoies.scenarios.at(4).get();
+	mCurrScenario = mScenarioCatergoies.scenarios.at(5).get();
 }
 
 Application::~Application()
@@ -1545,6 +1548,233 @@ void Application::PhysicsSettingItemOverlays()
 	}
 	ImGui::End();
 
+
+	if (ImGui::Begin("Ex Island Coordinator"))
+	{
+		uint32 body_active_count = mPhysicsWorld->GetBodyManager().GetNumActiveBodies();
+		ImGui::Text("Bodies Active count: %d", body_active_count);
+		ImGui::Text("Island cache active count: %d", mPhysicsWorld->mIslandCoordinator->mActiveCount);
+
+		auto& island_idxs = mPhysicsWorld->mIslandCoordinator->mIslandIdxs;
+		auto& body_link_idxs = mPhysicsWorld->mIslandCoordinator->mActiveBodyLinkIndices;
+
+		//for (uint32 i = 0; i < body_active_count; ++i)
+		//{
+		//	ImGui::Text("%d | %d | %d", i, body_link_idxs[i].load(), island_idxs[i]);
+		//}
+
+		if(ImGui::TreeNode("Bodies With Island"))
+		{
+			if (ImGui::BeginTable("table1", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+			{
+				// Display headers so we can inspect their interaction with borders
+				// (Headers are not the main purpose of this section of the demo, so we are not elaborating on them now. See other sections for details)
+				//if (display_headers)
+				{
+					ImGui::TableSetupColumn("Body in active index");
+					ImGui::TableSetupColumn("Body Links to");
+					ImGui::TableSetupColumn("Island");
+					ImGui::TableHeadersRow();
+				}
+
+				for (int i = 0; i < body_active_count; ++i)
+				{
+					ImGui::TableNextRow();
+
+					uint32 data[3] = { i, body_link_idxs[i].load(), island_idxs[i] };
+					for (int column = 0; column < 3; column++)
+					{
+						ImGui::TableSetColumnIndex(column);
+						ImGui::Text("%d", data[column]);
+					}
+				}
+				ImGui::EndTable();
+			}
+			ImGui::TreePop();
+		}
+
+		ImGui::Spacing();
+		if(ImGui::TreeNode("Bodies With Island Sorted"))
+		{
+			if (ImGui::BeginTable("table2", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+			{
+				// Display headers so we can inspect their interaction with borders
+				// (Headers are not the main purpose of this section of the demo, so we are not elaborating on them now. See other sections for details)
+				//if (display_headers)
+				{
+					ImGui::TableSetupColumn("Colour");
+					ImGui::TableSetupColumn("No");
+					ImGui::TableSetupColumn("Body ID");
+					ImGui::TableSetupColumn("Solver Body Index");
+					ImGui::TableSetupColumn("In active index");
+					ImGui::TableSetupColumn("Island index");
+					ImGui::TableHeadersRow();
+				}
+
+				auto& body_island = mPhysicsWorld->mIslandCoordinator->mBodyIDIslands;
+
+				vx::uint32 _island_idx = 0xffffffff;
+				//VX_ASSERT(body_island->IsValid()); /// first body needs to be valid
+				if (body_island->IsValid())
+				{
+					for (int i = 0; i < body_active_count; ++i)
+					{
+
+						auto& body = mPhysicsWorld->GetBodyManager().GetBody(body_island[i]);
+
+						/// new colour style needs to be pushed before Table row
+						if (_island_idx != body.GetIslandIndex())
+							_island_idx = body.GetIslandIndex();
+
+						ImGui::TableNextRow();
+
+						vx::Colour col = vx::Colour::GetRandomColour(_island_idx);
+
+						uint32 data[5] =
+						{
+							i,
+							body.GetID().ID(),
+							mPhysicsWorld->mIslandCoordinator->mSolverBodyIndexIslands[i].Value(),
+							body.GetIndexInActiveBodies(),
+							body.GetIslandIndex()
+						};
+
+						ImGui::TableSetColumnIndex(0);
+						ImVec4 _col(col.R(), col.G(), col.B(), 1.0f);
+						ImGui::ColorButton("##", _col);
+						for (int column = 1; column < 6; column++)
+						{
+							ImGui::TableSetColumnIndex(column);
+							ImGui::Text("%d", data[column - 1]);
+						}
+					}
+
+				}
+				ImGui::EndTable();
+			}
+			ImGui::TreePop();
+		}
+
+
+
+
+		if (ImGui::TreeNode("Contact Island"))
+		{
+			if (ImGui::BeginTable("table3", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+			{
+				// Display headers so we can inspect their interaction with borders
+				// (Headers are not the main purpose of this section of the demo, so we are not elaborating on them now. See other sections for details)
+				//if (display_headers)
+				{
+					ImGui::TableSetupColumn("No");
+					ImGui::TableSetupColumn("Constraint Index Linked to");
+					ImGui::TableHeadersRow();
+				}
+
+				if (mPhysicsWorld->mIslandCoordinator->mContactConstraintBodyLinkIndices)
+				{
+					uint32 constraint_count = mPhysicsWorld->GetContactConstraintSolverStats().numContactConstraints;
+					for (int i = 0; i < constraint_count; ++i)
+					{
+						ImGui::TableNextRow();
+						uint32 data[2] =
+						{
+							i,
+							mPhysicsWorld->mIslandCoordinator->mContactConstraintBodyLinkIndices[i]
+						};
+						for (int column = 0; column < 2; column++)
+						{
+							ImGui::TableSetColumnIndex(column);
+							ImGui::Text("%d", data[column]);
+						}
+					}
+				}
+
+				ImGui::EndTable();
+			}
+			ImGui::TreePop();
+		}
+		
+
+
+		if (ImGui::TreeNode("Contact and Body Island with Island sort"))
+		{
+			if (ImGui::BeginTable("table4", 7, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+			{
+				// Display headers so we can inspect their interaction with borders
+				// (Headers are not the main purpose of this section of the demo, so we are not elaborating on them now. See other sections for details)
+				//if (display_headers)
+				{
+					ImGui::TableSetupColumn("Colour");
+					ImGui::TableSetupColumn("No");
+					ImGui::TableSetupColumn("Constraint Index");
+					ImGui::TableSetupColumn("Lowest Body ID");
+					ImGui::TableSetupColumn("Body A active index");
+					ImGui::TableSetupColumn("Body B active index");
+					ImGui::TableSetupColumn("Island index");
+					ImGui::TableHeadersRow();
+				}
+
+				uint32 table_item_count = 0;
+				for (uint32 island = 0; island < mPhysicsWorld->mIslandCoordinator->mIslandCount; ++island)
+				{
+					vx::IslandCoordinator::IslandRange<uint32> constraint_island = mPhysicsWorld->mIslandCoordinator->GetIslandContactConstraintIndices(island);
+
+					if (constraint_island.begin == nullptr) continue;//should break
+
+					vx::Colour col = vx::Colour::GetRandomColour(island);
+
+					for (uint32* constraint_idx = constraint_island.begin; constraint_idx < constraint_island.end; ++constraint_idx)
+					{
+
+						ImGui::TableNextRow();
+
+						ImGui::TableSetColumnIndex(0);
+						ImVec4 _col(col.R(), col.G(), col.B(), 1.0f);
+						ImGui::ColorButton("##", _col);
+
+						auto& constraint_body_link = mPhysicsWorld->mIslandCoordinator->mContactConstraintBodyLinkIndices;
+						//auto& body_active_indices = mPhysicsWorld->mIslandCoordinator->mActiveBodyLinkIndices;
+
+						//uint32 body_active_idx = body_active_indices[constraint_body_link[*constraint_idx]];
+						uint32 body_active_idx = constraint_body_link[*constraint_idx];
+
+
+						vx::ContactConstraintSolver::ContactConstraint* constraint = mPhysicsWorld->ContactConstraintCoordinator()->GetContactConstraint(*constraint_idx);
+						BodyID id_a = mPhysicsWorld->GetConstraintSolver()->GetSolverBody(constraint->BodyA()).bodyID;
+						BodyID id_b = mPhysicsWorld->GetConstraintSolver()->GetSolverBody(constraint->BodyB()).bodyID;
+
+						auto& bodyA = mPhysicsWorld->GetBodyManager().GetBody(id_a);
+						auto& bodyB = mPhysicsWorld->GetBodyManager().GetBody(id_b);
+
+
+						uint32 data[6] =
+						{
+							table_item_count++,
+							*constraint_idx,
+							/// bodies might have attempted to go to sleep; it would create miss match in debug value in terms of index matching 
+							//(body_active_idx < mPhysicsWorld->GetBodyManager().GetNumActiveBodies()) ? mPhysicsWorld->GetBodyManager().GetActiveBodyID(body_active_idx).ID() : int(BodyID::kInvalidID),
+							//(body_active_idx < mPhysicsWorld->GetBodyManager().GetNumActiveBodies()) ? mPhysicsWorld->GetBodyManager().GetActiveBodyID(body_active_idx).ID() : int(BodyID::kInvalidID),
+							body_active_idx,
+							bodyA.GetIndexInActiveBodies(),
+							bodyB.GetIndexInActiveBodies(),
+							island
+						};
+						for (int column = 1; column < 7; column++)
+						{
+							ImGui::TableSetColumnIndex(column);
+							ImGui::Text("%d", data[column - 1]);
+						}
+					}
+
+				}
+				ImGui::EndTable();
+			}
+			ImGui::TreePop();
+		}
+	}
+	ImGui::End();
+
 	///quick testing other window is get crowded 
 	auto Contact_Solver_Win = [&](bool* p_open)
 	{
@@ -1589,6 +1819,7 @@ void Application::PhysicsSettingItemOverlays()
 	ImGui::SeparatorText("APP SETTING");
 
 	static bool format_KiB = true;
+	ImGui::Checkbox("Format KiB", &format_KiB);
 	float status_kB = (format_KiB) ? vx::ToKibibyte(mPhysicsWorld->mScratchAllocator->Usage()) :
 									 vx::ToMebibyte(mPhysicsWorld->mScratchAllocator->Usage());
 	float size_kB = (format_KiB) ? vx::ToKibibyte(mPhysicsWorld->mScratchAllocator->Size()) :
@@ -1599,7 +1830,17 @@ void Application::PhysicsSettingItemOverlays()
 	ImGui::ProgressBar(ratio, ImVec2(0.0f, 0.0f), text.Data());
 	ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
 	ImGui::Text("Scratch Allocation");
-	ImGui::Checkbox("Format KiB", &format_KiB);
+
+#if VX_DEBUG_ALLOCATOR
+	status_kB = (format_KiB) ? vx::ToKibibyte(mPhysicsWorld->mScratchAllocator->GetDebugTotalAlloc()) :
+										vx::ToMebibyte(mPhysicsWorld->mScratchAllocator->GetDebugTotalAlloc());
+	text.Clear();
+	text << status_kB << "/" << size_kB << ((format_KiB) ? " KiB" : " MiB");
+	ratio = status_kB / size_kB;
+	ImGui::ProgressBar(ratio, ImVec2(0.0f, 0.0f), text.Data());
+	ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+	ImGui::Text("Scratch Total Step Debug Allocation");
+#endif // VX_DEBUG_ALLOCATOR
 
 	static int freq_idx = (int)std::log2((float)mPhysicsAppSetting.Rate() / 30.0f);
 	if (ImGui::Combo("Physics Freq (Hz)", &freq_idx, "30 Hz\0""60 Hz\0""120 Hz\0""240 Hz\0"))

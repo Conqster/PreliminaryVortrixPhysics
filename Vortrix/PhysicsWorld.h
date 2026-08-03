@@ -221,5 +221,8 @@ namespace vx
 		class TaskCoordinator* mTaskCoordinator = nullptr;
 		std::vector<class Task*> mProcessPairAndTrySetupContactConstraintTasks;
 		class IslandCoordinator* mIslandCoordinator = nullptr;
+
+		const ContactConstraintSolver* ContactConstraintCoordinator() const { return &mContactConstraintSolver; }
+		ConstraintSolver* GetConstraintSolver() const { return mConstraintSolver; }
 	};
 }

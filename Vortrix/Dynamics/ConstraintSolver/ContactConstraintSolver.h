@@ -163,6 +163,7 @@ namespace vx {
 		/// per frame transient allocation
 		VX_INLINE void PreFrameSetup(const PhysicsWorldSettings& phys_setting)
 		{
+			VX_PROFILE_FUNCTION();
 			//might zero out constraint buffer 
 			if (mNumConstraints > 0)
 				std::memset(mConstraints, 0, mNumConstraints * sizeof(ContactConstraint));
@@ -177,7 +178,7 @@ namespace vx {
 
 		void SetupContactConstraint(const ContactManifold& manifold, const struct CollisionContext& ctx);
 
-
+		uint32 MaxConstraints() const { return mMaxConstraints; }
 		
 		void SetupContactConstraint2(const ContactManifold& manifold, const struct CollisionContext& ctx);
 		/// attempting to write a thread safe version for multi threading
@@ -354,7 +355,7 @@ namespace vx {
 		/// what is the best caching method
 		///
 		/// what is required 
-
+		public:
 		class ContactConstraint
 		{
 		public:
@@ -433,6 +434,13 @@ namespace vx {
 
 		};
 		static_assert(std::is_trivially_copyable_v<ContactConstraint>, "must be copyable using memset");
+
+		ContactConstraint* GetContactConstraint(uint32 idx) const
+		{
+			VX_ASSERT(idx < mNumConstraints);
+			return &mConstraints[idx];
+		}
+		private:
 
 		/// sphere, vertex - face contacts only uses one point 
 		/// meaning extra work to fetch point and waste of sizeof(Point) * 3/4

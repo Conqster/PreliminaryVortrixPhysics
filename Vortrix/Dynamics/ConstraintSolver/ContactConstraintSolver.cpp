@@ -247,7 +247,10 @@ namespace vx {
 			else if (priority_a == priority_b)
 			{
 				/// 2. dynamic - dynamic 
-				if (manifold.a->GetID() < manifold.b->GetID())
+				//if (manifold.a->GetID() < manifold.b->GetID())
+				//	manifold.Swap();
+
+				if (manifold.a->GetID() > manifold.b->GetID())
 					manifold.Swap();
 			}
 		}
@@ -312,9 +315,9 @@ namespace vx {
 		//mNumConstraints++;
 		//mStats.numContactConstraints++;
 
-		uint32 idx = mNumConstraints.fetch_add(1, std::memory_order_relaxed);
-		VX_ASSERT_WARN_VOID(idx < mMaxConstraints, "Max frame contact constraint attianed returning");
-		ContactConstraint& constraint = mConstraints[idx];
+		uint32 constraint_idx = mNumConstraints.fetch_add(1, std::memory_order_relaxed);
+		VX_ASSERT_WARN_VOID(constraint_idx < mMaxConstraints, "Max frame contact constraint attianed returning");
+		ContactConstraint& constraint = mConstraints[constraint_idx];
 		mStats.numContactConstraints++; //need to fix
 
 
@@ -349,6 +352,13 @@ namespace vx {
  				VX_ASSERT(manifold.a->GetIndexInActiveBodies() != Body::kInvalidActiveIdx && manifold.b->GetIndexInActiveBodies() != Body::kInvalidActiveIdx, "Invalid Body index");
 				ctx.islandCoordinator->LinkBodies(manifold.a->GetIndexInActiveBodies(), manifold.b->GetIndexInActiveBodies());
 			}
+
+			if (manifold.a->IsDynamic())
+				ctx.islandCoordinator->LinkContactConstraint(constraint_idx, manifold.a->GetIndexInActiveBodies());
+			else if (manifold.b->IsDynamic())
+				ctx.islandCoordinator->LinkContactConstraint(constraint_idx, manifold.b->GetIndexInActiveBodies());
+			else
+				VX_ASSERT(false);
 		}
 
 #else
@@ -472,7 +482,10 @@ namespace vx {
 			else if (priority_a == priority_b)
 			{
 				/// 2. dynamic - dynamic 
-				if (manifold.a->GetID() < manifold.b->GetID())
+				//if (manifold.a->GetID() < manifold.b->GetID())
+				//	manifold.Swap();
+
+				if (manifold.a->GetID() > manifold.b->GetID())
 					manifold.Swap();
 			}
 		}
@@ -595,9 +608,9 @@ namespace vx {
 
 		//create constraint
 //allocate mem
-		uint32 idx = mNumConstraints.fetch_add(1, std::memory_order_relaxed);
-		VX_ASSERT_WARN_VOID(idx < mMaxConstraints, "Max frame contact constraint attianed returning");
-		ContactConstraint& constraint = mConstraints[idx];
+		uint32 constraint_idx = mNumConstraints.fetch_add(1, std::memory_order_relaxed);
+		VX_ASSERT_WARN_VOID(constraint_idx < mMaxConstraints, "Max frame contact constraint attianed returning");
+		ContactConstraint& constraint = mConstraints[constraint_idx];
 		mStats.numContactConstraints++; //need to fix
 
 
@@ -633,6 +646,14 @@ namespace vx {
 				VX_ASSERT(manifold.a->GetIndexInActiveBodies() != Body::kInvalidActiveIdx && manifold.b->GetIndexInActiveBodies() != Body::kInvalidActiveIdx, "Invalid Body index");
 				ctx.islandCoordinator->LinkBodies(manifold.a->GetIndexInActiveBodies(), manifold.b->GetIndexInActiveBodies());
 			}
+
+
+			if (manifold.a->IsDynamic())
+				ctx.islandCoordinator->LinkContactConstraint(constraint_idx, manifold.a->GetIndexInActiveBodies());
+			else if (manifold.b->IsDynamic())
+				ctx.islandCoordinator->LinkContactConstraint(constraint_idx, manifold.b->GetIndexInActiveBodies());
+			else
+				VX_ASSERT(false);
 		}
 
 

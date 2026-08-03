@@ -66,6 +66,8 @@ namespace vx {
 
 		SolverBodyIndex GetOrCreateSolverBody(const Body& body);
 
+		SolverBodyIndex TryGetSolverBodyIndex(BodyID physics_body_id) const;
+
 
 		static VX_INLINE void WriteBackBody(const SolverBody& local_body, Body& body)
 		{
@@ -75,6 +77,7 @@ namespace vx {
 		static void WriteBackBodies(const SolverBody* bodies, uint32 count, BodyManager& body_manager);
 
 		SolverBody& GetSolverBody(SolverBodyIndex local_idx) { return mBodies[local_idx.Value()]; }
+		const SolverBody& GetSolverBody(SolverBodyIndex local_idx) const { return mBodies[local_idx.Value()]; }
 
 		void PrepareSolver(uint32 required_liner_row, uint32 required_position_correct_constraint, const PhysicsStepContext& ctx);
 
