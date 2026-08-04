@@ -707,12 +707,16 @@ namespace vx {
 
 		
 #if CONTACT_USE_SOLVERBODY
+
+		static void SolveVelocityConstraint(ContactConstraint& constraint, SolverBody& sbA, SolverBody& sbB);
 	public:
 
 		static void WarmStart(const ContactConstraint& contact_constraint, struct SolverBody& body0, SolverBody& body1);
 		static void WarmStart(ContactConstraint* contact_constraints, size_t count, SolverBody* bodies);
 
+
 		void SolveVelocityConstraint(SolverBody* bodies);
+		void SolveVelocityConstraint(const uint32* constraint_start_idx, uint32 count, SolverBody* bodies);
 		void SolvePositionCorrections(SolverBody* bodies, BodyManager& body_manager, float baumgarte, float slop, float min_limit, float max_limit, float limit_scale);
 #else
 		void SolverContactManifold(const SolverSettings& phy_settings);

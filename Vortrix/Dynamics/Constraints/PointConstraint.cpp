@@ -2,6 +2,9 @@
 
 #include "Vortrix/Dynamics/ConstraintSolver.h"
 
+
+#include "Vortrix/Dynamics/IslandCoordinator.h"
+
 namespace vx {
 
 
@@ -29,7 +32,7 @@ namespace vx {
 	}
 
 
-	bool PointConstraint::PrepSolver(ConstraintSolver* solver, const PhysicsStepContext& ctx)
+	uint32 PointConstraint::PrepSolver(ConstraintSolver* solver, const PhysicsStepContext& ctx)
 	{
 		mFlags |= EConstraintFlags::Active;
 
@@ -38,11 +41,44 @@ namespace vx {
 		if (!active)
 		{
 			mFlags &= ~EConstraintFlags::Active;
-			return false;
+			return 0;
 		}
 
-		Linear1DRow* rows = solver->AllocateLinear1DRow(3);
+
+
+		/// Later move to like two bodies constraint 
+
+		///Activate bodies other body if sleepign
+		uint32 bodies_activate_count = 0;
+		BodyID body_ids[2];
+
+		if (mBodyA->IsDynamic() && !mBodyA->IsAwake())
+			body_ids[bodies_activate_count++] = mBodyA->GetID();
+		if (mBodyB->IsDynamic() && !mBodyB->IsAwake())
+			body_ids[bodies_activate_count++] = mBodyB->GetID();
+
+		if (bodies_activate_count > 0)
+			ctx.bodyManager->ActivateBodies(body_ids, bodies_activate_count);
+
+		/// link bodies if not already
+		/// a is alway dynam,ic
+		if (mBodyA->IsDynamic() && mBodyB->IsDynamic())
+		{
+			VX_ASSERT(mBodyA->GetIndexInActiveBodies() != Body::kInvalidActiveIdx && mBodyB->GetIndexInActiveBodies() != Body::kInvalidActiveIdx, "Invalid Body index");
+			ctx.mIslandCoordinator->LinkBodies(mBodyA->GetIndexInActiveBodies(), mBodyB->GetIndexInActiveBodies());
+		}
+
+		uint32 constraint_row_idx;
+
+		Linear1DRow* rows = solver->AllocateLinear1DRow(constraint_row_idx, 3);
 		BuildSplit1DJacobians(rows, ctx.stepDeltaTime);
+
+		if (mBodyA->IsDynamic())
+			ctx.mIslandCoordinator->LinkNonConstactConstraint(constraint_row_idx, 3, mBodyA->GetIndexInActiveBodies());
+		else if (mBodyB->IsDynamic())
+			ctx.mIslandCoordinator->LinkNonConstactConstraint(constraint_row_idx, 3, mBodyB->GetIndexInActiveBodies());
+		else
+			VX_ASSERT(false);
 
 		SolverBodyIndex idxA = solver->GetOrCreateSolverBody(mBodyA->GetID(), ctx);
 		SolverBodyIndex idxB = solver->GetOrCreateSolverBody(mBodyB->GetID(), ctx);
@@ -63,7 +99,7 @@ namespace vx {
 		//if warm start is disable, then no required accumulate lambda write back 
 		mAccumulatedLambda = {};
 
-		return true;
+		return 3;
 	}
 
 	void PointConstraint::CommitSolverState(const Linear1DRow& row)

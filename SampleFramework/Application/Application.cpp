@@ -1529,31 +1529,13 @@ void Application::PhysicsSettingItemOverlays()
 	if (!mPhysicsWorld)
 		return;
 
-	if (ImGui::Begin("Island Coordinator"))
-	{
-		auto& islands = mPhysicsWorld->mIslandCoordinator->islands;
-
-		for (uint32 i = 0; i < islands.size(); ++i)
-		{
-			vx::StackString txt("island ");
-			txt << i << ": ";
-			auto& _island = islands[i];
-			for (auto& id : _island.bodyIds)
-				txt << id.ID() << "(" << vx::int32(mPhysicsWorld->GetBodyManager().GetBody(id).GetIndexInActiveBodies()) << "),";
-
-			ImGui::Text("%s", txt.Data());
-
-			txt.Clear();
-		}
-	}
-	ImGui::End();
-
 
 	if (ImGui::Begin("Ex Island Coordinator"))
 	{
 		uint32 body_active_count = mPhysicsWorld->GetBodyManager().GetNumActiveBodies();
 		ImGui::Text("Bodies Active count: %d", body_active_count);
-		ImGui::Text("Island cache active count: %d", mPhysicsWorld->mIslandCoordinator->mActiveCount);
+		ImGui::Text("Islands count: %d", mPhysicsWorld->mIslandCoordinator->mIslandCount);
+		//ImGui::Text("Island cache active count: %d", mPhysicsWorld->mIslandCoordinator->mActiveCount);
 
 		auto& island_idxs = mPhysicsWorld->mIslandCoordinator->mIslandIdxs;
 		auto& body_link_idxs = mPhysicsWorld->mIslandCoordinator->mActiveBodyLinkIndices;
@@ -1596,6 +1578,21 @@ void Application::PhysicsSettingItemOverlays()
 		ImGui::Spacing();
 		if(ImGui::TreeNode("Bodies With Island Sorted"))
 		{
+			StackString txt("If constraints manifold consistency is enabled;\n");
+			txt << "And bodies is almost at rest attemping to go to sleep \n";
+			txt << "Body ID should be consistency across steps(frames) \n";
+			txt << "Solver Body Index might keep changing across steps; \n";
+			ImGui::Text("%s", txt.Data());
+			txt.Clear();
+			txt << "As it depends on thread GetOrCreateSolverBody order in multithreading; \n";
+			txt << "which is fine Solver bodies are slot based temporary data; \n";
+			txt << "A caveat when a body slightly close to another island; \n";
+			ImGui::Text("%s", txt.Data());
+			txt.Clear();
+			txt << "this body might oscillate bouncing from one island to another; \n";
+			txt << "But if so it usually mentain it solt/index in respective islands; \n";
+			ImGui::Text("%s", txt.Data());
+			//txt << "; \n";
 			if (ImGui::BeginTable("table2", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
 			{
 				// Display headers so we can inspect their interaction with borders
@@ -1718,13 +1715,13 @@ void Application::PhysicsSettingItemOverlays()
 				uint32 table_item_count = 0;
 				for (uint32 island = 0; island < mPhysicsWorld->mIslandCoordinator->mIslandCount; ++island)
 				{
-					vx::IslandCoordinator::IslandRange<uint32> constraint_island = mPhysicsWorld->mIslandCoordinator->GetIslandContactConstraintIndices(island);
+					vx::IslandCoordinator::IslandRange<uint32> constraint_island = mPhysicsWorld->mIslandCoordinator->IslandContactConstraintIndicesRange(island);
 
 					if (constraint_island.begin == nullptr) continue;//should break
 
 					vx::Colour col = vx::Colour::GetRandomColour(island);
 
-					for (uint32* constraint_idx = constraint_island.begin; constraint_idx < constraint_island.end; ++constraint_idx)
+					for (const uint32* constraint_idx = constraint_island.begin; constraint_idx < constraint_island.end; ++constraint_idx)
 					{
 
 						ImGui::TableNextRow();
@@ -1772,6 +1769,57 @@ void Application::PhysicsSettingItemOverlays()
 			}
 			ImGui::TreePop();
 		}
+
+
+		if (ImGui::TreeNode("Non Contact constraint Island"))
+		{
+			if (ImGui::BeginTable("table5", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+			{
+				// Display headers so we can inspect their interaction with borders
+				// (Headers are not the main purpose of this section of the demo, so we are not elaborating on them now. See other sections for details)
+				//if (display_headers)
+				{
+					ImGui::TableSetupColumn("Colour");
+					ImGui::TableSetupColumn("No");
+					ImGui::TableSetupColumn("Constraint Row Index");
+					ImGui::TableHeadersRow();
+				}
+
+				uint32 table_item_count = 0;
+				for (uint32 island = 0; island < mPhysicsWorld->mIslandCoordinator->mIslandCount; ++island)
+				{
+					vx::IslandCoordinator::IslandRange<uint32> constraint_island = mPhysicsWorld->mIslandCoordinator->IslandNonContactConstraintRowIndicesRange(island);
+
+					if (constraint_island.begin == nullptr) continue;//should break
+
+					vx::Colour col = vx::Colour::GetRandomColour(island);
+
+					for (const uint32* constraint_idx = constraint_island.begin; constraint_idx < constraint_island.end; ++constraint_idx)
+					{
+						ImGui::TableNextRow();
+
+						ImGui::TableSetColumnIndex(0);
+						ImVec4 _col(col.R(), col.G(), col.B(), 1.0f);
+						ImGui::ColorButton("##", _col);
+
+						uint32 data[2] =
+						{
+							table_item_count++,
+							*constraint_idx,
+						};
+						for (int column = 1; column < 3; column++)
+						{
+							ImGui::TableSetColumnIndex(column);
+							ImGui::Text("%d", data[column - 1]);
+						}
+					}
+				}
+
+				ImGui::EndTable();
+			}
+			ImGui::TreePop();
+		}
+
 	}
 	ImGui::End();
 

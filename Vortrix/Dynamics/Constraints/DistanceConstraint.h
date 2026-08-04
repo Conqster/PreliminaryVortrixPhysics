@@ -81,7 +81,7 @@ namespace vx {
 		float GetSpringFrequency() const { return mSpring.mFrequency; }
 		float GetSpringDampingRatio() const { return mSpring.mDampingRatio; }
 
-		virtual bool PrepSolver(ConstraintSolver* solver, const PhysicsStepContext& ctx) override;
+		virtual uint32 PrepSolver(ConstraintSolver* solver, const PhysicsStepContext& ctx) override;
 		/// essentailly used for commiting back accumulated lambda
 		/// based on constraints policy
 		virtual void CommitSolverState(const Linear1DRow& row) override

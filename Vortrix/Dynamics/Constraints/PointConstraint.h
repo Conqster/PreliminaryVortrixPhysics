@@ -66,7 +66,7 @@ namespace vx {
 
 		Vec3 GetAccumulatedLambda() const { return mAccumulatedLambda; }
 
-		virtual bool PrepSolver(ConstraintSolver* solver, const PhysicsStepContext& ctx) override;
+		virtual uint32 PrepSolver(ConstraintSolver* solver, const PhysicsStepContext& ctx) override;
 
 		/// essentailly used for commiting back accumulated lambda
 		/// based on constraints policy

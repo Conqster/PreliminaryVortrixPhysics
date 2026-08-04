@@ -272,7 +272,7 @@ namespace vx
 
 
 		mIslandCoordinator = new IslandCoordinator;
-		mIslandCoordinator->Init(mBodyManager.MaxBodies(), mContactConstraintSolver.MaxConstraints());
+		mIslandCoordinator->Init(mBodyManager.MaxBodies(), mContactConstraintSolver.MaxConstraints(), 512);
 	}
 
 	Body* PhysicsWorld::CreateBody(const BodySettings& body_setting, bool activate_body)
@@ -317,6 +317,7 @@ namespace vx
 		mContext.BVH_rebuild_SAH = mSettings.collision.BVH_rebuild_SAH;
 		mContext.rebuildBVH_ImbalanceRatioTreshold = mSettings.collision.rebuildBVH_ImbalanceRatioTreshold;
 		mContext.mScratchAllocator = mScratchAllocator;
+		mContext.mIslandCoordinator = mIslandCoordinator;
 
 		mWorldQuery.SetDebugRender(mHackDebugRenderer);
 		mWorldQuery.SetDrawBroadphaseNodesWalked(mSettings.drawSettings.drawWalkedTreeQuery);
@@ -423,6 +424,7 @@ namespace vx
 					&pair_process_and_constraint_setup_ctx,
 					[](void* user_data, uint32 begin, uint32 end)
 					{
+						VX_PROFILE_SCOPE("Parallel For Broadphase pair; Thread execution");
 						auto& ctx = *static_cast<QuickPairProcessAndConstraintSetupContext*>(user_data);
 						for (uint32 i = begin; i < end; ++i)
 						{
@@ -446,10 +448,27 @@ namespace vx
 		mContactConstraintSolver.FinaliseWriteManifoldCache();
 #endif // TEST_CONTACT_CONSTRAINT_MT
 
-		mIslandCoordinator->FinaliseIslands(*mConstraintSolver, mContactConstraintSolver.NumContactConstraints(), mBodyManager, mScratchAllocator);
 
+		/// free broadphase data straight after narrowphase
 		mScratchAllocator->Free(mBroadphaseBuffer.data, sizeof(BroadphasePair) * mBroadphaseBuffer.maxPairs);
 		mBroadphaseBuffer.data = nullptr;
+
+		/// Prepare non contact constraint 
+		/// contact constraint should be done
+		/// time to prep joint constraints 
+		const uint32 active_joint_constraint_count = mConstraintCoordinator.PrepConstraintSolving(*mConstraintSolver, mContext);
+
+
+		/// Active Body should have been linked 
+		/// Body Contact Constraint 
+		/// Body Non Contact Constraint
+		mIslandCoordinator->FinaliseIslands(*mConstraintSolver, mContactConstraintSolver.NumContactConstraints(), active_joint_constraint_count, mBodyManager, mScratchAllocator);
+
+
+
+	
+
+
 
 		if (mSettings.solver.enable)
 		{
@@ -484,22 +503,15 @@ namespace vx
 
 
 
+#define SOLVER_CONSTRAINT_VIA_ISLAND 1
 
 
 
 #if CONTACT_USE_SOLVERBODY
-			/// contact constraint should be done
-			/// time to prep joint constraints 
-			mConstraintCoordinator.PrepConstraintSolving(*mConstraintSolver, mContext);
-
 			Linear1DRow* constraint_solver_rows = mConstraintSolver->GetLinearRowPtr();
 			uint32 constraint_solver_row_count = mConstraintSolver->LinearRowCount(); 
 			SolverBody* solver_bodies = mConstraintSolver->GetBodiesPtr();
 
-
-		
-
-			
 			if (mSettings.solver.warmstart)
 			{
 				/// perform warm starts
@@ -509,6 +521,155 @@ namespace vx
 					ContactConstraintSolver::WarmStart(mContactConstraintSolver.ContactConstraintsPtr(), mContactConstraintSolver.NumContactConstraints(), solver_bodies);
 			}
 
+#if SOLVER_CONSTRAINT_VIA_ISLAND
+			//////solve islands multicore 
+			{
+				VX_PROFILE_SCOPE("Solving Velocity Constraints");
+				const uint32 island_count = mIslandCoordinator->NumIslands();
+
+#define TEST_SOLVER_CONSTRAINT_MT 1
+#if TEST_SOLVER_CONSTRAINT_MT
+				//for (int i = 0; i < mSettings.solver.velocityIterations; ++i)
+				//{
+				//	///later use sorted island to solver bigger island first
+				//	for (uint32 island = 0; island < island_count; ++island)
+				//	{
+				//		IslandCoordinator::IslandRange<uint32> constraint_island_indices_range = mIslandCoordinator->IslandNonContactConstraintRowIndicesRange(island);
+				//		IslandCoordinator::IslandRange<uint32> contact_constraint_island_indices_range = mIslandCoordinator->IslandContactConstraintIndicesRange(island);
+				//		mTaskCoordinator->ConstructTask([constraint_range = constraint_island_indices_range, constact_constraint_range = contact_constraint_island_indices_range, 
+				//		solver_bodies, constraint_solver = mConstraintSolver, contact_constraint_solver = &mContactConstraintSolver, enable_contact = mSettings.solver.enableContact]() {
+				//			///solve non constraint first
+				//			{
+				//				if (constraint_range.begin != nullptr)
+				//				{
+				//					const uint32 count = constraint_range.end - constraint_range.begin;
+				//					VX_ASSERT(count >= 0);
+				//					constraint_solver->SolverVelocityLinear1DRowsIndices(constraint_range.begin, count);
+				//				}
+				//			}
+
+
+				//			if (enable_contact && constact_constraint_range.begin != nullptr)
+				//			{
+				//				const uint32 count = constact_constraint_range.end - constact_constraint_range.begin;
+				//				VX_ASSERT(count >= 0);
+				//				contact_constraint_solver->SolveVelocityConstraint(constact_constraint_range.begin, count, solver_bodies);
+				//			}
+				//			},0);
+
+				//	}
+				//	mTaskCoordinator->WaitForTasks();
+
+				//}
+
+				std::atomic<uint32> next_island = { 0 };
+
+				struct SolvingIslandContext
+				{
+					ConstraintSolver& constraintSolver;
+					ContactConstraintSolver& contactConstraintSolver;
+					const IslandCoordinator* islandCoordinator;
+					const uint32 velocityIterations;
+					const bool enableContact;
+				};
+				SolvingIslandContext solving_island_ctx{ 
+					*mConstraintSolver,
+					mContactConstraintSolver,
+					mIslandCoordinator,
+					mSettings.solver.velocityIterations,
+					mSettings.solver.enableContact };
+
+				/// create task as the count; thread workers
+				for(uint32 i = 0; i < mTaskCoordinator->MaxConcurrency(); ++i)
+				{
+					mTaskCoordinator->ConstructTask([&solving_island_ctx, &next_island, island_count = mIslandCoordinator->NumIslands()]()
+						{
+
+							const uint32 velocity_iteration_count = solving_island_ctx.velocityIterations;
+							for (;;)
+							{
+								const uint32 island_idx = next_island.fetch_add(1, std::memory_order_relaxed);
+
+								if (island_idx >= island_count)
+									break;
+
+								IslandCoordinator::IslandRange<uint32> constraint_island_indices_range = solving_island_ctx.islandCoordinator->IslandNonContactConstraintRowIndicesRange(island_idx);
+								IslandCoordinator::IslandRange<uint32> contact_constraint_island_indices_range = solving_island_ctx.islandCoordinator->IslandContactConstraintIndicesRange(island_idx);
+
+								auto* solver_bodies = solving_island_ctx.constraintSolver.GetBodiesPtr();
+
+								for (int i = 0; i < velocity_iteration_count; ++i)
+								{
+									if (constraint_island_indices_range.Valid())
+										solving_island_ctx.constraintSolver.SolverVelocityLinear1DRowsIndices(constraint_island_indices_range.begin, constraint_island_indices_range.Size());
+
+
+									if (solving_island_ctx.enableContact && contact_constraint_island_indices_range.Valid())
+										solving_island_ctx.contactConstraintSolver.SolveVelocityConstraint(contact_constraint_island_indices_range.begin, contact_constraint_island_indices_range.Size(), solver_bodies);
+
+								}
+
+								//if (next_island.load(std::memory_order_relaxed) >= island_count)
+								//	break;
+
+							}
+						}, 0);
+				}
+				
+				mTaskCoordinator->WaitForTasks();
+
+
+#else
+				//for (int i = 0; i < mSettings.solver.velocityIterations; ++i)
+				//{
+				//	///later use sorted island to solver bigger island first
+				//	for (uint32 island = 0; island < island_count; ++island)
+				//	{
+				//		///solve non constraint first
+				//		{
+				//			IslandCoordinator::IslandRange<uint32> constraint_island_indices_range = mIslandCoordinator->GetIslandNonContactConstraintRowIndices(island);
+				//			if (constraint_island_indices_range.begin != nullptr)
+				//			{
+				//				const uint32 count = constraint_island_indices_range.end - constraint_island_indices_range.begin;
+				//				VX_ASSERT(count >= 0);
+				//				mConstraintSolver->SolverVelocityLinear1DRowsIndices(constraint_island_indices_range.begin, count, solver_bodies);
+				//			}
+				//		}
+
+
+				//		IslandCoordinator::IslandRange<uint32> contact_constraint_island_indices_range = mIslandCoordinator->GetIslandContactConstraintIndices(island);
+				//		if (mSettings.solver.enableContact && contact_constraint_island_indices_range.begin != nullptr)
+				//		{
+				//			const uint32 count = contact_constraint_island_indices_range.end - contact_constraint_island_indices_range.begin;
+				//			VX_ASSERT(count >= 0);
+				//			mContactConstraintSolver.SolveVelocityConstraint(contact_constraint_island_indices_range.begin, count, solver_bodies);
+				//		}
+				//	}
+				//}
+
+				///later use sorted island to solver bigger island first
+				for (uint32 island = 0; island < island_count; ++island)
+				{
+					for (int i = 0; i < mSettings.solver.velocityIterations; ++i)
+					{
+						///solve non constraint first
+						{
+							IslandCoordinator::IslandRange<uint32> constraint_island_indices_range = mIslandCoordinator->IslandNonContactConstraintRowIndicesRange(island);
+							if (constraint_island_indices_range.Valid())
+								mConstraintSolver->SolverVelocityLinear1DRowsIndices(constraint_island_indices_range.begin, constraint_island_indices_range.Size());
+						}
+
+
+						IslandCoordinator::IslandRange<uint32> contact_constraint_island_indices_range = mIslandCoordinator->IslandContactConstraintIndicesRange(island);
+						if (mSettings.solver.enableContact && contact_constraint_island_indices_range.Valid())
+							mContactConstraintSolver.SolveVelocityConstraint(contact_constraint_island_indices_range.begin, contact_constraint_island_indices_range.Size(), solver_bodies);
+					}
+				}
+
+
+#endif // TEST_SOLVER_CONSTRAINT_MT
+
+#else
 			for (int i = 0; i < mSettings.solver.velocityIterations; ++i)
 			{
 				ConstraintSolver::SolverVelocityLinear1DRows(constraint_solver_rows, 0, constraint_solver_row_count, solver_bodies);
@@ -516,6 +677,12 @@ namespace vx
 				if (mSettings.solver.enableContact)
 					mContactConstraintSolver.SolveVelocityConstraint(solver_bodies);
 			}
+
+#endif // SOLVER_CONSTRAINT_VIA_ISLAND
+
+			} /// Solving velocity constraints
+
+
 
 			//commit solver state to constraint
 			if (mSettings.solver.warmstart)
@@ -527,9 +694,6 @@ namespace vx
 #else
 			mContactConstraintSolver.SolveVelocityConstraint(mSettings.solver);
 			
-			/// contact constraint should be done
-			/// time to prep joint constraints 
-			mConstraintCoordinator->PrepConstraintSolving(*mConstraintSolver, mContext);
 			mConstraintSolver->SolverAll(mContext, mSettings.solver.velocityIterations);
 
 			///test constraint solving isolating, central solver with solver bodi4es
@@ -1077,56 +1241,14 @@ namespace vx
 
 			std::vector<uint32> islands_to_sleep;
 			std::vector<uint32> islands_awake;
-			//for (uint32 i = 0; i < islands.size(); ++i)
-			//{
-			//	auto& island = islands[i];
-
-			//	bool put_to_sleep = true;
-			//	for (auto& body_id : island.bodyIds)
-			//	{
-			//		//BodyID id = Get_BodyID_ActivationIdx(body_active_idx);
-
-			//		Body& body = mBodyManager.GetBody(body_id);
-			//		//if (mSettings.sleeping.enable)
-
-			//		body.UpdateSleepState(dt, mSettings.sleeping);
-
-			//		if (body.IsAwake())
-			//		{
-			//			put_to_sleep = false;
-			//			break;
-			//		}
-			//	}
-
-			//	if (put_to_sleep)
-			//		islands_to_sleep.push_back(i);
-			//	else
-			//		islands_awake.push_back(i);
-
-			//}
-
-
-			////// haxk for bodies in the awake list force wake up 
-			///// as some bodies are trying to sleep 
-			//for (auto& island_idx : islands_awake)
-			//{
-			//	auto& island = islands[island_idx];
-			//	for (auto& body_id : island.bodyIds)
-			//	{
-			//		//BodyID id = Get_BodyID_ActivationIdx(body_active_idx);
-			//		Body& body = mBodyManager.GetBody(body_id);
-			//		body.WakeUp(false);
-			//	}
-			//}
-
 
 			for (uint32 island = 0; island < mIslandCoordinator->mIslandCount; ++island)
 			{
-				IslandCoordinator::IslandRange<BodyID> body_island = mIslandCoordinator->GetIslandBodyIDs(island);
+				IslandCoordinator::IslandRange<BodyID> body_island = mIslandCoordinator->IslandBodyIDsRange(island);
 
 				bool put_to_sleep = true;
 
-				for (BodyID* body_id = body_island.begin; body_id < body_island.end; ++body_id)
+				for (const BodyID* body_id = body_island.begin; body_id < body_island.end; ++body_id)
 				{
 					Body& body = mBodyManager.GetBody(*body_id);
 					//if (mSettings.sleeping.enable)
@@ -1149,8 +1271,8 @@ namespace vx
 			/// as some bodies are trying to sleep 
 			for (auto& island_idx : islands_awake)
 			{
-				IslandCoordinator::IslandRange<BodyID> body_island = mIslandCoordinator->GetIslandBodyIDs(island_idx);
-				for (BodyID* body_id = body_island.begin; body_id < body_island.end; ++body_id)
+				IslandCoordinator::IslandRange<BodyID> body_island = mIslandCoordinator->IslandBodyIDsRange(island_idx);
+				for (const BodyID* body_id = body_island.begin; body_id < body_island.end; ++body_id)
 				{
 					Body& body = mBodyManager.GetBody(*body_id);
 					body.WakeUp(false);

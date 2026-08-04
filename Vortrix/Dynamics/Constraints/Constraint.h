@@ -33,7 +33,7 @@ namespace vx {
 		Body* BodyA() const { return mBodyA; }
 		Body* BodyB() const { return mBodyB; }
 		//virtual bool PrepSolver(SolverBuilder*) = 0;
-		virtual bool PrepSolver(ConstraintSolver*, const PhysicsStepContext&) = 0;
+		virtual uint32 PrepSolver(ConstraintSolver*, const PhysicsStepContext&) = 0;
 		/// essentailly used for commiting back accumulated lambda
 		/// based on constraints policy
 		virtual void CommitSolverState(const Linear1DRow& row) = 0;

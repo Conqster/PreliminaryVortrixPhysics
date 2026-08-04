@@ -15,9 +15,14 @@ namespace vx {
 
 		delete[] mConstraintIndicesIslands;
 		delete[] mConstraintIslandIndexEnds;
+
+		delete[] mNonContactConstraintRowBodyLinkIndices;
+
+		delete[] mNonConstactConstraintRowIndicesIslands;
+		delete[] mNonConstraintRowIslandIndexEnds;
 	}
 
-	void IslandCoordinator::Init(uint32 max_bodies, uint32 max_contact_constraint)
+	void IslandCoordinator::Init(uint32 max_bodies, uint32 max_contact_constraint, uint32 max_noncontact_constraint)
 	{
 		mActiveBodyLinkIndices = new std::atomic<uint32>[max_bodies];
 		//mIslandIdxs = new uint32[max_bodies];
@@ -26,12 +31,19 @@ namespace vx {
 		mBodyIDPerIslandIndexEnds = new uint32[max_bodies];
 
 		mContactConstraintBodyLinkIndices = new uint32[max_contact_constraint];
+		mMaxContactConstraint = max_contact_constraint;
 
+		///later make this temporary step data; using scratch allocation
+		mNonContactConstraintRowBodyLinkIndices = new ConstraintRowEdge[max_noncontact_constraint];
+		mMaxNonContactConstraint = max_noncontact_constraint;
 
 		mConstraintIndicesIslands = new uint32[max_bodies];
 		mConstraintIslandIndexEnds = new uint32[max_bodies];
 
-		mMaxContactConstraint = max_contact_constraint;
+		mNonConstactConstraintRowIndicesIslands = new uint32[max_bodies];
+		mNonConstraintRowIslandIndexEnds = new uint32[max_bodies];
+
+
 
 		mIslandIdxs.resize(max_bodies);
 	}
@@ -40,14 +52,16 @@ namespace vx {
 	{
 		VX_PROFILE_FUNCTION();
 		for (uint32 i = 0; i < body_count; ++i)
-		{
 			mActiveBodyLinkIndices[i] = i;
-		}
 
-		islands.clear();
 
 		mIslandCount = { 0 };
 		mValidateStepMaxConstraint = { 0 };
+
+		mValidateStepMaxNonConstraint = { 0 };
+
+		//mIslandIdxs.clear();
+		mIslandIdxs.resize(body_count, 0);
 	}
 
 	uint32 IslandCoordinator::ComputeActiveBodyLowestIdx(uint32 idx)
@@ -114,9 +128,7 @@ namespace vx {
 		}
 	}
 
-	void IslandCoordinator::LinkNonConstactConstraint(uint32 constraint_idx, uint32 min_active_body_idx)
-	{
-	}
+
 
 	void IslandCoordinator::LinkContactConstraint(uint32 constraint_idx, uint32 min_active_body_idx)
 	{
@@ -127,13 +139,25 @@ namespace vx {
 		mContactConstraintBodyLinkIndices[constraint_idx] = min_active_body_idx;
 	}
 
-	void IslandCoordinator::FinaliseIslands(const ConstraintSolver& constraint_solver, uint32 contact_constraint_count, BodyManager& body_manager, ScratchAllocator* scratchAllocator)
+	void IslandCoordinator::LinkNonConstactConstraint(uint32 constraint_row_idx, uint32 row_count, uint32 min_active_body_idx)
+	{
+		VX_ASSERT(constraint_row_idx < mMaxNonContactConstraint);
+		VX_ASSERT(min_active_body_idx != Body::kInvalidActiveIdx);
+
+		atomic::Max(mValidateStepMaxNonConstraint, constraint_row_idx + row_count);
+
+		mNonContactConstraintRowBodyLinkIndices[constraint_row_idx] = { min_active_body_idx, constraint_row_idx, row_count };
+	}
+
+	void IslandCoordinator::FinaliseIslands(const ConstraintSolver& constraint_solver, uint32 contact_constraint_count, 
+		uint32 active_non_contact_constraint_count, BodyManager& body_manager, ScratchAllocator* scratchAllocator)
 	{
 		const uint32 active_bodies_count = body_manager.GetNumActiveBodies();
 		if (active_bodies_count <= 0) return;
 		uint32* temp_active_bodies_island_indices = reinterpret_cast<uint32*>(scratchAllocator->Allocate(sizeof(uint32) * active_bodies_count));
 		FinaliseBodyIslands(constraint_solver, body_manager, active_bodies_count, temp_active_bodies_island_indices, scratchAllocator);
 		FinaliseContactConstraint(contact_constraint_count, mIslandCount, temp_active_bodies_island_indices, scratchAllocator);
+		FinaliseNonContactConstraint(active_non_contact_constraint_count, mIslandCount, temp_active_bodies_island_indices, scratchAllocator);
 
 		scratchAllocator->Free(temp_active_bodies_island_indices, sizeof(uint32) * active_bodies_count);
 	}
@@ -264,19 +288,19 @@ namespace vx {
 
 		/// old island building
 #pragma region Old Island Building
-		if (islands.size() < next_island_idx)
-			islands.resize(next_island_idx);
+		//if (islands.size() < next_island_idx)
+		//	islands.resize(next_island_idx);
 
 
-		for (auto& _island : islands)
-			_island.bodyIds.clear();
+		//for (auto& _island : islands)
+		//	_island.bodyIds.clear();
 
-		for (uint32 i = 0; i < active_bodies_count; ++i)
-		{
-			auto& body = body_manager.GetBody(body_manager.GetActiveBodyID(i));
-			uint32 idx = body.GetIslandIndex();
-			islands[idx].bodyIds.push_back(body.GetID());
-		}
+		//for (uint32 i = 0; i < active_bodies_count; ++i)
+		//{
+		//	auto& body = body_manager.GetBody(body_manager.GetActiveBodyID(i));
+		//	uint32 idx = body.GetIslandIndex();
+		//	islands[idx].bodyIds.push_back(body.GetID());
+		//}
 #pragma endregion
 
 #define ALLOW_DEBUG_ISLAND 0
@@ -443,6 +467,80 @@ namespace vx {
 		scratchAllocator->Free(constraint_per_island, sizeof(uint32) * island_count);
 	}
 
+	void IslandCoordinator::FinaliseNonContactConstraint(const uint32 constraint_count, const uint32 island_count, const uint32* i_temp_active_bodies_island_indices, ScratchAllocator* scratchAllocator)
+	{
+		if (constraint_count <= 0) return;
+
+		VX_ASSERT(mValidateStepMaxNonConstraint == constraint_count);
+		//technically this is constraint row
+		uint32* constraint_per_island = reinterpret_cast<uint32*>(scratchAllocator->Allocate(sizeof(uint32) * island_count));
+
+		std::memset(constraint_per_island, 0, island_count * sizeof(ConstraintRowEdge));
+
+		/// derive constraint island slot from bodies idx 
+		/// bodies idx already have island allocated 
+		
+		///update island idxs 
+		for (uint32 i = 0; i < constraint_count;)
+		{
+
+			/// this is the non constriant island access from constaint solveer 
+			/// unlike contact solver; non contact uses mathemarice representation of constraint as jacobian row
+			/// i.e write spendle increament is row start + count 
+			ConstraintRowEdge constraint_row_edge = mNonContactConstraintRowBodyLinkIndices[i];
+			uint32 active_body_idx_island = i_temp_active_bodies_island_indices[constraint_row_edge.bodyLink];
+
+			constraint_per_island[active_body_idx_island] += constraint_row_edge.rowCount;
+
+			//increament
+			i += constraint_row_edge.rowCount; ///increment based on row count 
+		}
+
+
+
+		uint32* island_start_write = reinterpret_cast<uint32*>(scratchAllocator->Allocate(sizeof(uint32) * island_count));
+		/// first island is 0 
+		island_start_write[0] = 0;
+
+		///constraint absolute 
+		for (uint32 i = 1; i < island_count; ++i)
+		{
+			/// num of bodies in previous island + start of previous island 
+			uint32 body_per_prev_island = constraint_per_island[i - 1];
+			uint32 prev_island_start = island_start_write[i - 1];
+			island_start_write[i] = prev_island_start + body_per_prev_island;
+		}
+
+		for (uint32 constraint_idx = 0; constraint_idx < constraint_count;)// ++constraint_idx)
+		{
+
+			ConstraintRowEdge constraint_row_edge = mNonContactConstraintRowBodyLinkIndices[constraint_idx];
+			uint32 active_body_idx_island = i_temp_active_bodies_island_indices[constraint_row_edge.bodyLink];
+
+			uint32& write_spendle = island_start_write[active_body_idx_island];
+
+
+			/// rows for this constraint 
+			/// rows per constraint a contigous 
+			for (uint32 row = 0; row < constraint_row_edge.rowCount; ++row)
+			{
+				mNonConstactConstraintRowIndicesIslands[write_spendle] = constraint_idx + row;
+				write_spendle++; ///increment island write spendle
+			}
+
+			//increament
+			constraint_idx += constraint_row_edge.rowCount; ///increment based on row count 
+		}
+
+
+		/// update constraiunt end with island incremneted write
+		for (uint32 i = 0; i < island_count; ++i)
+			mNonConstraintRowIslandIndexEnds[i] = island_start_write[i];
+
+		scratchAllocator->Free(island_start_write, sizeof(uint32) * island_count);
+		scratchAllocator->Free(constraint_per_island, sizeof(uint32) * island_count);
+	}
+
 
 
 
@@ -450,7 +548,7 @@ namespace vx {
 	{
 	}
 
-	IslandCoordinator::IslandRange<BodyID> IslandCoordinator::GetIslandBodyIDs(uint32 island_idx)
+	IslandCoordinator::IslandRange<BodyID> IslandCoordinator::IslandBodyIDsRange(uint32 island_idx) const
 	{
 		uint32 start_idx = (island_idx != 0) ? mBodyIDPerIslandIndexEnds[island_idx - 1] : 0;
 		uint32 end_idx = mBodyIDPerIslandIndexEnds[island_idx];
@@ -461,15 +559,38 @@ namespace vx {
 		);
 	}
 
-	IslandCoordinator::IslandRange<uint32> IslandCoordinator::GetIslandContactConstraintIndices(uint32 island_idx)
+	IslandCoordinator::IslandRange<SolverBodyIndex> IslandCoordinator::IslandSolverBodyIndicesRange(uint32 island_idx) const
 	{
-		if (mValidateStepMaxConstraint <= 0) return IslandRange<uint32>(nullptr, nullptr);
+		uint32 start_idx = (island_idx != 0) ? mBodyIDPerIslandIndexEnds[island_idx - 1] : 0;
+		uint32 end_idx = mBodyIDPerIslandIndexEnds[island_idx];
+
+		return IslandRange<SolverBodyIndex>(
+			&mSolverBodyIndexIslands[start_idx],
+			&mSolverBodyIndexIslands[end_idx]
+		);
+	}
+
+	IslandCoordinator::IslandRange<uint32> IslandCoordinator::IslandContactConstraintIndicesRange(uint32 island_idx) const
+	{
+		if (mValidateStepMaxConstraint.load(std::memory_order_relaxed) <= 0) return IslandRange<uint32>(nullptr, nullptr);
 		uint32 start_idx = (island_idx != 0) ? mConstraintIslandIndexEnds[island_idx - 1] : 0;
 		uint32 end_idx = mConstraintIslandIndexEnds[island_idx];
 
 		return IslandRange<uint32>(
 			&mConstraintIndicesIslands[start_idx],
 			&mConstraintIndicesIslands[end_idx]
+		);
+	}
+
+	IslandCoordinator::IslandRange<uint32> IslandCoordinator::IslandNonContactConstraintRowIndicesRange(uint32 island_idx) const
+	{
+		if (mValidateStepMaxNonConstraint.load(std::memory_order_relaxed) <= 0) return IslandRange<uint32>(nullptr, nullptr);
+		uint32 start_idx = (island_idx != 0) ? mNonConstraintRowIslandIndexEnds[island_idx - 1] : 0;
+		uint32 end_idx = mNonConstraintRowIslandIndexEnds[island_idx];
+
+		return IslandRange<uint32>(
+			&mNonConstactConstraintRowIndicesIslands[start_idx],
+			&mNonConstactConstraintRowIndicesIslands[end_idx]
 		);
 	}
 

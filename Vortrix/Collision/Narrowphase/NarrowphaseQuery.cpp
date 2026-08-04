@@ -52,7 +52,7 @@ namespace vx {
 
 	void NarrowphaseQuery::ProcessPairAndTrySetupContactConstraint(const Body* a, const Body* b, ContactConstraintSolver& contact_solver, const CollisionContext& ctx)
 	{
-		VX_PROFILE_FUNCTION();
+		//VX_PROFILE_FUNCTION();
 		BodySimStats& body_a_stat = mBodyManager->GetBodySimStats(*a);
 		BodySimStats& body_b_stat = mBodyManager->GetBodySimStats(*b);
 

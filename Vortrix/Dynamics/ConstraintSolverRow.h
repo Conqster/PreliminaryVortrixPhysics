@@ -7,7 +7,9 @@
 
 namespace vx {
 
-
+	/// i think a quick and dirty solution after set up most of the data are read only
+	/// then i would grouop the datas together and surpiseingly this struct is read only over multiple required iteration; 
+	/// because of the SolverBody index; only lambda is update inbetween velocity iterations
 	struct alignas(16) Linear1DRow
 	{
 		SolverBodyIndex bodyAidx;	/// later change to SolverBody only caches required data 

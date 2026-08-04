@@ -133,6 +133,8 @@ namespace vx {
 		};
 		virtual void ParallelFor(uint32 count, uint32 batch_size, const RangeTask& task) = 0;
 
+		virtual uint32 MaxConcurrency() const = 0;
+
 		virtual void Quit() = 0;
 		virtual void WaitForTasks() = 0;
 
@@ -159,6 +161,8 @@ namespace vx {
 
 		void EnqueueTask(Task* task) override { ImmediateTaskProcess(task); delete task; }
 		void EnqueueTasks(Task** tasks, uint32_t count);
+
+		uint32 MaxConcurrency() const override { return 1; }
 
 		void Quit() override {}
 		void WaitForTasks() override {}
@@ -189,6 +193,12 @@ namespace vx {
 		/// no dependacies, support dependacies later  
 
 		void ParallelFor(uint32 count, uint32 batch_size, const RangeTask& task) override;
+
+		/// num of worker threads + main thread; main thread contributes in processing task 
+		/// while waiting 
+		/// might what to use wisely; if created task = Max but main thread is not 
+		/// available to process last task as group.
+		uint32 MaxConcurrency() const override { return mWorkers.size() + 1; } 
 
 		void Quit() override
 		{
@@ -230,7 +240,7 @@ namespace vx {
 			//	mMainWaitFlag.notify_one();
 
 			///for now always wake main thread
-			if (mMainThreadWaitingTask)
+			if (mMainThreadWaitingTask.load(std::memory_order_relaxed))
 				mMainWaitFlag.notify_one();
 		}
 
@@ -411,7 +421,7 @@ namespace vx {
 		};
 
 		TaskBuffer mTaskBuffer;
-		bool mMainThreadWaitingTask = false;
+		std::atomic<bool> mMainThreadWaitingTask{ false };
 
 		/// current task been processed by threads
 		std::atomic<int> mProcessingTasks = 0;

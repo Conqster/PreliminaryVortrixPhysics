@@ -70,7 +70,7 @@ namespace vx {
 
 	SolverBodyIndex ConstraintSolver::GetOrCreateSolverBody(const Body& body)
 	{
-		VX_PROFILE_FUNCTION();
+		//VX_PROFILE_FUNCTION();
 		/// retriving need to be thread protected 
 		/// after is fine 
 		SolverBodyIndex& solver_idx = mBodyToSolverBody[body.GetID().Idx()];
@@ -177,6 +177,12 @@ namespace vx {
 		SolverBody& sbA = bodies[row.bodyAidx.Value()];
 		SolverBody& sbB = bodies[row.bodyBidx.Value()];
 
+		SolverVelocityLinear1DRow(row, sbA, sbB);
+	}
+
+	void ConstraintSolver::SolverVelocityLinear1DRow(Linear1DRow& row, SolverBody& sbA, SolverBody& sbB)
+	{
+
 		Vec3 axis = Vec3::LoadFloat3Raw(row.axis);
 
 		//jacobian 
@@ -214,6 +220,16 @@ namespace vx {
 		//for (Linear1DRow** r = rows, **r_end = rows + count; r < r_end; ++r)
 		for (Linear1DRow* r = rows, *r_end = rows + count; r < r_end; ++r)
 			SolverVelocityLinear1DRow(*r, bodies);
+	}
+
+	void ConstraintSolver::SolverVelocityLinear1DRowsIndices(const uint32* rows_indices, size_t count)
+	{
+		VX_PROFILE_FUNCTION();
+		for (const uint32* idx = rows_indices, *idx_end = rows_indices + count; idx < idx_end; ++idx)
+		{
+			Linear1DRow& row = mLinear1DRows[(*idx)];
+			SolverVelocityLinear1DRow(row, mBodies.data());
+		}
 	}
 
 	void ConstraintSolver::SolveConstraintsPosition(Constraint** constraints, size_t count, float dt, float baumgarte)

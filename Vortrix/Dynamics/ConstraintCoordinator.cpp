@@ -52,15 +52,23 @@ namespace vx{
 		}
 	}
 
-	void ConstraintCoordinator::PrepConstraintSolving(ConstraintSolver& solver, const PhysicsStepContext& ctx)
+	uint32 ConstraintCoordinator::PrepConstraintSolving(ConstraintSolver& solver, const PhysicsStepContext& ctx)
 	{
 		VX_PROFILE_FUNCTION();
 		//for now just all constraint might need position correction 
 		uint32 req_position_correction = mConstraints.size();
 		solver.PrepareSolver(mTotalPredicted1DRow, req_position_correction, ctx);
 
+
+		uint32 active_constraints = 0;
 		for (auto& c : mConstraints)
-			c->PrepSolver(&solver, ctx);
+			active_constraints += c->PrepSolver(&solver, ctx);
+		//{
+		//	if (c->PrepSolver(&solver, ctx))
+		//		active_constraints++;
+		//}
+
+		return active_constraints;
 	}
 
 	void ConstraintCoordinator::DebugGizmos(DebugGizmosRenderer* debug_renderer, const NonContactConstraintDrawSettings& draw_settings)

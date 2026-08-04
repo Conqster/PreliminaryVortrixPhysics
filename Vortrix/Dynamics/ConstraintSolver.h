@@ -94,7 +94,7 @@ namespace vx {
 
 		void HackClear();
 
-		Linear1DRow* AllocateLinear1DRow(uint32 count)
+		Linear1DRow* AllocateLinear1DRow(uint32& out_row_start, uint32 count)
 		{
 			//VX_ASSERT(count >= 1);
 			//for(int i = 0; i<count;++i)
@@ -102,6 +102,7 @@ namespace vx {
 			//return &mLinear1DRows.back() - (count -1);
 
 			VX_ASSERT(count >= 1);
+			out_row_start = mLinear1DRowsCounts;
 			Linear1DRow* alloc = mLinear1DRows + mLinear1DRowsCounts;
 			mLinear1DRowsCounts += count;
 			VX_ASSERT(mLinear1DRowsCounts <= mLinear1DRowBufferCount);
@@ -117,9 +118,12 @@ namespace vx {
 		}
 
 		static void SolverVelocityLinear1DRow(Linear1DRow& row, SolverBody* bodies);
+		static void SolverVelocityLinear1DRow(Linear1DRow& row, SolverBody& sbA, SolverBody& sbB);
 
 		/// static for future multothreading
 		static void SolverVelocityLinear1DRows(Linear1DRow* rows, size_t begin_offset, size_t count, SolverBody* bodies);
+
+		void SolverVelocityLinear1DRowsIndices(const uint32* rows_indices, size_t count);
 
 
 		static void SolveConstraintsPosition(Constraint** constraints, size_t count, float dt, float baumgarte);
