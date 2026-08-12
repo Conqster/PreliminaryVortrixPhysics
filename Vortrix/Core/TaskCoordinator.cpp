@@ -8,6 +8,9 @@
 #include "Profiler.h"
 #include "Vortrix/Maths/ScalarMath.h"
 
+#include "Assertion.h"
+#include "StackString.h"
+
 namespace vx {
 
 #pragma region TASK
@@ -200,14 +203,18 @@ namespace vx {
 		{
 			///keep scanning insytead of going back to sleep on fail
 			//wait no task, semaphore
-			uint32_t avail_task = 0;
 			{
 				std::unique_lock<std::mutex> no_task_lock(mTaskQueueMutex);
 
-				mTaskAvailable.wait(no_task_lock, [this, &avail_task]()
+				mTaskAvailable.wait(no_task_lock, [this]()
 					{
-						avail_task = mAvailableTaskCount.load(std::memory_order_relaxed);
-						return mQuickHackThreadCatchUp || avail_task > 0 || mOnQuitThreads;
+						if (mMainThreadWaitingTask.load(std::memory_order_relaxed) &&
+							mProcessingTasks.load(std::memory_order_acquire) == 0) /// process_count - 1 <= 0
+							SignalMainThread();
+
+						return mQuickHackThreadCatchUp || 
+							mAvailableTaskCount.load(std::memory_order_relaxed) > 0 || 
+							mOnQuitThreads;
 					});
 
 
@@ -224,6 +231,8 @@ namespace vx {
 					{
 
 #if PRESISTENT_TASK_SIGNAL
+						uint32_t avail_task = 0;
+						avail_task = mAvailableTaskCount.load(std::memory_order_acquire);
 						/// after lock release, quick notify just incase of delay
 						/// notify - 1; because might get the task 
 						/// but its not guaranteed
@@ -241,17 +250,39 @@ namespace vx {
 								VX_PROFILE_SCOPE("Acquired New Task");
 								/// if we actual get the task 
 								/// quick consume work counter and was successful 
-								///but the means that the notify needs to be accurate 
-								mAvailableTaskCount.fetch_sub(1, std::memory_order_acq_rel);
+								/////but the means that the notify needs to be accurate 
+								//mAvailableTaskCount.fetch_sub(1, std::memory_order_relaxed);
 
-								/// we will be processing the so the waiting thread for processing task will be aware
+								///// we will be processing the so the waiting thread for processing task will be aware
+								//mProcessingTasks.fetch_add(1, std::memory_order_relaxed);
+
+
+
+								/// to prevent a race condition where 
+								/// both avail & process = 0 and waiting decide to complete
+								/// 
+								/// 
+								/// available: 1 -> 0
+								/// processing: 0 
+								/// 
+								/// main might see available == 0 && processing == 0 {wait complete}
+								/// 
+								/// but with 
+								/// processing: 0 -> 1
+								/// available: 1 -> 0 
+								/// 
+								/// potential outcome: 0 & 1, 1 & 1, 1 & 0
+								/// 
 								mProcessingTasks.fetch_add(1, std::memory_order_relaxed);
+								mAvailableTaskCount.fetch_sub(1, std::memory_order_relaxed);
 							}
 
 							task->Process();
 
 							//we are done processing 
-							uint32_t process_count = mProcessingTasks.fetch_sub(1, std::memory_order_relaxed);
+							//uint32_t process_count = mProcessingTasks.fetch_sub(1, std::memory_order_acq_rel);
+							//mProcessingTasks.fetch_sub(1, std::memory_order_relaxed);
+							uint32 processed = mProcessingTasks.fetch_sub(1, std::memory_order_release);
 
 							/// signal main thread if waiting for task process complete 
 			/*				if (mMainThreadWaitingTask && process_count < 1) /// process_count - 1 <= 0
@@ -263,6 +294,9 @@ namespace vx {
 #else
 							delete task;
 #endif // USE_TASK_CONSTURCT_BUFF
+
+							if (processed == 1 && mMainThreadWaitingTask.load(std::memory_order_relaxed)) /// process_count - 1 <= 0
+								SignalMainThread(); //might break 
 
 							THREAD_LOG_MSG("____    Thread " << thread_worker_idx << " complete a Task. _____ Task Active: " << mProcessingTasks.load(std::memory_order_relaxed) << ".\n");
 						}
@@ -281,8 +315,15 @@ namespace vx {
 
 
 
-			if (mMainThreadWaitingTask && mProcessingTasks.load(std::memory_order_relaxed) <= 0) /// process_count - 1 <= 0
+			//if (mMainThreadWaitingTask && mProcessingTasks.load(std::memory_order_relaxed) <= 0) /// process_count - 1 <= 0
+			if (mMainThreadWaitingTask.load(std::memory_order_relaxed) && 
+				mProcessingTasks.load(std::memory_order_acquire) == 0) /// process_count - 1 <= 0
 				SignalMainThread();
+
+			//const int processing = mProcessingTasks.load(std::memory_order_acquire);
+
+			//if(mProcessingTasks <= 0 && mMainThreadWaitingTask && )
+			//VX_ASSERT(processing > -1, (StackString<16>("Value: ") << processing).Data());
 		}
 #else
 
@@ -411,7 +452,7 @@ namespace vx {
 			if (succuss_add)
 			{
 				//for debug
-				mAvailableTaskCount.fetch_add(1);
+				mAvailableTaskCount.fetch_add(1, std::memory_order_release);
 				break;
 			}
 		}
@@ -501,7 +542,7 @@ namespace vx {
 			if (succuss_add)
 			{
 				//for debug
-				mAvailableTaskCount.fetch_add(1);
+				mAvailableTaskCount.fetch_add(1, std::memory_order_release);
 
 				queued_pointer++;
 				if (queued_pointer >= count)
@@ -512,7 +553,7 @@ namespace vx {
 			}
 		}
 		//reload task available for trigging
-		task_count = mAvailableTaskCount.load(std::memory_order_relaxed);
+		task_count = mAvailableTaskCount.load(std::memory_order_acquire);
 
 		SignalAvailableTask(task_count);
 
@@ -558,7 +599,7 @@ namespace vx {
 
 
 
-		mMainThreadWaitingTask = true;
+		mMainThreadWaitingTask.store(true, std::memory_order_relaxed);
 		//for helping out 
 		Task* task;
 
@@ -578,17 +619,28 @@ namespace vx {
 			{
 				std::unique_lock<std::mutex> no_task_lock(mTaskQueueMutex);
 
-				mMainWaitFlag.wait(no_task_lock, [this, &avail_task]()
-					{
-						avail_task = mAvailableTaskCount.load(std::memory_order_relaxed);
-						return avail_task > 0 || mProcessingTasks.load(std::memory_order_relaxed) <= 0;
-					});
-
-				if (avail_task <= 0 && mProcessingTasks.load(std::memory_order_relaxed) <= 0) //check the job job quueue just incase of race condition 
+				if (mProcessingTasks.load(std::memory_order_acquire) == 0 &&
+					mAvailableTaskCount.load(std::memory_order_acquire) == 0)
 					break;
 
-				//quick hack, if no work 
-				if (avail_task <= 0) _mm_pause();
+				mMainWaitFlag.wait(no_task_lock, [this]()
+					{
+						return (mAvailableTaskCount.load(std::memory_order_relaxed) > 0 || 
+									mProcessingTasks.load(std::memory_order_relaxed) == 0);
+						//return avail_task > 0 || processing_task <= 0;
+					});
+
+				avail_task = mAvailableTaskCount.load(std::memory_order_acquire);
+
+				if (avail_task == 0 && mProcessingTasks.load(std::memory_order_acquire) == 0) //check the job job quueue just incase of race condition 
+					break;
+			}
+
+			//quick hack, if no work 
+			if (avail_task <= 0) 
+			{
+				_mm_pause();
+				continue;
 			}
 
 			///// after lock release, quick notify just incase of delay
@@ -648,16 +700,36 @@ namespace vx {
 							/// if we actual get the task 
 							/// quick consume work counter and was successful 
 							///but the means that the notify needs to be accurate 
-							mAvailableTaskCount.fetch_sub(1, std::memory_order_acq_rel);
+							//mAvailableTaskCount.fetch_sub(1, std::memory_order_acq_rel);
+							//mAvailableTaskCount.fetch_sub(1, std::memory_order_relaxed);
 
-							/// we will be processing the so the waiting thread for processing task will be aware
+							///// we will be processing the so the waiting thread for processing task will be aware
+							//mProcessingTasks.fetch_add(1, std::memory_order_relaxed);
+
+
+							/// to prevent a race condition where 
+							/// both avail & process = 0 and waiting decide to complete
+							/// 
+							/// 
+							/// available: 1 -> 0
+							/// processing: 0 
+							/// 
+							/// main might see available == 0 && processing == 0 {wait complete}
+							/// 
+							/// but with 
+							/// processing: 0 -> 1
+							/// available: 1 -> 0 
+							/// 
+							/// potential outcome: 0 & 1, 1 & 1, 1 & 0
+							/// 
 							mProcessingTasks.fetch_add(1, std::memory_order_relaxed);
+							mAvailableTaskCount.fetch_sub(1, std::memory_order_relaxed);
 						}
 
 						task->Process();
 
 						//we are done processing 
-						mProcessingTasks.fetch_sub(1, std::memory_order_relaxed);
+						mProcessingTasks.fetch_sub(1, std::memory_order_release);
 
 #if USE_TASK_CONSTURCT_BUFF
 						mTaskBuffer.Deconstruct(task);
@@ -676,7 +748,11 @@ namespace vx {
 				}
 			}
 
-			if (mProcessingTasks.load(std::memory_order_relaxed) <= 0)
+			//if (mProcessingTasks.load(std::memory_order_acquire) <= 0)
+			//	break;
+
+			if (mProcessingTasks.load(std::memory_order_acquire) == 0 &&
+				mAvailableTaskCount.load(std::memory_order_acquire) == 0)
 				break;
 		}
 
@@ -762,8 +838,13 @@ namespace vx {
 
 		}
 #endif LOCKFREE_CAS_QUEUE
-		mMainThreadWaitingTask = false;
+		mMainThreadWaitingTask.store(false, std::memory_order_relaxed);
 		THREAD_LOG_MSG("Thread Work finished !!!!!!!\n");
+
+		const int processing = mProcessingTasks.load(std::memory_order_acquire);
+		const uint32 avail = mAvailableTaskCount.load(std::memory_order_acquire);
+		VX_ASSERT(processing == 0, (StackString<32>("Value: ") << processing << "avil: " << avail).Data());
+		VX_ASSERT(avail == 0, (StackString<16>("Value: ") << avail).Data());
 	}
 
 

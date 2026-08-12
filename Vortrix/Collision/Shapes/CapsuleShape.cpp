@@ -3,12 +3,12 @@
 
 namespace vx {
 
-	AABB CapsuleShape::GetLocalBounds() const
+	AABB CapsuleShape::LocalBounds() const
 	{
-		Vec3 half_extent = GetHalfExtents();
+		Vec3 half_extent = HalfExtents();
 		return AABB(-half_extent, half_extent);
 	}
-	AABB CapsuleShape::GetWorldBounds(const Mat44& tranform, const Vec3& scale) const
+	AABB CapsuleShape::ComputeWorldBounds(const Mat44& tranform, const Vec3& scale) const
 	{
 		Vec3 scaled_half_extent = scale.Abs() * Vec3(mRadius, mCylinderHalfHeight, mRadius);
 

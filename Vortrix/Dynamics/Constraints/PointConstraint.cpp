@@ -18,8 +18,8 @@ namespace vx {
 			///anchor A should be equal B 
 			//VX_ASSERT_WARN(settings.anchorA == settings.anchorB);
 
-			mLocalAnchorA = bodyA->GetOrientation().InverseRotate(settings.anchorA - bodyA->GetPosition());
-			mLocalAnchorB = bodyB->GetOrientation().InverseRotate(settings.anchorB - bodyB->GetPosition());
+			mLocalAnchorA = bodyA->Orientation().InverseRotate(settings.anchorA - bodyA->Position());
+			mLocalAnchorB = bodyB->Orientation().InverseRotate(settings.anchorB - bodyB->Position());
 		}
 		else
 		{
@@ -111,11 +111,11 @@ namespace vx {
 	void PointConstraint::SolvePositionConstraint(float dt, float baumgarte)
 	{
 		
-		Vec3 rA = mBodyA->GetOrientation().Rotate(mLocalAnchorA);
-		Vec3 rB = mBodyB->GetOrientation().Rotate(mLocalAnchorB);
+		Vec3 rA = mBodyA->Orientation().Rotate(mLocalAnchorA);
+		Vec3 rB = mBodyB->Orientation().Rotate(mLocalAnchorB);
 
-		Vec3 pA = mBodyA->GetPosition() + rA;
-		Vec3 pB = mBodyB->GetPosition() + rB;
+		Vec3 pA = mBodyA->Position() + rA;
+		Vec3 pB = mBodyB->Position() + rB;
 		Vec3 separation = pB - pA;
 
 		Mat44 invIA_x_rAx = Mat44(0.0f);
@@ -181,11 +181,11 @@ namespace vx {
 	void PointConstraint::DebugGizmos(DebugGizmosRenderer* debug_renderer, const NonContactConstraintDrawSettings& draw_settings) const
 	{
 		Vec3 rA, rB;
-		rA = mBodyA->GetOrientation().Rotate(mLocalAnchorA);
-		rB = mBodyB->GetOrientation().Rotate(mLocalAnchorB);
+		rA = mBodyA->Orientation().Rotate(mLocalAnchorA);
+		rB = mBodyB->Orientation().Rotate(mLocalAnchorB);
 
-		Vec3 rAw = rA + mBodyA->GetPosition();
-		Vec3 rBw = rB + mBodyB->GetPosition();
+		Vec3 rAw = rA + mBodyA->Position();
+		Vec3 rBw = rB + mBodyB->Position();
 
 		debug_renderer->DrawAACross(rAw, &Colour(1.0f, 0.2f, 0.2f), 1, draw_settings.anchorSize);
 		debug_renderer->DrawAACross(rBw, &Colour(0.2f, 1.0f, 0.4f), 1, draw_settings.anchorSize);
@@ -201,8 +201,8 @@ namespace vx {
 
 		//lets take into consideration that 
 		// that the achor point is not COM
-		Vec3 rA = mBodyA->GetOrientation().Rotate(mLocalAnchorA);
-		Vec3 rB = mBodyB->GetOrientation().Rotate(mLocalAnchorB);
+		Vec3 rA = mBodyA->Orientation().Rotate(mLocalAnchorA);
+		Vec3 rB = mBodyB->Orientation().Rotate(mLocalAnchorB);
 
 		bool bodyA_nonstatic = !mBodyA->IsStatic();
 		bool bodyB_nonstatic = !mBodyB->IsStatic();
@@ -216,8 +216,8 @@ namespace vx {
 		Vec3 bias;
 		if (mHasVelocityBias)
 		{
-			Vec3 pA = mBodyA->GetPosition() + rA;
-			Vec3 pB = mBodyB->GetPosition() + rB;
+			Vec3 pA = mBodyA->Position() + rA;
+			Vec3 pB = mBodyB->Position() + rB;
 
 			Vec3 error = pB - pA;
 			bias = (Vec3::Greater(error.Abs(), Vec3(mErrorTreshold))) ? error / dt : Vec3(0.0f);
@@ -326,10 +326,10 @@ namespace vx {
 		Mat44 invIB = mBodyB->ComputeInvInteriaWorld();
 		for (int i = 0; i < position_iteration; ++i)
 		{
-			//Vec3 separation = (Vec3(mBodyB->GetPosition() - mBodyA->GetPosition()) + mLocalAnchorB - mLocalAnchorA);
+			//Vec3 separation = (Vec3(mBodyB->Position() - mBodyA->Position()) + mLocalAnchorB - mLocalAnchorA);
 
-			Vec3 rA = mBodyA->GetOrientation().Rotate(mLocalAnchorA);
-			Vec3 rB = mBodyB->GetOrientation().Rotate(mLocalAnchorB);
+			Vec3 rA = mBodyA->Orientation().Rotate(mLocalAnchorA);
+			Vec3 rB = mBodyB->Orientation().Rotate(mLocalAnchorB);
 
 			invIA_x_rAx = Mat44(0.0f);
 			invIB_x_rBx = Mat44(0.0f);
@@ -347,8 +347,8 @@ namespace vx {
 			}
 
 			///recompute error 
-			Vec3 pA = mBodyA->GetPosition() + rA;
-			Vec3 pB = mBodyB->GetPosition() + rB;
+			Vec3 pA = mBodyA->Position() + rA;
+			Vec3 pB = mBodyB->Position() + rB;
 			Vec3 separation = pB - pA;
 
 			Vec3 axis = separation.Normalised();
@@ -463,7 +463,7 @@ namespace vx {
 
 		for (int i = 0; i < position_iteration; ++i)
 		{
-			//Vec3 separation = (Vec3(mBodyB->GetPosition() - mBodyA->GetPosition()) + mLocalAnchorB - mLocalAnchorA);
+			//Vec3 separation = (Vec3(mBodyB->Position() - mBodyA->Position()) + mLocalAnchorB - mLocalAnchorA);
 
 
 			Vec3 axes[3] = { Vec3::Right(), Vec3::Up(), Vec3::Forward() };
@@ -523,11 +523,11 @@ namespace vx {
 	{
 		//lets take into consideration that 
 		// that the achor point is not COM
-		o_rA = mBodyA->GetOrientation().Rotate(mLocalAnchorA);
-		o_rB = mBodyB->GetOrientation().Rotate(mLocalAnchorB);
+		o_rA = mBodyA->Orientation().Rotate(mLocalAnchorA);
+		o_rB = mBodyB->Orientation().Rotate(mLocalAnchorB);
 
-		Vec3 pA = o_rA + mBodyA->GetPosition();
-		Vec3 pB = o_rB + mBodyB->GetPosition();
+		Vec3 pA = o_rA + mBodyA->Position();
+		Vec3 pB = o_rB + mBodyB->Position();
 
 		return pB - pA;
 	}

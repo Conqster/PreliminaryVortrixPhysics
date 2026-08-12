@@ -15,7 +15,7 @@ namespace vx
 	//enum class DebugDrawFlag : uint32
 	//{
 	//	None	= 0,
-	//	Shape	= Bit32(0),
+	//	GetShape	= Bit32(0),
 	//	Corners = Bit32(1),
 	//	Normals = Bit32(2),
 	//	AABB	= Bit32(3),
@@ -56,13 +56,14 @@ namespace vx
 		Collision,		/// Colliding(dyn-dyn/dyn-static) / not
 		Phase,			/// Broad / Narrow / Colliding convert this to heat based
 		IslandIdx,
+		IslandConstraintGroup,
 	};
 
-	static constexpr const char* BodyColourModeLabels = "Instance\0""MotionState\0""MotionType\0""ShapeType\0""Collision\0""Phase\0""IslandIdx\0""\0";
+	static constexpr const char* BodyColourModeLabels = "Instance\0""MotionState\0""MotionType\0""ShapeType\0""Collision\0""Phase\0""IslandIdx\0""IslandConstraintGroup\0""\0";
 
 	/// BodyColour 
 	/// Motion type
-	/// Shape Type
+	/// GetShape Type
 	/// Sleep -> red & activate yellow
 	/// Island ->? different island have different colour
 	/// Material 
@@ -216,6 +217,13 @@ namespace vx
 		/// 
 		/// solver
 		bool drawContactConstraintSolverTBNs = false;
+		/// island 
+		bool drawPerIslandConstraintGroup = false;
+		bool drawPerIslandConstraintGroupPoint = true;
+		bool drawPerIslandConstraintGroupPlane = false;
+		float drawPerIslandConstraintGroupPointSize = 0.15f;
+		bool drawPerIslandConstraintGroupPointAsWireframe = true;
+		float drawPerIslandConstraintGroupColourAlpha = 1.0f;
 		
 		/// bodies
 		EBodyColourMode bodyColourMode = EBodyColourMode::IslandIdx;
@@ -230,6 +238,8 @@ namespace vx
 		Colour drawDebugInertiaColour = Colour::sOrange;
 		bool drawBodiesVelocities = false;
 		bool drawBodiesMassText = false;
+
+		float bodiesDrawColourAlpha = 1.0f;
 
 		bool drawAABBContactManifoldInFrame = false;
 		bool drawAABBContactManifoldInFrameWcPlane = true;

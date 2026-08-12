@@ -325,7 +325,7 @@ void DebugGizmosRendererImpl::DrawAABB(const vx::AABB& aabb, const vx::Colour& c
 	DrawAABB(aabb.mMin, aabb.mMax, col, wireframe);
 }
 
-template<size_t Sector, size_t Stack>
+template<size_t Sector, size_t Stack, bool Wireframe>
 void DebugGizmosRendererImpl::DrawSphere(const vx::Vec3& center, float radius, vx::Colour col)
 {
 	constexpr size_t sector_count = Sector;
@@ -374,15 +374,24 @@ void DebugGizmosRendererImpl::DrawSphere(const vx::Vec3& center, float radius, v
 			vx::Vec3 v2 = vertices[k2 + 1];
 			vx::Vec3 v3 = vertices[k2];
 			
-			DrawSolidTriangle(v0, v2, v1, col);
-			DrawSolidTriangle(v0, v3, v2, col);
+			if constexpr (Wireframe)
+			{
+				DrawWireTriangle(v0, v2, v1, col);
+				DrawWireTriangle(v0, v3, v2, col);
+			}
+			else
+			{
+				DrawSolidTriangle(v0, v2, v1, col);
+				DrawSolidTriangle(v0, v3, v2, col);
+			}
 		}
 	}
 }
 
-template void DebugGizmosRendererImpl::DrawSphere<8, 6>(const Vec3&, float, vx::Colour);
-template void DebugGizmosRendererImpl::DrawSphere<16, 12>(const Vec3&, float, vx::Colour);
-template void DebugGizmosRendererImpl::DrawSphere<4, 4>(const Vec3&, float, vx::Colour);
+template void DebugGizmosRendererImpl::DrawSphere<8, 6, false>(const Vec3&, float, vx::Colour);
+template void DebugGizmosRendererImpl::DrawSphere<8, 6, true>(const Vec3&, float, vx::Colour);
+template void DebugGizmosRendererImpl::DrawSphere<16, 12, false>(const Vec3&, float, vx::Colour);
+template void DebugGizmosRendererImpl::DrawSphere<4, 4, false>(const Vec3&, float, vx::Colour);
 
 //void DebugGizmosRendererImpl::DrawAABB(const vx::AABB& aabb, const vx::Colour& col, bool wireframe)
 //{
@@ -501,7 +510,7 @@ void DebugGizmosRendererImpl::ExecuteDraws()
 	mCameraUBO.Bind(0);
 
 	for (const auto& draw_cmd : mDrawCommands)
-		ExecuteDraw(draw_cmd);
+		InternalExecuteDraw(draw_cmd);
 
 	mLineBatches.clear();
 	mTriangleBatches.clear();
@@ -514,20 +523,19 @@ void DebugGizmosRendererImpl::ExecuteDraws()
 	glUseProgram(0);
 }
 
-bool DebugGizmosRendererImpl::PushDrawCommand(DrawCommand cmd)
+DrawCommand* DebugGizmosRendererImpl::PushDrawCommand(DrawCommand cmd)
 {
 	EndCurrentDrawCommand();
 
 	cmd.lineBuffRange.start = mLineBatches.size();
 	cmd.triBuffRange.start = mTriangleBatches.size();
 	mDrawCommands.push_back(cmd);
-	return true;
+	return &mDrawCommands.back();
 }
 
-bool DebugGizmosRendererImpl::PushDrawCommand(vx::Mat44 proj, vx::Mat44 view, IRenderTarget* render_target)
+DrawCommand* DebugGizmosRendererImpl::PushDrawCommand(vx::Mat44 proj, vx::Mat44 view, IRenderTarget* render_target)
 {
-	PushDrawCommand({ proj, view, 0, 0, 0, 0, render_target });
-	return true;
+	return PushDrawCommand({ proj, view, 0, 0, 0, 0, render_target });
 }
 
 bool DebugGizmosRendererImpl::EndCurrentDrawCommand()
@@ -544,6 +552,10 @@ bool DebugGizmosRendererImpl::EndCurrentDrawCommand()
 
 void DebugGizmosRendererImpl::RemoveDrawCommand(DrawCommand& cmd)
 {
+	const DrawCommand* _addr = &cmd;
+	VX_ASSERT(_addr >= mDrawCommands.data() && _addr < mDrawCommands.data() + mDrawCommands.size());
+
+	//has address
 	std::swap(cmd, mDrawCommands.back());
 	mDrawCommands.pop_back();
 }
@@ -563,10 +575,29 @@ bool DebugGizmosRendererImpl::ExecuteDraw(IRenderTarget* render_target)
 		}
 	}
 
-	return (cmd) ? ExecuteDraw(*cmd) : false;
+	return (cmd) ? InternalExecuteDraw(*cmd) : false;
 }
 
 bool DebugGizmosRendererImpl::ExecuteDraw(const DrawCommand& cmd)
+{
+
+	UploadIfDirty();
+	//mShader->Bind();
+	GLCall(glBindVertexArray(mLineVertexGrp.VAO));
+	GLCall(glBindBuffer(GL_ARRAY_BUFFER, mLineVertexGrp.VBO));
+
+	mCameraUBO.Bind(0);
+
+	bool status = InternalExecuteDraw(cmd);
+	//unbind any framebuffer (Reset)
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glBindVertexArray(0);
+	//unbind shader
+	glUseProgram(0);
+	return status;
+}
+
+bool DebugGizmosRendererImpl::InternalExecuteDraw(const DrawCommand& cmd)
 {
 	if (mLineBatches.size() <= 0 && mTriangleBatches.size() <= 0) return false;
 
@@ -583,7 +614,7 @@ bool DebugGizmosRendererImpl::ExecuteDraw(const DrawCommand& cmd)
 	//mShader->SetUniformMat4("uView", cmd.cameraData.view);
 
 	vx::Vec2 view_resolution;
-	if (cmd.renderTarget) 
+	if (cmd.renderTarget)
 	{
 		cmd.renderTarget->Bind();
 		//use main attachment size
@@ -591,14 +622,14 @@ bool DebugGizmosRendererImpl::ExecuteDraw(const DrawCommand& cmd)
 		VX_ASSERT(main_att != nullptr);
 		view_resolution = vx::Vec2(main_att->Width(), main_att->Height());
 	}
-	else 
+	else
 	{
 		VX_ASSERT(mActiveWindow != nullptr);
-		view_resolution = vx::Vec2(mActiveWindow->GetWidth(), mActiveWindow->GetHeight());
+		view_resolution = vx::Vec2(mActiveWindow->Width(), mActiveWindow->Height());
 		GLCall(glBindFramebuffer(GL_FRAMEBUFFER, 0));
 	}
 
-	if(line_vertex_count != 0)
+	if (line_vertex_count != 0)
 	{
 		mLineVertexGrp.shader->Bind();
 		mLineVertexGrp.Bind();
@@ -606,7 +637,7 @@ bool DebugGizmosRendererImpl::ExecuteDraw(const DrawCommand& cmd)
 
 		//glDrawArrays(GL_LINES, first_line_vertex, line_vertex_count);
 		mLineVertexGrp.DrawArrayInstancedBase(first_line_vertex,
-			mLineVertexGrp.GetVertexCountDivisor()-1, line_vertex_count);
+			mLineVertexGrp.GetVertexCountDivisor() - 1, line_vertex_count);
 	}
 
 	//hack for now rare to draw triangle
@@ -626,6 +657,7 @@ bool DebugGizmosRendererImpl::ExecuteDraw(const DrawCommand& cmd)
 
 	return true;
 }
+
 
 bool DebugGizmosRendererImpl::Flush(IRenderTarget* render_target)
 {
@@ -647,7 +679,7 @@ bool DebugGizmosRendererImpl::Flush(IRenderTarget* render_target)
 	GLCall(glBindBuffer(GL_ARRAY_BUFFER, mLineVertexGrp.VBO));
 
 	mCameraUBO.Bind(0);
-	ExecuteDraw(*cmd);
+	InternalExecuteDraw(*cmd);
 	//remove
 	RemoveDrawCommand(mDrawCommands[cmd_idx]);
 
@@ -659,3 +691,4 @@ bool DebugGizmosRendererImpl::Flush(IRenderTarget* render_target)
 
 	return true;
 }
+

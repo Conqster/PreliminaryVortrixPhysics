@@ -164,12 +164,13 @@ public:
 	void DrawAABB(const vx::Vec3& min, const vx::Vec3& max, const vx::Colour& col, bool wireframe = true);
 	void DrawAABB(const vx::AABB& aabb, const vx::Colour& col, bool wireframe = true) override;
 
-	template<size_t Sector = 8, size_t Stack = 6>
+	template<size_t Sector = 8, size_t Stack = 6, bool Wireframe = false>
 	void DrawSphere(const vx::Vec3& center, float radius, vx::Colour col);
 	//void DrawAABB(const vx::AABB& aabb, const vx::Colour& col, bool wireframe = false);
 
-	void DrawSphere(const vx::Vec3& center, float radius, vx::Colour col) override { DrawSphere<8, 6>(center, radius, col); }
-	void DrawSphere4x4(const vx::Vec3& center, float radius, vx::Colour col) override { DrawSphere<4, 4>(center, radius, col); }
+	void DrawSphere(const vx::Vec3& center, float radius, vx::Colour col) override { DrawSphere<8, 6, false>(center, radius, col); }
+	void DrawWireSphere(const vx::Vec3& center, float radius, vx::Colour col) override { DrawSphere<8, 6, true>(center, radius, col); }
+	void DrawSphere4x4(const vx::Vec3& center, float radius, vx::Colour col) override { DrawSphere<4, 4, false>(center, radius, col); }
 
 	/// axis aligned cross 
 	void DrawAACross(const vx::Vec3& pos, const Colour* colour, int colour_count, float scale = 1.0f) override;
@@ -413,8 +414,8 @@ public:
 	//bool Initialise(Shader* shader = nullptr, std::string_view proj = {}, std::string_view view = {}, const std::vector<VertexAttri>& vert_attribs = {}, bool accumulate_offset = true);
 
 
-	bool PushDrawCommand(DrawCommand cmd) override;
-	bool PushDrawCommand(vx::Mat44 proj, vx::Mat44 view, IRenderTarget* render_target) override;
+	DrawCommand* PushDrawCommand(DrawCommand cmd) override;
+	DrawCommand* PushDrawCommand(vx::Mat44 proj, vx::Mat44 view, IRenderTarget* render_target) override;
 
 	bool EndCurrentDrawCommand() override;
 
@@ -436,7 +437,12 @@ public:
 	bool ExecuteDraw(const DrawCommand& cmd) override;
 
 	bool Flush(IRenderTarget* render_target) override;
+
+private:
+
+	bool InternalExecuteDraw(const DrawCommand& cmd);
 };
 
 
-extern template void DebugGizmosRendererImpl::DrawSphere<8, 6>(const Vec3&, float, vx::Colour);
+extern template void DebugGizmosRendererImpl::DrawSphere<8, 6, false>(const Vec3&, float, vx::Colour);
+extern template void DebugGizmosRendererImpl::DrawSphere<8, 6, true>(const Vec3&, float, vx::Colour);

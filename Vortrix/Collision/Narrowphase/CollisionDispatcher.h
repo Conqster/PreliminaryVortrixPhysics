@@ -57,7 +57,7 @@ namespace vx {
 			const Shape* b, const Vec3& p1, const Quat& q1,
 			ContactManifold&) 
 		{ 
-			VX_LOG_WARN("Unsupported Dispatch Pairs {", a->GetShapeTypeName(), "-", b->GetShapeTypeName(), "}!!!"); 
+			VX_LOG_WARN("Unsupported Dispatch Pairs {", a->ShapeTypeName(), "-", b->ShapeTypeName(), "}!!!"); 
 			return false; 
 		}
 	};

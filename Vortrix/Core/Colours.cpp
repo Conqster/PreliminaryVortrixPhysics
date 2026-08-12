@@ -20,8 +20,17 @@ namespace vx {
 
 	const static std::array<Colour, 32> sRandomColourInst = GenerateRandomColours();
 
-	Colour Colour::GetRandomColour(int idx)
+	Colour Colour::RandomColour(int idx)
 	{
 		return sRandomColourInst[idx % sRandomColourInst.size()];
+
+
+		//uint32 h = idx * 2654435761u;
+
+		//float r = ((h >> 16) & 255) / 255.0f;
+		//float g = ((h >> 8) & 255) / 255.0f;
+		//float b = ((h & 255) & 255) / 255.0f;
+
+		//return Colour(r, g, b);
 	}
 }

@@ -38,7 +38,7 @@ namespace vx
 		for (auto& node : mTree.GetNodes())
 		{
 			if (node.IsLeaf())
-				VX_LOG_DEBUG("leaf body: ", node.body->GetPosition(), " bounds {min: ", node.bounds.mMin, ", max: ", node.bounds.mMax, "}.");
+				VX_LOG_DEBUG("leaf body: ", node.body->Position(), " bounds {min: ", node.bounds.mMin, ", max: ", node.bounds.mMax, "}.");
 			else
 				VX_LOG_DEBUG("Interbal bounds{min: ", node.bounds.mMin, ", max: ", node.bounds.mMax, "}.");
 		}

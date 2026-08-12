@@ -25,7 +25,8 @@ namespace vx {
 			VX_ASSERT(mStackTop == 0, "Scratch allocator about to release, memory might still be used by other");
 			VX_FREE(mMemStart);
 		}
-		void* Allocate(size_t size)
+		
+		[[nodiscard]] void* Allocate(size_t size)
 		{
 			if (size == 0)
 				return nullptr;

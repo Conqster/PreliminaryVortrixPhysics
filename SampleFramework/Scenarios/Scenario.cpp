@@ -79,7 +79,7 @@ void Scenario::MouseClickCheck()
 
 }
 
-void Scenario::MouseCastRay()
+void Scenario::MouseCastRay(bool physics_simulated)
 {
 	if (BlockedMouseCastRay()) return;
 	if (mAppCamera == nullptr || mAppWindow == nullptr || mPhysicsWorld == nullptr) return;
@@ -87,8 +87,8 @@ void Scenario::MouseCastRay()
 
 	if (mBody.IsValid() && mMouseEvent == EClickEvent::Held) return;
 
-	vx::Vec3 cam_pos = mAppCamera->GetPosition();
-	vx::Vec3 cam_fwd = mAppCamera->GetForward();
+	vx::Vec3 cam_pos = mAppCamera->Position();
+	vx::Vec3 cam_fwd = mAppCamera->Forward();
 
 	vx::Vec2 mouse_cursor_pos = mAppWindow->MouseCursorPosition();
 
@@ -96,7 +96,7 @@ void Scenario::MouseCastRay()
 
 	//vx::Float3 cursor_ws(mouse_cursor_pos.X(), mouse_cursor_pos.Y(), cam_pos.Z());
 	vx::Vec3 cursor_ws(mouse_cursor_pos.X(), mouse_cursor_pos.Y(), -1.0f);
-	cursor_ws = mAppCamera->ScreenToWorld(cursor_ws, mAppWindow->GetWidth(), mAppWindow->GetHeight());
+	cursor_ws = mAppCamera->ScreenToWorld(cursor_ws, mAppWindow->Width(), mAppWindow->Height());
 	//VX_LOG_DEBUG("Mouse Cursor Pos: ", cursor_ws);
 	//vx::Vec3 ray_pos = 
 
@@ -124,7 +124,10 @@ void Scenario::MouseCastRay()
 		vx::Body& body = mPhysicsWorld->GetBodyManager().GetBody(hit.body);
 		mDebugGizmos->DrawAABB(body.GetAABBWorld(), vx::Colour::sDeepTeal);
 
-		if (!mBody.IsValid() && mMouseEvent != EClickEvent::None)
+		///alway set this this
+		mMouseHoveringBody = hit.body; 
+
+		if (physics_simulated && !mBody.IsValid() && mMouseEvent != EClickEvent::None)
 		{
 			if (body.IsSleeping())
 			{
@@ -135,13 +138,13 @@ void Scenario::MouseCastRay()
 			mBody = hit.body;
 			//transform point to body local
 			mPointBodyFrame = vx::Mat44::TransformInverse(
-				vx::Mat44::RotationTranslation(body.GetOrientation(), body.GetPosition()), point);
+				vx::Mat44::RotationTranslation(body.Orientation(), body.Position()), point);
 
 			if(mHasMouseConstraint)
 			{
 				mMouseDragBody = mPhysicsWorld->CreateBody(mMouseDragBodySettings, false);
 
-				mMouseDragConstraintSettings.localAnchorA = body.GetOrientation().InverseRotate(point - body.GetPosition());
+				mMouseDragConstraintSettings.localAnchorA = body.Orientation().InverseRotate(point - body.Position());
 				mMouseDragConstraint = new vx::DistanceConstraint(&body, mMouseDragBody, mMouseDragConstraintSettings);
 				mPhysicsWorld->AddConstraint(mMouseDragConstraint);
 				mMouseDragBody->SetPosition(cursor_ws);
@@ -196,19 +199,18 @@ void Scenario::OnClose()
 
 void Scenario::PostPhysicsStep(float dt)
 {
-	MouseClickCheck();
-	if (mAllowBaseMouseCast)MouseCastRay();
 
-	if(mHasMouseConstraint && mMouseDragBody != nullptr)
+
+	if (mHasMouseConstraint && mMouseDragBody != nullptr)
 	{
 		if (mBody.IsValid() && mMouseDragConstraint && mMouseEvent == EClickEvent::Held)
 		{
-			
-			vx::Vec3 cam_pos = mAppCamera->GetPosition();
-			vx::Vec3 cam_fwd = mAppCamera->GetForward();
+
+			vx::Vec3 cam_pos = mAppCamera->Position();
+			vx::Vec3 cam_fwd = mAppCamera->Forward();
 			vx::Vec2 mouse_cursor_pos = mAppWindow->MouseCursorPosition();
 			vx::Vec3 cursor_ws(mouse_cursor_pos.X(), mouse_cursor_pos.Y(), -1.0f);
-			cursor_ws = mAppCamera->ScreenToWorld(cursor_ws, mAppWindow->GetWidth(), mAppWindow->GetHeight());
+			cursor_ws = mAppCamera->ScreenToWorld(cursor_ws, mAppWindow->Width(), mAppWindow->Height());
 
 			cam_fwd = (cursor_ws - cam_pos).Normalised();
 			vx::Vec3 new_pos = cursor_ws + cam_fwd * t_dist;
@@ -218,7 +220,7 @@ void Scenario::PostPhysicsStep(float dt)
 
 			vx::Body& body = mPhysicsWorld->GetBodyManager().GetBody(mBody);
 			//cast ray down 
-			vx::RayCast ray_cast = vx::RayCast(body.GetPosition(), vx::Vec3(0.0f, -1.0f, 0.0f) * 100.0f);
+			vx::RayCast ray_cast = vx::RayCast(body.Position(), vx::Vec3(0.0f, -1.0f, 0.0f) * 100.0f);
 			vx::AllRaycastHitProcessor<16> processor;
 			mPhysicsWorld->GetWorldQuery().CastRay(ray_cast, processor);
 			vx::Vec3 end = ray_cast.End();
@@ -259,7 +261,7 @@ void Scenario::PostPhysicsStep(float dt)
 		else
 		{
 			mBody = vx::BodyID();
-			if(mMouseDragConstraint)
+			if (mMouseDragConstraint)
 			{
 				mPhysicsWorld->RemoveConstraint(mMouseDragConstraint);
 				delete mMouseDragConstraint;
@@ -276,20 +278,20 @@ void Scenario::PostPhysicsStep(float dt)
 		{
 
 			vx::Body& body = mPhysicsWorld->GetBodyManager().GetBody(mBody);
-			vx::Vec3 pt_ws = body.GetPosition() + body.GetOrientation().Rotate(mPointBodyFrame);
+			vx::Vec3 pt_ws = body.Position() + body.Orientation().Rotate(mPointBodyFrame);
 
 			//hack
-			vx::Vec3 cam_pos = mAppCamera->GetPosition();
-			vx::Vec3 cam_fwd = mAppCamera->GetForward();
+			vx::Vec3 cam_pos = mAppCamera->Position();
+			vx::Vec3 cam_fwd = mAppCamera->Forward();
 			vx::Vec2 mouse_cursor_pos = mAppWindow->MouseCursorPosition();
 			vx::Vec3 cursor_ws(mouse_cursor_pos.X(), mouse_cursor_pos.Y(), -1.0f);
-			cursor_ws = mAppCamera->ScreenToWorld(cursor_ws, mAppWindow->GetWidth(), mAppWindow->GetHeight());
+			cursor_ws = mAppCamera->ScreenToWorld(cursor_ws, mAppWindow->Width(), mAppWindow->Height());
 
 			cam_fwd = (cursor_ws - cam_pos).Normalised();
 			vx::Vec3 new_pos = cursor_ws + cam_fwd * t_dist;
 
 			//translate body 
-			vx::Vec3 translate_ws = new_pos - body.GetOrientation().Rotate(mPointBodyFrame);
+			vx::Vec3 translate_ws = new_pos - body.Orientation().Rotate(mPointBodyFrame);
 			body.SetPosition(translate_ws);
 
 			mDebugGizmos->DrawAACross(pt_ws, GetBasisAxisColourArray().data(), 3, 0.2f);
@@ -299,7 +301,7 @@ void Scenario::PostPhysicsStep(float dt)
 			body.ClearAccumulatedForces();
 
 			//cast ray down 
-			vx::RayCast ray_cast = vx::RayCast(body.GetPosition(), vx::Vec3(0.0f, -1.0f, 0.0f) * 100.0f);
+			vx::RayCast ray_cast = vx::RayCast(body.Position(), vx::Vec3(0.0f, -1.0f, 0.0f) * 100.0f);
 			vx::AllRaycastHitProcessor<16> processor;
 			mPhysicsWorld->GetWorldQuery().CastRay(ray_cast, processor);
 			vx::Vec3 end = ray_cast.End();
@@ -336,6 +338,12 @@ void Scenario::PostPhysicsStep(float dt)
 		else
 			mBody = vx::BodyID();
 	}
+}
+
+void Scenario::PostPhysicsInteract(bool physics_simulated)
+{
+	MouseClickCheck();
+	if (mAllowBaseMouseCast)MouseCastRay(physics_simulated);
 }
 
 void Scenario::CreateGroundPlane(float half_size)

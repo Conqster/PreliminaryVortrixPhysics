@@ -215,7 +215,7 @@ void ApplicationWindow::ChangeWindowTitle(const char* name)
 	glfwSetWindowTitle(mWindow, name);
 }
 
-const char* ApplicationWindow::GetFullTitle() const
+const char* ApplicationWindow::FullTitle() const
 {
 	return glfwGetWindowTitle(mWindow);
 }

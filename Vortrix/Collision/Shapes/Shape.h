@@ -16,7 +16,7 @@ namespace vx
 		Count
 	};
 
-	static constexpr const char* GetEShapeTypeName(const EShapeType type)
+	static constexpr const char* EShapeTypeName(const EShapeType type)
 	{
 		switch (type)
 		{
@@ -53,22 +53,22 @@ namespace vx
 	{
 	public:
 
-		EShapeType GetType() const { return mType; }
-		constexpr const char* GetShapeTypeName() const { return GetEShapeTypeName(mType); }
-		virtual const char* GetName() const { return "Base"; }
+		EShapeType Type() const { return mType; }
+		constexpr const char* ShapeTypeName() const { return EShapeTypeName(mType); }
+		virtual const char* Name() const { return "Base"; }
 
-		virtual AABB GetLocalBounds() const = 0;
-		virtual AABB GetWorldBounds(const Mat44& tranform, const Vec3& scale) const { return GetLocalBounds().Scaled(scale).Transformed(tranform); }
+		virtual AABB LocalBounds() const = 0;
+		virtual AABB ComputeWorldBounds(const Mat44& tranform, const Vec3& scale) const { return LocalBounds().Scaled(scale).Transformed(tranform); }
 
 		void SetDensity(float density) { mDensity = density; }
-		float GetDensity() const { return mDensity; }
+		float Density() const { return mDensity; }
 
 		virtual MassProperties GetMassProperties() const = 0; 
 		virtual Float3 ComputeInertiaTensorDiagonal (float mass) const = 0;
 
 		///GetHalfScale 
 		/// for rendering
-		virtual Vec3 GetHalfExtents() const = 0;
+		virtual Vec3 HalfExtents() const = 0;
 
 
 		virtual bool DataEq(const Shape* rhs) const = 0;

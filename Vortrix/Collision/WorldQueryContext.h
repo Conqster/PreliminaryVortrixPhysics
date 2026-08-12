@@ -29,9 +29,9 @@ namespace vx {
 		bool VisitBody(Body& body)
 		{
 			RaycastHit hit_result;
-			Vec3 t = body.GetPosition();
-			Quat q = body.GetOrientation();
-			EShapeType shape_type = body.GetShape()->GetType();
+			Vec3 t = body.Position();
+			Quat q = body.Orientation();
+			EShapeType shape_type = body.GetShape()->Type();
 
 			////Cast& local_cast = worldCast.Transformed() // as it could be custom
 			//Mat44 body_trans = Mat44::RotationTranslation(q, t);
@@ -41,7 +41,7 @@ namespace vx {
 			//Vec3 disp = ray_origin + ray_dir * worldCast.length;
 			//Cast& local_cast = Cast(ray_origin, disp);
 
-			////AABB aabb = body.GetShape()->GetLocalBounds();
+			////AABB aabb = body.GetShape()->LocalBounds();
 			////AABB aabb = body.GetAABBWorld();
 			////Body body 
 			//AABB aabb = body.ComputeAABBWorld();

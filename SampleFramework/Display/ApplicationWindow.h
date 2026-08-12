@@ -31,17 +31,17 @@ public:
 	ApplicationWindow() = default;
 	bool Init(const char* base_name, const WindowSpecification& win_spec, bool full_screen = false, const char* name_detail = "");
 
-	GLFWwindow* GetWindow() { return mWindow; }
-	unsigned int GetWidth() { return  mWindowWidth; }
-	unsigned int GetHeight() { return mWindowHeight; }
-	float GetAspectRatio() {return (float)mWindowWidth / (float)mWindowHeight;}
+	GLFWwindow* BackendWindow_Ptr() { return mWindow; }
+	unsigned int Width() { return  mWindowWidth; }
+	unsigned int Height() { return mWindowHeight; }
+	float AspectRatio() {return (float)mWindowWidth / (float)mWindowHeight;}
 
 	void ToggleLockCursor();
 	inline bool const GetLockCursor() const { return mLockCursor; }
 
 	void ChangeWindowTitle(const char* name);
-	const char* GetFullTitle() const;
-	inline const char* GetBaseTitle() const { return mBaseTitle.c_str();}
+	const char* FullTitle() const;
+	inline const char* BaseTitle() const { return mBaseTitle.c_str();}
 
 	inline bool GetVSync() const { return mVSync; }
 	void const SetVSync(bool value);

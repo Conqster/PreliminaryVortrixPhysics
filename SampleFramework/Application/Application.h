@@ -123,12 +123,13 @@ private:
 	};
 	ScenarioCatergory mScenarioCatergoies;
 	Scenario* mCurrScenario = nullptr;
+	class LoadedFromDiskScenario* mLoadedFromDiskScenario = nullptr;
 
 	float mRunningScenarioDuration = 5.0f;
 	float mCurrentScenarioDuration = 0.0f;
 	std::vector<Scenario*> mPendingRunScenarios;
-	void RunAllScenarioWindow();
-	void SaveCurrentScenarionWindow();
+	void LoadScenarioWindow();
+	void ScenarioInspectionWindow();
 
 	vx::RenderSettings mPhysicsRenderSettings{};
 	SpawnObjectCanon mTestCanon{};
@@ -194,6 +195,13 @@ private:
 	void PhysicsCollisionWindows();
 	void DrawUIRendererResourcesPanel(/*bool* p_open*/);
 
+	void PhysicsIslandCoordImGuiWindow();
+	/// window tab of PhysicsIslandCoordImGuiWindow
+	void PhysicsIslandCoordBuilderTab();
+	/// window tab of PhysicsIslandCoordImGuiWindow
+	void PhysicsIslandCoordSplitterTab();
+
+
 	void DrawUICameraStatePanel();
 	void DrawUI_LightingPanel();
 	void DrawUI_ShadowPanel();
@@ -214,6 +222,18 @@ private:
 
 
 private:
+
+	struct
+	{
+		bool appHelpWindow = false;
+		bool activeBodiesList = false;
+		bool islandCoord = true;
+		bool applyExternalEffectOnBodies = false;
+		bool scenarioWindowManagement = false;
+		bool loadScenarioWindow= false;
+	}mPhysicsImGuiWindows;
+
+	//vx::BodyID mHighlightingBody = vx::BodyID();
 
 	PhysicsAppSetting mPhysicsAppSetting;
 

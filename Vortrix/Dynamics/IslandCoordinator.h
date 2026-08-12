@@ -50,18 +50,18 @@ namespace vx {
 		void LinkBodies(uint32 body_activeA, uint32 body_activeB);
 		void LinkContactConstraint(uint32 constraint_idx, uint32 min_active_body_idx);
 
-		/// using this for now 
-		/// might later convert to a pipeline 
-		/// where Row are not allocated during prep'ing
-		/// so first loop; prep constraint (i.e active constraint) 
-		/// then after building islands; jacobian rows are allocated 
-		/// contigious to each other due island 
-		struct ConstraintRowEdge //data
-		{
-			uint32 bodyLink; ///body index
-			uint32 rowStart;
-			uint32 rowCount;
-		};
+		///// using this for now 
+		///// might later convert to a pipeline 
+		///// where Row are not allocated during prep'ing
+		///// so first loop; prep constraint (i.e active constraint) 
+		///// then after building islands; jacobian rows are allocated 
+		///// contigious to each other due island 
+		//struct ConstraintRowEdge //data
+		//{
+		//	uint32 bodyLink; ///body index
+		//	uint32 rowStart;
+		//	uint32 rowCount;
+		//};
 		/// so this would held 
 		/// on building island Linking
 		/// it links to the lowest body sort island allocation
@@ -85,9 +85,44 @@ namespace vx {
 
 		void SortIslands();
 
-		uint32 NumIslands() const { return mIslandCount; }
+		uint32 IslandCount() const { return mIslandCount; }
 
-	//private:
+		template<typename T>
+		struct IslandRange
+		{
+			IslandRange(T* _begin, T* _end) : begin(_begin), end(_end) {}
+			const T* begin; ///inclusive
+			const T* end; ///inclusive
+
+			bool Valid() const
+			{
+				return begin != nullptr &&
+					end != nullptr;//&&
+					end > begin; /// invariant; a valid range should contain at least one element
+			}
+			uint32 Size() const
+			{
+				VX_ASSERT(Valid());
+				return static_cast<uint32>(end - begin);
+			}
+		};
+
+		IslandRange<BodyID> IslandBodyIDsRange(uint32 island_idx) const;
+		IslandRange<SolverBodyIndex> IslandSolverBodyIndicesRange(uint32 island_idx) const;
+		IslandRange<uint32> ContactConstraintIndicesIslandRange(uint32 island_idx) const;
+		IslandRange<uint32> IslandNonContactConstraintRowIndicesRange(uint32 island_idx) const;
+
+		/// Raw
+		/// mostly for debugging 
+		const std::vector<uint32>& IslandsIndicesUnsorted() const { return mIslandIdxs; }
+		const std::atomic<uint32>* ActiveBodyLinkIndices() const { return mActiveBodyLinkIndices; } /// mBodyLinkIndexs
+
+		const BodyID* BodyIDIslands() const { return mBodyIDIslands; }
+		const SolverBodyIndex* SolverBodyIndexIslands() const { return mSolverBodyIndexIslands; }
+
+		const uint32* ContactConstraintBodyLinkIndices() const { return mContactConstraintBodyLinkIndices; }
+
+	private:
 		/// list would be invalid if not participanting or static 
 		//uint32* mBodiesIdxs = nullptr;
 		std::atomic<uint32>* mActiveBodyLinkIndices = nullptr; /// mBodyLinkIndexs
@@ -103,6 +138,12 @@ namespace vx {
 		/// so first loop; prep constraint (i.e active constraint) 
 		/// then after building islands; jacobian rows are allocated 
 		/// contigious to each other due island 
+		struct ConstraintRowEdge //data
+		{
+			uint32 bodyLink; ///body index
+			uint32 rowStart;
+			uint32 rowCount;
+		};
 		ConstraintRowEdge* mNonContactConstraintRowBodyLinkIndices = nullptr; ///later make this temporary step data; using scratch allocation
 		uint32 mMaxNonContactConstraint = 256;
 
@@ -117,32 +158,7 @@ namespace vx {
 		uint32 mIslandCount{ 0 };
 
 
-		template<typename T>
-		struct IslandRange
-		{
-			IslandRange(T* _begin, T* _end) : begin(_begin), end(_end) {}
-			const T* begin;
-			const T* end;
 
-			bool Valid() const 
-			{ 
-				return begin != nullptr && 
-					end != nullptr &&
-					end > begin; /// invariant; a valid range should contain at least one element
-			}
-			uint32 Size() const 
-			{ 
-				VX_ASSERT(Valid()); 
-				return static_cast<uint32>(end - begin);
-			}
-		};
-
-
-
-		IslandRange<BodyID> IslandBodyIDsRange(uint32 island_idx) const;
-		IslandRange<SolverBodyIndex> IslandSolverBodyIndicesRange(uint32 island_idx) const;
-		IslandRange<uint32> IslandContactConstraintIndicesRange(uint32 island_idx) const;
-		IslandRange<uint32> IslandNonContactConstraintRowIndicesRange(uint32 island_idx) const;
 
 		/// sorted per island data
 
@@ -160,6 +176,295 @@ namespace vx {
 
 		uint32* mNonConstactConstraintRowIndicesIslands = nullptr;
 		uint32* mNonConstraintRowIslandIndexEnds = nullptr;
+
+	public:
+
+#define VX_DEBUG_SPLITTER 0
+		class Splitter
+		{
+		public:
+
+			static const uint32 kLargeIslandSpitThreshold = 128;//64;
+
+			using BinMask = uint32;
+			static constexpr uint32 kMaxBin = 16; // toal mask bit for 4 bytes (32 bits) int
+			static constexpr uint32 kBatchSize = 32;//16;
+
+
+
+			/// old need to remove
+			struct IslandSplitBins
+			{
+				std::vector<uint32> mConstraintIndicesBins[kMaxBin];
+				std::vector<uint32> mNonConstraintIndicesBins[kMaxBin];
+
+				uint32 mContactConstraintPerBinBatchCount[kMaxBin];
+
+				uint32* mConstraintIndicesBinBatches[kMaxBin];
+				uint32* mConstraintIndicesBinBatchEnds[kMaxBin];
+
+			};
+
+
+			class BinConstraintsOffsetRange
+			{
+			public:
+				uint32 contactStart = 0;
+				uint32 contactEnd = 0;
+
+				uint32 nonContactStart = 0;
+				uint32 nonContactEnd = 0;
+
+
+				uint32 NumContactConstraint() const { return contactEnd - contactStart; }
+				uint32 NumNonContactConstraint() const { return nonContactEnd - nonContactStart; }
+
+				uint32 TotalConstraintCount() const { return NumContactConstraint() + NumNonContactConstraint(); }
+
+
+				uint32 TotalBatchCount() const
+				{
+					uint32 v = TotalConstraintCount();
+					return (v > 0) ? (TotalConstraintCount() / kBatchSize) : 0;
+				}
+			};
+
+
+			enum class EStatus
+			{
+				Complete,
+				WaitingForBatches,
+				RetrievedBatch
+			};
+
+
+			class IslandSplitBins2
+			{
+			public:
+				uint32 NumBins() const { return mNumActiveBins; }
+
+				BinConstraintsOffsetRange mBins[kMaxBin + 1]{};
+				uint32 mNumActiveBins = 0;
+
+				/// |a0|a1|a2|b0|b1|c0|c1|c2|c3|c4|non parallel
+				///          ^     ^              ^
+				/// a, b, c..... bins 
+				/// ..0, ..1 batches in bin
+				/// mTotalBatchProcessed spendle to progress the Bins
+				std::atomic<uint32> mTotalBatchProcessed{ 0 };
+				//std::atomic<uint32> mNext{ 0 };
+				//std::atomic<uint32> mCurrBin = 0;
+
+				uint32 mIterations = 0;
+
+				std::atomic<bool> mComplete = false;
+				///uint32 
+
+				EStatus NextConstactConstraintBatchRange(
+					uint32& o_contact_start, uint32& o_contact_end,
+					uint32& o_noncontact_start, uint32& o_noncontact_end, uint32& debug_bin);
+
+				void MarkConstraintBatchRangeComplete(uint32 process_constraint, uint32 velocity_iteration, uint32 debug_bin);
+
+
+
+				static uint64 MakeCurrBinNext(uint32 curr_bin, uint32 next)
+				{
+					return (uint64(curr_bin) << 32) | uint64(next);
+				}
+
+				static uint32 GetCurrBin(uint64 currbin_next)
+				{
+					return uint32(currbin_next >> 32);
+				}
+
+				static uint32 GetNextBatch(uint64 curr_bin_next)
+				{
+					return uint32(curr_bin_next);
+				}
+			//private:
+				/// | curr bin | next batch | 
+
+				std::atomic<uint64> mCurrBinNext{ 0 };
+			};
+
+
+
+#if VX_DEBUG_SPLITTER
+			std::vector<BinMask> mBodyBinMasks;
+
+			std::vector<bool> mIslandIsLarge;
+			//
+						//uint32* mConstraintsIndicesBuffer
+			std::vector<uint32> mConstraintIndices;
+#else
+			BinMask* mBodyBinMasks = nullptr;
+			bool* mIslandIsLarge = nullptr;
+			uint32* mConstraintIndices = nullptr;
+			uint32 mConstaintIndicesCount = 0;
+#endif // VX_DEBUG_SPLITTER
+
+			/// need to remove; just for debugging
+			std::vector<IslandSplitBins> mIslandCacheBins;
+
+
+			uint32 mStepLargeIslandCount = 0;
+			uint32 mConstraintAllocatedTail = 0;
+			IslandSplitBins2* mIslandSplitBins2 = nullptr;
+			uint32 mIslandSplitBins2Size = 0;
+
+
+			bool IsIslandLarge(uint32 island_idx) const { return mIslandIsLarge[island_idx]; }
+
+			EStatus NextConstactConstraintBatchRange(uint32& split_island_idx, uint32 island_count,
+				IslandRange<uint32>& island_contact_range, IslandRange<uint32>& island_noncontact_range, uint32& debug_bin)
+			{
+				//return EStatus::Complete;
+				bool complete = true;
+
+				if (mStepLargeIslandCount <= 0)
+					return EStatus::Complete;
+
+				uint32 large_island_found = 0;
+
+				//get first island with split
+				for (uint32 island_idx = 0; island_idx < island_count; ++island_idx)
+				{
+					if (large_island_found >= mStepLargeIslandCount)
+						break;
+
+					if (!mIslandIsLarge[island_idx])
+						continue;
+
+					large_island_found++;
+
+
+					uint32 contact_start_offset;
+					uint32 contact_end_offset;
+					uint32 noncontact_start_offset;
+					uint32 noncontact_end_offset;
+
+					//EStatus status = NextConstactConstraintBatchRange(island_idx, island_contact_range, island_noncontact_range, debug_bin);
+					EStatus status = mIslandSplitBins2[island_idx].NextConstactConstraintBatchRange(contact_start_offset, contact_end_offset, noncontact_start_offset, noncontact_end_offset, debug_bin);
+					switch (status)
+					{
+					case EStatus::Complete:
+						break;
+					case EStatus::WaitingForBatches:
+						complete = false;
+						break;
+					case EStatus::RetrievedBatch:
+
+						{
+							split_island_idx = island_idx;
+
+
+#if VX_DEBUG_SPLITTER
+							island_contact_range = IslandRange<uint32>(
+								mConstraintIndices.data() + contact_start_offset,
+								mConstraintIndices.data() + contact_end_offset
+							);
+#else
+							island_contact_range = IslandRange<uint32>(
+								mConstraintIndices + contact_start_offset,
+								mConstraintIndices + contact_end_offset
+							);
+#endif // VX_DEBUG_SPLITTER
+
+							uint32 constraint_offset_count = contact_end_offset - contact_start_offset;
+							VX_ASSERT(constraint_offset_count == island_contact_range.Size());
+							//VX_ASSERT(island_contact_range.Size() == 2);
+							return EStatus::RetrievedBatch;
+						}
+
+						//split_island_idx = island_idx;
+						//return EStatus::RetrievedBatch;
+						break;
+					}
+				}
+
+				//failed to find a splitted island 
+				return complete ? EStatus::Complete : EStatus::WaitingForBatches;
+
+			}
+
+
+			EStatus NextConstactConstraintBatchRange(uint32 island_idx,
+				IslandRange<uint32>& island_contact_range, IslandRange<uint32>& island_noncontact_range, uint32& debug_bin);
+
+			void MarkConstactConstraintBatchRangeComplete(uint32 island_idx, uint32 process_count, uint32 velocity_iteration, uint32 debug_bin);
+
+			IslandRange<uint32> ContactConstraintIndicesBinBatchIslandRange(uint32 island_idx, uint32 bin_idx, uint32 batch)
+			{
+				VX_ASSERT(bin_idx < kMaxBin);
+
+				VX_ASSERT(island_idx < mIslandCacheBins.size());
+
+				IslandSplitBins& split_bins = GetIslandSplitBin(island_idx);
+
+				std::vector<uint32>& constraint_indices_bins = split_bins.mConstraintIndicesBins[bin_idx];
+
+				if (constraint_indices_bins.empty())
+					return IslandRange<uint32>(nullptr, nullptr);
+
+
+
+			}
+
+
+
+			IslandSplitBins& GetIslandSplitBin(uint32 island_idx)
+			{
+				VX_ASSERT(island_idx < mIslandCacheBins.size());
+				return mIslandCacheBins[island_idx];
+			}
+
+			const IslandSplitBins& GetIslandSplitBin(uint32 island_idx) const
+			{
+				VX_ASSERT(island_idx < mIslandCacheBins.size());
+				return mIslandCacheBins[island_idx];
+			}
+
+			IslandRange<uint32> ContactConstraintIndicesIslandRange(uint32 island_idx, uint32 bin)
+			{
+				VX_ASSERT(island_idx < mIslandCacheBins.size());
+				VX_ASSERT(bin < kMaxBin);
+
+				IslandSplitBins& split_bins = GetIslandSplitBin(island_idx);
+
+				std::vector<uint32>& constraint_indices_bins = split_bins.mConstraintIndicesBins[bin];
+
+				if (constraint_indices_bins.empty())
+					return IslandRange<uint32>(nullptr, nullptr);
+
+
+				//return IslandRange<uint32>(
+				//	&constraint_indices_bins[0],
+				//	&constraint_indices_bins[constraint_indices_bins.size() - 1]
+				//);
+
+				return IslandRange<uint32>(
+					constraint_indices_bins.data(),
+					constraint_indices_bins.data() + constraint_indices_bins.size()
+				);
+			}
+			IslandRange<uint32> IslandNonContactConstraintRowIndicesRange(uint32 island_idx) const;
+
+			void Prepare(uint32 active_count, const IslandCoordinator& island_coord, ScratchAllocator* scratch_allocator);
+			void ReleaseMemAllocation(ScratchAllocator* scratch_allocator, uint32 active_body_count, uint32 islands_count);
+
+			void SplitIsland(uint32 island_idx, const IslandCoordinator& island_coord, 
+				const class ContactConstraintSolver* contact_coord, const class ConstraintSolver* constraint_solver, 
+				class BodyManager* body_manager);
+
+
+		private:
+			unsigned int SplitParticipatingBodies(uint32 body_active_idxA, uint32 body_active_idxB);
+
+		};
+
+
+		Splitter mSplitter;
 	};
 
 } /// namespace vx 

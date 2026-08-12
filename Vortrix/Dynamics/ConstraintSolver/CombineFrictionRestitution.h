@@ -21,7 +21,7 @@ namespace vx {
 		/// function callback 
 		/// float(*)(const Body&, const Body&); see "CombinedCoefficient::Func" & "CombinedCoefficient::RegisterInternals()" for implementation
 		/// Add to registery CombinedCoeffiecient::"RegisterFrictionCombine/RegisterRestitutionCombine"
-		/// RegisterFrictionCombine<CombineMode::Multiply>([](const Body& b0, const Body& b1) {return b0.GetFriction() * b1.GetFriction(); });
+		/// RegisterFrictionCombine<CombineMode::Multiply>([](const Body& b0, const Body& b1) {return b0.FrictionCoeff() * b1.FrictionCoeff(); });
 		Count
 	};
 
@@ -31,7 +31,7 @@ namespace vx {
 
 
 
-	/// Quick fix to this make the GetFriction and Restitution 
+	/// Quick fix to this make the FrictionCoeff and Restitution 
 	/// be a switch case; for defau\lr internal supported 
 	/// 
 	/// and the custom code use use the table to look up fucntion callback 

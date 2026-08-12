@@ -25,18 +25,18 @@ namespace vx {
 
 		static constexpr const char* GetDebugName() { return "Sphere"; }
 		VX_INLINE float GetRadius() const { return mRadius; }
-		VX_INLINE virtual Vec3 GetHalfExtents() const override { return Vec3(mRadius); }
+		VX_INLINE virtual Vec3 HalfExtents() const override { return Vec3(mRadius); }
 
-		virtual AABB GetLocalBounds() const override;
+		virtual AABB LocalBounds() const override;
 
 		virtual MassProperties GetMassProperties() const override;
 		virtual Float3 ComputeInertiaTensorDiagonal(float mass) const override;
 
-		virtual AABB GetWorldBounds(const Mat44& tranform, const Vec3& scale) const override;
+		virtual AABB ComputeWorldBounds(const Mat44& tranform, const Vec3& scale) const override;
 
 		bool DataEq(const Shape* rhs) const override
 		{
-			if (rhs == nullptr || GetType() != rhs->GetType()) return false;
+			if (rhs == nullptr || Type() != rhs->Type()) return false;
 
 			const SphereShape* sphere_rhs = static_cast<const SphereShape*>(rhs);
 

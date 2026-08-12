@@ -3,6 +3,8 @@
 
 namespace vx {
 	class Body;
+
+	///(Jay): convert to use BodyID
 	struct BroadphasePair
 	{
 		Body* a = nullptr;

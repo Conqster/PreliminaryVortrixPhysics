@@ -91,7 +91,7 @@ namespace vx
 
 				//assumed that the ground y is at 0 
 				//and tolerance is the closeness to 0
-				//if (p.GetPosition().Y() <= mTolerance)
+				//if (p.Position().Y() <= mTolerance)
 				const float dist = mGroundPlane.SignedDistance(p.GetPosition());
 				const float penetration = p.GetRadius() - dist;
 

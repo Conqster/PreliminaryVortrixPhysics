@@ -45,7 +45,10 @@ public:
 	virtual const char* Info() = 0;
 
 	virtual void PrePhysicsStep(float dt) {}
+
+	/// PostPhysicsInteract() need to run before PostPhysicsStep(float dt) if interaction is needed for post physics step
 	virtual void PostPhysicsStep(float dt);
+	virtual void PostPhysicsInteract(bool physics_simulated); //hack: bool physics_simulated
 
 	virtual void OnUI() {}
 	virtual void OnClose();
@@ -60,6 +63,7 @@ public:
 	bool GetAllowBaseScenarioMouseCast() const { return mAllowBaseMouseCast; }
 	void SetAllowBaseScenarioMouseCast(bool v) { mAllowBaseMouseCast = v; }
 protected:
+	friend class Application;
 	vx::PhysicsWorld* mPhysicsWorld = nullptr;
 	Camera* mAppCamera = nullptr;
 	ApplicationWindow* mAppWindow = nullptr;
@@ -71,9 +75,11 @@ protected:
 	bool mAllowBaseMouseCast = true;
 	bool BlockedMouseCastRay();
 	void MouseClickCheck();
-	void MouseCastRay();
+	void MouseCastRay(bool physics_simulated);
 
 	EClickEvent mMouseEvent = EClickEvent::None;
+	///alway set this this
+	vx::BodyID mMouseHoveringBody{};
 	vx::BodyID mBody{};
 	vx::Vec3 mPointBodyFrame;
 

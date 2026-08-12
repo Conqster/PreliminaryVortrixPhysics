@@ -260,7 +260,7 @@ namespace vx {
 		};
 		const ContactConstraintSolverStat& GetStats() const { return mStats; }
 
-		void DebugDraw(DebugGizmosRenderer* debug_renderer, const DrawSettings& settings) const;
+		void DebugDraw(DebugGizmosRenderer* debug_renderer, const class ConstraintSolver* constraint_solver, const BodyManager* body_manager, const DrawSettings& settings) const;
 	private:
 		PhysicsStepContext* mPhysicsContext = nullptr;
 		ContactConstraintSolverStat mStats;
@@ -626,7 +626,7 @@ namespace vx {
 		//		return false;
 
 		//	//only linear displacement
-		//	Vec3 dispW = body1.GetPosition() - body0.GetPosition();
+		//	Vec3 dispW = body1.Position() - body0.Position();
 		//
 		//	float tolerance = VxSqr(0.02); //2 cm
 		//	return VxAbs(dispW.LengthSq()) < VxAbs(manifold.mRelativeDistanceSq) + tolerance;

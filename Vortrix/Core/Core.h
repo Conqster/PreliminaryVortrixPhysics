@@ -160,15 +160,6 @@ namespace vx
 	template<typename T, typename... Args>
 	constexpr Ref<T> MakeRef(Args&& ...args) { return std::make_shared<T>(std::forward<Args>(args)...); }
 
-
-	template<typename T>
-	inline constexpr T Bit(unsigned x) { return static_cast<T>(T(1) << x); } 
-
-
-	inline constexpr uint32_t Bit32(unsigned x) { return Bit<uint32_t>(x); } 
-	inline constexpr uint16_t Bit16(unsigned x) { return Bit<uint16_t>(x); }
-	inline constexpr uint8_t Bit8(unsigned x) { return Bit<uint8_t>(x); }
-
 	using uint = unsigned int;
 	using uint8 = uint8_t;
 	using uint16 = uint16_t;
@@ -248,6 +239,30 @@ namespace vx
 		value |= value >> 8;
 		value |= value >> 16;
 		return (value >> 1) + 1;
+	}
+
+
+	template<typename T>
+	inline constexpr T Bit(unsigned x)
+	{
+		constexpr uint32 k_bit_size = sizeof(T) * 8;
+		_ASSERT(x < k_bit_size);
+		return T(1) << x;
+	}
+
+
+	inline constexpr uint32 Bit32(unsigned x) { return Bit<uint32>(x); }
+	inline constexpr uint16 Bit16(unsigned x) { return Bit<uint16>(x); }
+	inline constexpr uint8 Bit8(unsigned x) { return Bit<uint8>(x); }
+
+	inline unsigned int ScanTrailingZeros(uint32 inValue)
+	{
+		if (inValue == 0) //convention; all 32 bits are zero
+			return 32;
+
+		unsigned long result;
+		_BitScanForward(&result, inValue);
+		return static_cast<unsigned int>(result);
 	}
 
 

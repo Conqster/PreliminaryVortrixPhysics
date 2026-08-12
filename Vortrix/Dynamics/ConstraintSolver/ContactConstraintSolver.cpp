@@ -32,8 +32,8 @@ namespace vx {
 		//contact average pt 
 		Vec3 p = (world_pos0 + world_pos1) * 0.5f;
 		/// point relative to bodies
-		Vec3 r0 = p - body0.GetPosition();
-		Vec3 r1 = p - body1.GetPosition();
+		Vec3 r0 = p - body0.Position();
+		Vec3 r1 = p - body1.Position();
 
 
 		/// pos bias = beta / delta_time * max(0, penetration - slop)
@@ -239,8 +239,8 @@ namespace vx {
 		/// ensure that the A is the dynamic while B is the static 
 		if (ctx.settings.consistentManifold)
 		{
-			int priority_a = static_cast<int>(manifold.a->GetMotionType());
-			int priority_b = static_cast<int>(manifold.b->GetMotionType());
+			int priority_a = static_cast<int>(manifold.a->MotionType());
+			int priority_b = static_cast<int>(manifold.b->MotionType());
 
 			/// 1. dynamic > static
 			if (priority_a < priority_b)
@@ -274,7 +274,7 @@ namespace vx {
 
 		/// since body 2 is less dominates to 1 either static if static is part of 
 		/// participating body
-		Vec3 norBl = manifold.b->GetOrientation().InverseRotate(manifold.normal);
+		Vec3 norBl = manifold.b->Orientation().InverseRotate(manifold.normal);
 		norBl.Store(new_manifold->mNormal);
 	
 
@@ -375,10 +375,10 @@ namespace vx {
 		manifold.normal.Normalise();
 		constraint.Normal(manifold.normal);
 
-		Quat qA = manifold.a->GetOrientation();
-		Vec3 tA = manifold.a->GetPosition();
-		Quat qB = manifold.b->GetOrientation();
-		Vec3 tB = manifold.b->GetPosition();
+		Quat qA = manifold.a->Orientation();
+		Vec3 tA = manifold.a->Position();
+		Quat qB = manifold.b->Orientation();
+		Vec3 tB = manifold.b->Position();
 
 
 		ContactConstraintAxesSetting constraint_axes_setting;
@@ -474,8 +474,8 @@ namespace vx {
 		/// ensure that the A is the dynamic while B is the static 
 		if (ctx.settings.consistentManifold)
 		{
-			int priority_a = static_cast<int>(manifold.a->GetMotionType());
-			int priority_b = static_cast<int>(manifold.b->GetMotionType());
+			int priority_a = static_cast<int>(manifold.a->MotionType());
+			int priority_b = static_cast<int>(manifold.b->MotionType());
 
 			/// 1. dynamic > static
 			if (priority_a < priority_b)
@@ -575,7 +575,7 @@ namespace vx {
 
 		/// since body 2 is less dominates to 1 either static if static is part of 
 		/// participating body
-		Vec3 norBl = manifold.b->GetOrientation().InverseRotate(manifold.normal);
+		Vec3 norBl = manifold.b->Orientation().InverseRotate(manifold.normal);
 		norBl.Store(new_manifold_cache.mNormal);
 
 		BodyPair key = new_manifold_cache.CreatePairKey();
@@ -671,10 +671,10 @@ namespace vx {
 		manifold.normal.Normalise();
 		constraint.Normal(manifold.normal);
 
-		Quat qA = manifold.a->GetOrientation();
-		Vec3 tA = manifold.a->GetPosition();
-		Quat qB = manifold.b->GetOrientation();
-		Vec3 tB = manifold.b->GetPosition();
+		Quat qA = manifold.a->Orientation();
+		Vec3 tA = manifold.a->Position();
+		Quat qB = manifold.b->Orientation();
+		Vec3 tB = manifold.b->Position();
 
 
 		ContactConstraintAxesSetting constraint_axes_setting;
@@ -806,7 +806,7 @@ namespace vx {
 	}
 
 
-	void ContactConstraintSolver::DebugDraw(DebugGizmosRenderer* debug_renderer, const DrawSettings& settings) const
+	void ContactConstraintSolver::DebugDraw(DebugGizmosRenderer* debug_renderer, const ConstraintSolver* constraint_solver, const BodyManager* body_manager, const DrawSettings& settings) const
 	{
 		VX_PROFILE_FUNCTION();
 #if !CONTACT_USE_SOLVERBODY
@@ -911,6 +911,108 @@ namespace vx {
 		{
 			draw_contact_manifold(mConstraints[contact_idx]);
 		}
+#else
+/// Keep in mind for manifold debug
+		/// the manifold points are store in world space 
+		/// 
+		/// making most point invalid after simulation step 
+		/// as when velocity & positional contrainst are solved 
+		/// bodies might have moved away for manifold points 
+		/// 
+		/// need to improve this later......
+auto draw_contact_manifold = [&](const ContactConstraint& constraint) {
+
+	//Vec3 half_extent(mSettings.drawContactPointSize * 0.5f);
+	const Body* body0 = &constraint_solver->AttemptGetBody(body_manager, constraint.BodyA());
+	const Body* body1 = &constraint_solver->AttemptGetBody(body_manager, constraint.BodyB());
+
+	//Draw bodies bound particapting 
+	if (settings.drawCollidingPairRefAndInc)
+	{
+		AABB aabb = body0->GetAABBWorld();
+		debug_renderer->DrawAABB(aabb.mMin, aabb.mMax, settings.collidingPairRefColour, false);
+		aabb = body1->GetAABBWorld();
+		debug_renderer->DrawAABB(aabb.mMin, aabb.mMax, settings.collidingPairIncColour, false);
+	}
+
+	if (!settings.drawContacts)return;
+
+	Vec3 n = constraint.Normal();
+
+	Mat44 transform0 = body0->ComputeWorldTransform();
+	Mat44 transform1 = body1->ComputeWorldTransform();
+	//for (const auto& [pointA, peneration, pointB] : manifold.points)
+	for (int i = 0; i < constraint.NumConstraintPoints(); ++i)
+	{
+		auto& contact_point = constraint.PointConstraint(i);
+		Vec3 pointA = transform0.Transform(Vec3::LoadFloat3Raw(contact_point.cacheLocalPoint->localPoint0));
+		Vec3 pointB = transform1.Transform(Vec3::LoadFloat3Raw(contact_point.cacheLocalPoint->localPoint1));
+
+		//const Vec3 p0 = transform0.Transform(Vec3::LoadFloat3Raw(contact_point.cacheLocalPoint->localPoint0));
+		//const Vec3 p1 = transform1.Transform(Vec3::LoadFloat3Raw(contact_point.cacheLocalPoint->localPoint1));
+
+		//hack penetration 
+		float penetration = (pointA - pointB).Dot(n);
+
+		//if draw as aabb
+		//Vec3 min = point - half_extent;
+		//Vec3 max = point + half_extent;
+
+		//debug_renderer->DrawAABB(min.AsGLM(), max.AsGLM(), ColourToGLM(mSettings.drawContactPointColour));
+		Colour col = settings.drawContactPointColour;
+		//glm::vec3 col = ColourToGLM(mSettings.drawContactPointColour);
+
+		/// point A
+		debug_renderer->DrawLine(
+			(pointA - Vec3(settings.drawContactPointSize, 0.0f, 0.0f)),
+			(pointA + Vec3(settings.drawContactPointSize, 0.0f, 0.0f)),
+			col);
+		debug_renderer->DrawLine(
+			(pointA - Vec3(0.0f, settings.drawContactPointSize, 0.0f)),
+			(pointA + Vec3(0.0f, settings.drawContactPointSize, 0.0f)),
+			col);
+
+		col = Colour::sMagenta;
+		/// point B
+		debug_renderer->DrawLine(
+			(pointB - Vec3(settings.drawContactPointSize, 0.0f, 0.0f)),
+			(pointB + Vec3(settings.drawContactPointSize, 0.0f, 0.0f)),
+			col);
+		debug_renderer->DrawLine(
+			(pointB - Vec3(0.0f, settings.drawContactPointSize, 0.0f)),
+			(pointB + Vec3(0.0f, settings.drawContactPointSize, 0.0f)),
+			col);
+
+		if (settings.drawContactsNormals)
+		{
+			float depth = penetration;
+			if (ManifoldPoint::kUseNewManifoldPt)
+				//depth = (pointB - point).Length();
+				depth = (pointA - pointB).Length();
+			const float size = (settings.drawContactsNormalsWithPeneration) ? depth * settings.drawContactNormalSize :
+				settings.drawContactNormalSize;
+
+			//debug_renderer->DrawLine(point.AsGLM(), end.AsGLM(), ColourToGLM(mSettings.drawContactNormalsColour));
+			//debug_renderer->DrawLine(point, end, mSettings.drawContactNormalsColour);
+
+			//just for old manifold point 
+			const Vec3 pt0 = pointA;
+			const Vec3 pt1 = (ManifoldPoint::kUseNewManifoldPt) ? pointB : pointA - n * penetration;
+
+			const Vec3 end = pt0 + n * size;
+
+			debug_renderer->DrawArrowCone(pt0, end, 0.02f, 0.05f, 0.02f, 3, settings.drawContactNormalsColour);
+			//This line need to match or almost match he above
+			debug_renderer->DrawLine(pt1, pt0, vx::Colour::sTurquoise);
+		}
+	}
+	};
+
+
+for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
+{
+	draw_contact_manifold(mConstraints[contact_idx]);
+}
 #endif // !CONTACT_USE_SOLVERBODY
 	}
 
@@ -935,9 +1037,9 @@ namespace vx {
 		float correction_limit = 0.01;
 		{
 			float limitA = dyn_a ?
-				a->GetShape()->GetHalfExtents().MinComponent() * limit_scale: kMaxf;
+				a->GetShape()->HalfExtents().MinComponent() * limit_scale: kMaxf;
 			float limitB = dyn_b ?								
-				b->GetShape()->GetHalfExtents().MinComponent() * limit_scale: kMaxf;
+				b->GetShape()->HalfExtents().MinComponent() * limit_scale: kMaxf;
 
 			correction_limit = VxMin(limitA, limitB);
 
@@ -970,8 +1072,8 @@ namespace vx {
 				float inv_effective_mass = total_inv_mass;
 				Vec3 p = (p0 + p1) * 0.5f;
 				/// point relative to bodies
-				Vec3 r0 = p - a->GetPosition();
-				Vec3 r1 = p - b->GetPosition();
+				Vec3 r0 = p - a->Position();
+				Vec3 r1 = p - b->Position();
 
 				Vec3 inv_Ir0_Xn, inv_Ir1_Xn;
 				if (dyn_a)
@@ -1332,9 +1434,9 @@ namespace vx {
 			float correction_limit = 0.01;
 			{
 				float limitA = dyn_a ?
-					a->GetShape()->GetHalfExtents().MinComponent() * limit_scale : kMaxf;
+					a->GetShape()->HalfExtents().MinComponent() * limit_scale : kMaxf;
 				float limitB = dyn_b ?
-					b->GetShape()->GetHalfExtents().MinComponent() * limit_scale : kMaxf;
+					b->GetShape()->HalfExtents().MinComponent() * limit_scale : kMaxf;
 
 				correction_limit = VxMin(limitA, limitB);
 
@@ -1367,8 +1469,8 @@ namespace vx {
 					float inv_effective_mass = total_inv_mass;
 					Vec3 p = (p0 + p1) * 0.5f;
 					/// point relative to bodies
-					Vec3 r0 = p - a->GetPosition();
-					Vec3 r1 = p - b->GetPosition();
+					Vec3 r0 = p - a->Position();
+					Vec3 r1 = p - b->Position();
 
 					Vec3 inv_Ir0_Xn, inv_Ir1_Xn;
 					if (dyn_a)

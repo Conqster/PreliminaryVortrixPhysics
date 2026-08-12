@@ -30,7 +30,7 @@ namespace vx
 		/// solve with set for now 
 		/// because multiple bodies might be sharing 
 		/// a shape
-		//std::set<Shape*> shapes;
+		//std::set<GetShape*> shapes;
 		//for (auto& b : mBodies)
 		//	shapes.insert(b.mShape);
 		//

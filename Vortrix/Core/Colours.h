@@ -102,7 +102,7 @@ namespace vx
 		[[nodiscard]] Vec4 ToVec4() const { return RGBAAsVec4(r, g, b, a); }
 
 
-		static Colour GetRandomColour(int idx);
+		static Colour RandomColour(int idx);
 
 
 		//implicit conversions
@@ -137,6 +137,12 @@ namespace vx
 			case 3: return a;
 			default: return a;
 			}
+		}
+
+		inline void SetAlpha(float v)
+		{
+			v = VxClamp01(v);
+			a = static_cast<uint8>(v * 255.0f);
 		}
 
 		VX_INLINE float R() const { return static_cast<float>(r) / 255.0f; }

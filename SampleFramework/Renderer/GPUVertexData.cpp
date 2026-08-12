@@ -253,7 +253,7 @@ vx::Mat44 ShadowData::ComputeLightView(const vx::Vec3& _origin, const vx::Vec3& 
 //
 //	float split_far = z_near + (z_far - z_near) * shadow_data->split_depth;
 //	float split_center = (split_near + split_far) * 0.5f;
-//	return mCamera->GetPosition() + mCamera->GetForward() * split_center;
+//	return mCamera->Position() + mCamera->Forward() * split_center;
 //
 //
 //	});

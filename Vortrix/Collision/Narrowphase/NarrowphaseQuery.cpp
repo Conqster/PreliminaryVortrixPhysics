@@ -63,12 +63,12 @@ namespace vx {
 		{
 			const auto& shape_a = a->GetShape();
 			const auto& shape_b = b->GetShape();
-			const auto& collision_fn = mDispatcher.Get(shape_a->GetType(), shape_b->GetType());
+			const auto& collision_fn = mDispatcher.Get(shape_a->Type(), shape_b->Type());
 
 			ContactManifold manifold{ a, b };
 
-			if (collision_fn(shape_a, a->GetPosition(), a->GetOrientation(),
-				shape_b, b->GetPosition(), b->GetOrientation(),
+			if (collision_fn(shape_a, a->Position(), a->Orientation(),
+				shape_b, b->Position(), b->Orientation(),
 				manifold))
 			{
 				//use opptunity to add to contact constaint
@@ -90,12 +90,12 @@ namespace vx {
 				///// this helps sleeping stack of bodies 
 				///// 
 				//
-				//if((shape_a->GetType() == EShapeType::Capsule || shape_a->GetType() == EShapeType::Sphere) &&
-				//	(shape_b->GetType() == EShapeType::Capsule || shape_b->GetType() == EShapeType::Sphere))
+				//if((shape_a->Type() == EShapeType::Capsule || shape_a->Type() == EShapeType::Sphere) &&
+				//	(shape_b->Type() == EShapeType::Capsule || shape_b->Type() == EShapeType::Sphere))
 				//{
 
-				//	Vec3 body0_up = a->GetOrientation().RotateAxisY();
-				//	Vec3 body1_up = b->GetOrientation().RotateAxisY();
+				//	Vec3 body0_up = a->Orientation().RotateAxisY();
+				//	Vec3 body1_up = b->Orientation().RotateAxisY();
 
 				//	if(VxAbs(body0_up.Dot(body1_up)) > 0.9f)
 				//	{
@@ -146,15 +146,15 @@ namespace vx {
 //
 //			if (a != nullptr && b != nullptr)
 //			{
-//				//Shape* shape_a = a->GetShape();
+//				//GetShape* shape_a = a->GetShape();
 //
 //				const auto& shape_a = a->GetShape();
 //				const auto& shape_b = b->GetShape();
-//				const auto& collision_fn = mDispatcher.Get(shape_a->GetType(), shape_b->GetType());
+//				const auto& collision_fn = mDispatcher.Get(shape_a->Type(), shape_b->Type());
 //
 //				ContactManifold manifold{ (*bp).a, (*bp).b };
-//				if (collision_fn(shape_a, a->GetPosition(), a->GetOrientation(),
-//					shape_b, b->GetPosition(), b->GetOrientation(),
+//				if (collision_fn(shape_a, a->Position(), a->Orientation(),
+//					shape_b, b->Position(), b->Orientation(),
 //					manifold))
 //				{
 //					//use opptunity to add to contact constaint

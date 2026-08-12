@@ -443,7 +443,7 @@ namespace vx
 	void Body::ComputeWorldSpaceBoundsInternal()
 	{
 		mMotionState.lastUpdateStep = PhysicsWorld::GetCurrentSimStep();
-		mBounds = mShape->GetWorldBounds(Mat44::RotationTranslation(mOrientation, mPosition), Vec3::One());
+		mBounds = mShape->ComputeWorldBounds(Mat44::RotationTranslation(mOrientation, mPosition), Vec3::One());
 	}
 
 }

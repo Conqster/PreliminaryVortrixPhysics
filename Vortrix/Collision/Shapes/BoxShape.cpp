@@ -2,13 +2,13 @@
 #include "Vortrix/Geometry/AABB.h"
 
 namespace vx {
-	AABB BoxShape::GetLocalBounds() const
+	AABB BoxShape::LocalBounds() const
 	{
 		return { -mHalfExtent, mHalfExtent };
 	}
 	std::array<Vec3, 8> BoxShape::GetCorners() const
 	{
-		AABB bounds = GetLocalBounds();
+		AABB bounds = LocalBounds();
 
 		return {
 		   Vec3(bounds.mMin.X(), bounds.mMin.Y(), bounds.mMin.Z()),
@@ -23,7 +23,7 @@ namespace vx {
 	}
 	std::array<Vec3, 8> BoxShape::GetCornersWS(const Mat44& in_transform) const
 	{
-		AABB bounds = GetLocalBounds();
+		AABB bounds = LocalBounds();
 
 		const Vec3 axis_x = in_transform.GetColumn(0);
 		const Vec3 axis_y = in_transform.GetColumn(1);

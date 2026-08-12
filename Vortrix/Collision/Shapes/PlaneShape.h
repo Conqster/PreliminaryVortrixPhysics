@@ -32,10 +32,10 @@ namespace vx {
 		}
 
 		static constexpr const char* GetDebugName() { return "Plane"; }
-		virtual Vec3 GetHalfExtents() const override { return Vec3(mHalfExtent); }
-		const Vec3 GetNormal() const { return mNormal; }
+		virtual Vec3 HalfExtents() const override { return Vec3(mHalfExtent); }
+		const Vec3 Normal() const { return mNormal; }
 		const float GetOffset() const { return mConstant; }
-		virtual AABB GetLocalBounds() const override { return mLocalBounds; }
+		virtual AABB LocalBounds() const override { return mLocalBounds; }
 
 		virtual MassProperties GetMassProperties() const override { return {}; }
 		virtual Float3 ComputeInertiaTensorDiagonal(float mass) const override { return {}; }
@@ -44,7 +44,7 @@ namespace vx {
 
 		bool DataEq(const Shape* rhs) const override
 		{
-			if (rhs == nullptr || GetType() != rhs->GetType()) return false;
+			if (rhs == nullptr || Type() != rhs->Type()) return false;
 
 			const PlaneShape* plane_rhs = static_cast<const PlaneShape*>(rhs);
 

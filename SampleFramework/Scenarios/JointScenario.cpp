@@ -143,7 +143,7 @@ void JointScenario::Init(vx::PhysicsWorld* i_world)
 	vx::BodySettings static_bodies_settings = vx::BodySettings::DefaultStaticConstruct();
 	static_bodies_settings.position = vx::Vec3(0.0f, 12.5f, 0.0f);
 	static_bodies_settings.debug_name = "box";
-	vx::BoxShapeSettings shape_settings(unit_box->GetHalfExtents());
+	vx::BoxShapeSettings shape_settings(unit_box->HalfExtents());
 	shape_settings.SetDensity(0.0f);
 	static_bodies_settings.shape = vx::MakeRef<vx::BoxShape>(shape_settings);
 	static_bodies_settings.intialVelocity = vx::Vec3(1.0f);

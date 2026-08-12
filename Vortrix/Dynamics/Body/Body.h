@@ -23,7 +23,7 @@ namespace vx
 		Dynamic = 2,	// full physics dynamics
 	};
 
-
+	/// use data to create unique key with data over compare even element, 
 	struct BodySettings
 	{
 		static BodySettings DefaultDynamicConstruct()
@@ -158,10 +158,10 @@ namespace vx
 		//void AddForceAtBodyPoint(const Vec3& force, const Vec3& point);
 
 		/// Solvers/States influences
-		Vec3 GetPosition() const { return mPosition; }
+		Vec3 Position() const { return mPosition; }
 		void SetPosition(const Vec3& pos);
 
-		Quat GetOrientation() const { return mOrientation; }
+		Quat Orientation() const { return mOrientation; }
 		void SetOrientation(const Quat& quat);
 
 		void SetLinearVelocity(const Vec3& velocity);
@@ -233,7 +233,7 @@ namespace vx
 		bool IsDynamic() const { return mMotionType == EMotionType::Dynamic; }
 		bool IsStatic() const { return mMotionType == EMotionType::Static; }
 
-		EMotionType GetMotionType() const { return mMotionType; }
+		EMotionType MotionType() const { return mMotionType; }
 
 		Float3 GetAccumulatedForce() const { return mForceAccumulated; }
 
@@ -325,8 +325,8 @@ namespace vx
 		void SetAllowedDynamicsDof(EDynamicsDofs dof) { mAllowedDynamicsDof = dof; }
 
 		/// Co-efficents
-		float GetFriction() const { return mFriction; }
-		float GetRestitution() const { return mRestitution; }
+		float FrictionCoeff() const { return mFriction; }
+		float RestitutionCoeff() const { return mRestitution; }
 
 		void SetFriction(float friction) { mFriction = friction; }
 		void SetRestitution(float restitution) { mRestitution = restitution; }
@@ -339,6 +339,12 @@ namespace vx
 		static constexpr uint32 kInvalidActiveIdx = 0xffffffff;
 		uint32 GetIndexInActiveBodies() const { return mActiveIndex; }
 		void SetIndexInActiveBodies(uint32 active_idx) { mActiveIndex = active_idx; }
+
+		float MaxLinearVelocity() const { return mMaxLinearVelocity; }
+		float MaxAngularVelocity() const { return mMaxAngularVelocity; }
+
+		float LinearDamping() const { return mLinearDamping; }
+		float AngularDamping() const { return mAngularDamping; }
 
 
 		float GetKineticEnergy() const
@@ -422,11 +428,14 @@ namespace vx
 		EDynamicsDofs mAllowedDynamicsDof; //1 bytes	[31 bytes] 
 		//char padding[1 + 4*3];								//1 bytes	[32 bytes] //later sort this out when sleep time is removed padding will reduce
 
-		char padding[1 + 4*1];								//1 bytes	[32 bytes] //later sort this out when sleep time is removed padding will reduce
+		char padding[1 + 4*0];								//1 bytes	[32 bytes] //later sort this out when sleep time is removed padding will reduce
 
 		uint32 mIslandIndex = kInvalidIslandIdx;
 		uint32 mActiveIndex = kInvalidActiveIdx;
-
+	public:
+		uint32 mIslandConstraintGroupMask{ 0 };
+	private:
+		 
 		///World space linear velocity (m/s)
 		Vec3 mLinearVelocity = Vec3(0.0f);							//16 bytes	[48 bytes]
 		///World space angular velocity (rad/s)

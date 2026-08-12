@@ -27,8 +27,9 @@ source_group(TREE ${VX_EXTERNAL_IMGUI_DIR} PREFIX "UI-ImGui" FILES ${IMGUI_FILES
 endif()
 
 
-
 add_executable(${VX_TARGET_SAMPLE_EXE} ${VX_SAMPLE_FRAMEWORK_FILES})
+
+target_compile_definitions(${VX_TARGET_SAMPLE_EXE} PUBLIC APP_ASSERT_DIR="${PROJECT_SOURCE_DIR}/assets/")
 
 # link libraries
 target_link_libraries(${VX_TARGET_SAMPLE_EXE} PRIVATE Vortrix)

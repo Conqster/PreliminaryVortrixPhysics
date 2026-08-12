@@ -34,6 +34,7 @@ namespace vx
 		void RemoveBody(const BodyID& id);
 
 		BodyVector& GetBodies() { return mBodies; }
+		const BodyVector& GetBodies() const { return mBodies; }
 		std::vector<BodyDebug>& GetBodiesDebug() { return mBodiesDebugInfo; }
 
 		const Body& GetBody(BodyID id) const { return mBodies[id.Idx()]; }

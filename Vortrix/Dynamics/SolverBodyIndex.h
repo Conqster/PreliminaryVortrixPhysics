@@ -41,6 +41,9 @@ namespace vx {
 		Vec3 w = Vec3(0.0f);
 		float invMass;
 		BodyID bodyID;
+
+		///(Jay): maybe solver body should should hold index in active body preventing indirection SolverBodyIndex -> SolverBody -> BodyID -> Body -> IndexInActiveBodies()
+		///       
 	};
 
 } ///namespace vx

@@ -7,8 +7,8 @@ namespace vx {
 
 	float CombinedCoefficient::GetFriction(ECombineMode Mode, const Body& body0, const Body& body1)
 	{
-		const float f0 = body0.GetFriction();
-		const float f1 = body1.GetFriction();
+		const float f0 = body0.FrictionCoeff();
+		const float f1 = body1.FrictionCoeff();
 
 		VX_ASSERT(!VxIsNaN(f0) || !VxIsNaN(f1), "either bodies friction co-effiecent is nan");
 
@@ -28,8 +28,8 @@ namespace vx {
 
 	float CombinedCoefficient::GetRestitution(ECombineMode Mode, const Body& body0, const Body& body1)
 	{
-		const float r0 = body0.GetRestitution();
-		const float r1 = body1.GetRestitution();
+		const float r0 = body0.RestitutionCoeff();
+		const float r1 = body1.RestitutionCoeff();
 
 		VX_ASSERT(!VxIsNaN(r0) && !VxIsNaN(r1), "either bodies friction co-effiecent is nan");
 

@@ -76,6 +76,14 @@ public:
 		//else
 //AddFrameRenderableEntity({ &mQuadXZPrimitive, entity.transform, entity.solidRender, entity.canCastShadow, entity.colour, entity.plainTexture });
 	}
+
+	void SubmitQuadXZDoubledSidedPrimitive(const vx::RenderableEntity entity, const vx::ERenderInstanceFlags flags) override
+	{
+		DrawGeometry(entity.transform, entity.colour, 
+			mQuadXZDoubledSidedGeometry, 
+			(entity.plainTexture) ? mPlainTexSamplerBindless : mCheckersTexSamplerBindless, 
+			flags, true);
+	}
 	void SubmitCapsulePrimitive(const vx::RenderableEntity entity, const vx::ERenderInstanceFlags flags) override
 	{
 		//if(mUseNewRendering)
@@ -132,6 +140,7 @@ public:
 		//static size
 		//mTestRt.Resize(w, h);
 		//mDirLightDebugRT.Resize(w, h);
+		VX_ASSERT(false);
 	}
 
 	Sampler* GetASampler() { return mLinearRepeatSampler; }
@@ -313,6 +322,11 @@ private:
 
 		const VertexBatch GetBatch() const { return mBatch; }
 
+		vx::Ref<Geometry> Instance()
+		{
+			return vx::MakeRef<Geometry>(mBatch);
+		}
+
 		void AssignGPULabel(const char* name)
 		{
 			//int count = name.size() + 4;
@@ -425,17 +439,21 @@ private:
 	{
 		std::vector<Instance>	buffer = {};
 		bool					isDirty = false;
+		bool					disableCulling = false;
 	};
 	/// bucket/buffer accompany with UBO
 	/// for easy instance GPU dump
 	//using InstanceBucket = std::vector<Instance>;
 	//std::unordered_map<Ref<Geometry>, InstanceBucket> mSolidGeometries;
+	/// probaly make key unique (not geometry point) later to support same geometry 
+	/// data but customed; culled/not culled etc
 	std::unordered_map<Ref<Geometry>, Instances> mSolidGeometries;
 
 	vx::Ref<Geometry> mBoxGeometry;
 	vx::Ref<Geometry> mSphereGeometry;
 	vx::Ref<Geometry> mCapsuleGeometry;
 	vx::Ref<Geometry> mQuadXZGeometry;
+	vx::Ref<Geometry> mQuadXZDoubledSidedGeometry; 
 	vx::Ref<Geometry> mQuadGeometry;
 	vx::Ref<Shader> mGeometryShader;
 	vx::Ref<Shader> mInstanceShadowDepthShader;
@@ -450,8 +468,10 @@ private:
 	GraphicsBuffer mDirLightUBO;
 	GraphicsBuffer mDirLightShadowUBO;
 
+	/// bool disable_culling = false; its is for all ionstance group might fix
 	void DrawGeometry(const vx::Mat44& matrix, const Colour& col, const Ref<Geometry>& ref_geometry, 
-		const Ref<BindlessTextureSampler>& bindless_tex_sampler, ERenderInstanceFlags flags = ERenderInstanceFlags::CastShadow | ERenderInstanceFlags::ReceiveShadow)
+		const Ref<BindlessTextureSampler>& bindless_tex_sampler, 
+		ERenderInstanceFlags flags = ERenderInstanceFlags::CastShadow | ERenderInstanceFlags::ReceiveShadow, bool disable_culling = false)
 	{
 		/////bind appropriate shader/pipweline
 		/////
@@ -468,6 +488,7 @@ private:
 			mSolidGeometries[ref_geometry].buffer.reserve(512);
 		mSolidGeometries[ref_geometry].buffer.push_back({ matrix, matrix.Inverse(), col,  use_tex, flags});
 		mSolidGeometries[ref_geometry].isDirty = true;
+		mSolidGeometries[ref_geometry].disableCulling = disable_culling;
 		//mSolidGeometries[ref_geometry].push_back({ matrix, matrix.Inverse(), col });
 	}
 

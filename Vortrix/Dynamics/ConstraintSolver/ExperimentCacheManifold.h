@@ -108,10 +108,10 @@
 //
 //
 //		float eps_sq = kEpsilon * kEpsilon;
-//		Quat qA = _manifold.a->GetOrientation();
-//		Vec3 tA = _manifold.a->GetPosition();
-//		Quat qB = _manifold.b->GetOrientation();
-//		Vec3 tB = _manifold.b->GetPosition();
+//		Quat qA = _manifold.a->Orientation();
+//		Vec3 tA = _manifold.a->Position();
+//		Quat qB = _manifold.b->Orientation();
+//		Vec3 tB = _manifold.b->Position();
 //
 //
 //		//relative postion 

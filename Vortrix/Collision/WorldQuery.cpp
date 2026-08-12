@@ -20,7 +20,7 @@ namespace vx {
 
 	static bool UnsupportedPair(const RayCast&, const Shape* shape, RaycastHit&)
 	{
-		VX_LOG_WARN("Unsupportd Ray-vs-{", shape->GetShapeTypeName(), "} Dispatch!!!");
+		VX_LOG_WARN("Unsupportd Ray-vs-{", shape->ShapeTypeName(), "} Dispatch!!!");
 		return false;
 	}
 
@@ -57,7 +57,7 @@ namespace vx {
 		const PlaneShape* plane = static_cast<const PlaneShape*>(shape);
 
 		float d = plane->GetOffset();
-		Vec3 n = plane->GetNormal();
+		Vec3 n = plane->Normal();
 
 		Vec3 origin = local_cast.origin;
 		Vec3 disp = local_cast.displacement;
@@ -164,8 +164,8 @@ namespace vx {
 		float t_max = kMaxf;
 		Vec3 inv_disp = local_cast.invDisplacement;
 
-		Vec3 _min = box->GetLocalBounds().mMin;
-		Vec3 _max = box->GetLocalBounds().mMax;
+		Vec3 _min = box->LocalBounds().mMin;
+		Vec3 _max = box->LocalBounds().mMax;
 		if (Geometry::RayAABB(local_cast.origin, inv_disp, _min, _max, axis_min))
 		{
 			Vec3 _mins = Vec3::LoadFloat3Raw(axis_min);

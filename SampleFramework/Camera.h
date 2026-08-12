@@ -16,14 +16,14 @@ public:
 	void Translate(vx::Vec3 dir, float dt);
 	void Rotate(float dx, float dy, float dt);
 
-	vx::Vec3 GetPosition() { return mState.position; }
-	vx::Vec3 GetForward() { return mState.forward; }
-	vx::Vec3 GetRight() 
+	vx::Vec3 Position() const { return mState.position; }
+	vx::Vec3 Forward() const { return mState.forward; }
+	vx::Vec3 GetRight() const
 	{ 
 		return vx::Vec3::Cross(mState.forward, mState.up);
 		//return -mState.orientation.RotateAxisX().Normalised();
 	}
-	vx::Vec3 GetUp() { return mState.up; }
+	vx::Vec3 Up() const { return mState.up; }
 
 	vx::Vec3 ScreenToWorld(const vx::Vec3 screen_pos, vx::uint32 width, vx::uint32 height)
 	{

@@ -28,7 +28,7 @@ namespace vx {
 			Shape(EShapeType::Capsule, settings), mCylinderHalfHeight(settings.mCylinderHalfHeight), mRadius(settings.mRadius) {
 		}
 
-		virtual Vec3 GetHalfExtents() const override
+		virtual Vec3 HalfExtents() const override
 		{
 			float total_height = mCylinderHalfHeight + mRadius;
 			return Vec3(mRadius, total_height, mRadius);
@@ -36,9 +36,9 @@ namespace vx {
 
 		static constexpr const char* GetDebugName() { return "Capsule"; }
 
-		virtual AABB GetLocalBounds() const override;
+		virtual AABB LocalBounds() const override;
 
-		virtual AABB GetWorldBounds(const Mat44& tranform, const Vec3& scale) const override;
+		virtual AABB ComputeWorldBounds(const Mat44& tranform, const Vec3& scale) const override;
 
 		Vec3 GetLocalAxis() const { return Vec3(0.0f, 1.0f, 0.0f); }
 
@@ -54,7 +54,7 @@ namespace vx {
 
 		bool DataEq(const Shape* rhs) const override
 		{
-			if (rhs == nullptr || GetType() != rhs->GetType()) return false;
+			if (rhs == nullptr || Type() != rhs->Type()) return false;
 
 			const CapsuleShape* capsule_rhs = static_cast<const CapsuleShape*>(rhs);
 

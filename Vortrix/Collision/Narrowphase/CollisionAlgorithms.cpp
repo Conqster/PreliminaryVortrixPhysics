@@ -14,10 +14,10 @@ namespace vx::Narrowphase {
 		const B* shape_b = static_cast<const B*>(b);
 
 		if (!shape_a && a)
-			VX_LOG_WARN("Trying to dynamic cast Shape: ", a->GetShapeTypeName(), " to Shape: ", A::GetDebugName());// , GetEShapeTypeName(A().GetType()))
+			VX_LOG_WARN("Trying to dynamic cast Shape: ", a->ShapeTypeName(), " to Shape: ", A::GetDebugName());// , EShapeTypeName(A().Type()))
 
 		if (!shape_b && b)
-			VX_LOG_WARN("Trying to dynamic cast Shape: ", a->GetShapeTypeName(), " to Shape: ", A::GetDebugName());
+			VX_LOG_WARN("Trying to dynamic cast Shape: ", a->ShapeTypeName(), " to Shape: ", A::GetDebugName());
 
 		return std::tuple(shape_a, shape_b);
 	}
@@ -89,14 +89,14 @@ namespace vx::Narrowphase {
 		const Mat44 plane_transform = Mat44::RotationTranslation(in_orientationB, in_posB);
 		const Vec3 sphere_pos = in_posA;
 		const float radius = sphere_shape->GetRadius();
-		const Vec3& plane_n = plane_shape->GetNormal();
+		const Vec3& plane_n = plane_shape->Normal();
 
 		Vec3 local_sphere = plane_transform.TransformInverse(sphere_pos);
 		float dist = plane_n.Dot(local_sphere) - plane_shape->GetOffset();
 		if (dist >= radius) return false;
 
 		Vec3 local_pt_on_plane = local_sphere - plane_n * dist;
-		const Vec3& he = in_plane->GetHalfExtents();
+		const Vec3& he = in_plane->HalfExtents();
 		if (VxAbs(local_pt_on_plane.X()) > he.X() ||
 			VxAbs(local_pt_on_plane.Y()) > he.Y() ||
 			VxAbs(local_pt_on_plane.Z()) > he.Z()) return false;
@@ -245,7 +245,7 @@ namespace vx::Narrowphase {
 		std::tie(capsule, plane) = GetShapesType<CapsuleShape, PlaneShape>(in_capsule, in_sphere);
 		VX_ASSERT_WARN_RETURN(capsule && plane, false, "either capsule plane does not exist, cast failed");
 
-		Vec3 plane_n = plane->GetNormal();
+		Vec3 plane_n = plane->Normal();
 		float plane_offset = plane->GetOffset();
 
 		Mat44 capsule_transform = Mat44::RotationTranslation(in_orientationA, in_posA);
@@ -315,7 +315,7 @@ namespace vx::Narrowphase {
 		const Vec3 rel_center = box_trans.TransformInverse(sphere_center);
 
 		const float radius = sphere->GetRadius();
-		const Vec3 half_extents = box->GetHalfExtents();
+		const Vec3 half_extents = box->HalfExtents();
 
 		//if (VxAbs(rel_center.X()) - radius > half_extents.X() ||
 		//	VxAbs(rel_center.Y()) - radius > half_extents.Y() ||
@@ -414,7 +414,7 @@ namespace vx::Narrowphase {
 
 		const Mat44 plane_transform = Mat44::RotationTranslation(in_orientationB, in_posB);
 
-		const Vec3 plane_n = plane->GetNormal().Normalised();
+		const Vec3 plane_n = plane->Normal().Normalised();
 		const Vec3& world_nor = plane_transform.Multiply3x3(plane_n).Normalise();
 
 		/// d is the constant offset the plane in its space
@@ -537,8 +537,8 @@ namespace vx::Narrowphase {
 			// Bring translation into a’s coordinate frame
 			Vec3 box_b_relA = Vec3(d_ab.Dot(box_aR[0]), d_ab.Dot(box_aR[1]), d_ab.Dot(box_aR[2]));
 
-			Vec3 boxA_half = box_a->GetHalfExtents();
-			Vec3 boxB_half = box_b->GetHalfExtents();
+			Vec3 boxA_half = box_a->HalfExtents();
+			Vec3 boxB_half = box_b->HalfExtents();
 
 			Vec3 best_axis;
 			float ra, rb;
@@ -681,12 +681,12 @@ namespace vx::Narrowphase {
 			Vec3 ref_bitangent = face_n.Cross(ref_tangent).Normalised();
 			ref_tangent = ref_bitangent.Cross(face_n).Normalised();
 
-			float ref_tangent_half = ref_box->GetHalfExtents()[axis_0];
-			float ref_bitangent_half = ref_box->GetHalfExtents()[(ref_axis_idx + 2) % 3];
+			float ref_tangent_half = ref_box->HalfExtents()[axis_0];
+			float ref_bitangent_half = ref_box->HalfExtents()[(ref_axis_idx + 2) % 3];
 
 
 
-			float ref_half = ref_box->GetHalfExtents()[ref_axis_idx];
+			float ref_half = ref_box->HalfExtents()[ref_axis_idx];
 			Vec3 ref_face_point = ref_center + face_n * ref_half;
 
 			/// i think this face vert is the face on the inc box
@@ -773,8 +773,8 @@ namespace vx::Narrowphase {
 		}
 		else if (best_axis_type == 2)
 		{
-			Vec3 half_a = box_a->GetHalfExtents();
-			Vec3 half_b = box_b->GetHalfExtents();
+			Vec3 half_a = box_a->HalfExtents();
+			Vec3 half_b = box_b->HalfExtents();
 
 			//normalise 
 			Vec3 n = perp_vector;
@@ -853,7 +853,7 @@ namespace vx::Narrowphase {
 #if USE_NEW
 
 		const float r = capsule->GetRadius();
-		const Vec3 he = box->GetHalfExtents();
+		const Vec3 he = box->HalfExtents();
 
 		const Vec3 c_ws = in_posB;
 		Vec3 axis_ws = in_orientationB.RotateAxisY() * capsule->GetCylinderHalfHeight();
@@ -993,7 +993,7 @@ namespace vx::Narrowphase {
 		Mat44 box_trans = Mat44::RotationTranslation(in_orientationA, in_posA);
 		Mat44 capsule_trans = Mat44::RotationTranslation(in_orientationB, in_posB);
 
-		const Vec3 box_half_extents = box->GetHalfExtents();
+		const Vec3 box_half_extents = box->HalfExtents();
 
 		const Vec3& capsule_center = in_posB;
 		Vec3 capsule_axis_ws = capsule_trans.GetAxisY() * capsule->GetCylinderHalfHeight();

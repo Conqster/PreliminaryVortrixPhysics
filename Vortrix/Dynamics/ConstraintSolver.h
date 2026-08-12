@@ -79,6 +79,43 @@ namespace vx {
 		SolverBody& GetSolverBody(SolverBodyIndex local_idx) { return mBodies[local_idx.Value()]; }
 		const SolverBody& GetSolverBody(SolverBodyIndex local_idx) const { return mBodies[local_idx.Value()]; }
 
+		const Body& AttemptGetBody(const BodyManager* body_manager, SolverBodyIndex local_idx) const
+		{
+			VX_ASSERT(body_manager && local_idx.IsValid());
+
+			const SolverBody& solver_body = GetSolverBody(local_idx);
+
+			return body_manager->GetBody(solver_body.bodyID);
+		}
+
+		const Body* AttemptGetBodyPtr(const BodyManager* body_manager, SolverBodyIndex local_idx) const
+		{
+			VX_ASSERT(body_manager && local_idx.IsValid());
+
+			const SolverBody& solver_body = GetSolverBody(local_idx);
+
+			return &body_manager->GetBody(solver_body.bodyID);
+		}
+
+		//Body& AttemptGetBody(BodyManager* body_manager, SolverBodyIndex local_idx)
+		//{
+		//	VX_ASSERT(body_manager && local_idx.IsValid());
+
+		//	const SolverBody& solver_body = GetSolverBody(local_idx);
+
+		//	return body_manager->GetBody(solver_body.bodyID);
+		//}
+
+		const void AttemptGetLinear1DRowBodies(const BodyManager* body_manager, uint32 idx, const Body*& body_a, const Body*& body_b) const
+		{ 
+			VX_ASSERT(idx < mLinear1DRowsCounts); 
+
+			const auto& linear_row = mLinear1DRows[idx];
+
+			body_a = &AttemptGetBody(body_manager, linear_row.bodyAidx);
+			body_b = &AttemptGetBody(body_manager, linear_row.bodyBidx);
+		}
+
 		void PrepareSolver(uint32 required_liner_row, uint32 required_position_correct_constraint, const PhysicsStepContext& ctx);
 
 		void ReleaseAllocation(ScratchAllocator* scratchAllocator);

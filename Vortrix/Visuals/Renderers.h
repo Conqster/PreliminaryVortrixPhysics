@@ -39,6 +39,7 @@ namespace vx {
 		virtual void SubmitCapsulePrimitive(const RenderableEntity entity, const ERenderInstanceFlags flags) = 0;
 		virtual void SubmitQuadPrimitive(const RenderableEntity entity, const ERenderInstanceFlags flags) = 0;
 		virtual void SubmitQuadXZPrimitive(const RenderableEntity entity, const ERenderInstanceFlags flags) = 0;
+		virtual void SubmitQuadXZDoubledSidedPrimitive(const RenderableEntity entity, const ERenderInstanceFlags flags) = 0;
 
 		virtual void DrawText3D(const std::string_view& text,
 			const vx::Vec3& pos, float scale,
@@ -89,6 +90,7 @@ namespace vx {
 			const vx::Vec3& up, const vx::Vec3& fwd, const Colour* colour, int colour_count, float scale = 1.0f) = 0;
 
 		virtual void DrawSphere(const vx::Vec3& center, float radius, vx::Colour col) = 0;
+		virtual void DrawWireSphere(const vx::Vec3& center, float radius, vx::Colour col) = 0;
 		/// 4 sector, 4 stack
 		virtual void DrawSphere4x4(const vx::Vec3& center, float radius, vx::Colour col) = 0;
 
@@ -103,8 +105,8 @@ namespace vx {
 		virtual void SetLineWidth(float value) = 0;
 
 
-		virtual bool PushDrawCommand(DrawCommand cmd) = 0;
-		virtual bool PushDrawCommand(vx::Mat44 proj, vx::Mat44 view, IRenderTarget* render_target) = 0;
+		virtual DrawCommand* PushDrawCommand(DrawCommand cmd) = 0;
+		virtual DrawCommand* PushDrawCommand(vx::Mat44 proj, vx::Mat44 view, IRenderTarget* render_target) = 0;
 		virtual bool EndCurrentDrawCommand() = 0;
 		virtual void RemoveDrawCommand(DrawCommand& cmd) = 0;
 		virtual void ExecuteDraws() = 0;

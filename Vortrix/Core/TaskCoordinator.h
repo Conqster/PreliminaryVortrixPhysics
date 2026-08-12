@@ -424,7 +424,7 @@ namespace vx {
 		std::atomic<bool> mMainThreadWaitingTask{ false };
 
 		/// current task been processed by threads
-		std::atomic<int> mProcessingTasks = 0;
+		std::atomic<int> mProcessingTasks{ 0 };
 	};
 
 

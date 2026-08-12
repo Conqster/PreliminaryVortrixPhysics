@@ -11,6 +11,7 @@ namespace vx{
 	{
 		//std::string name;
 		BodySimStats simulationStats;							//12 bytes	[16 bytes]
+		bool bodyInBroadphase = false; //<-- used for saving & loading 
 		StackString<40> name;
 	};
 	static_assert(sizeof(BodyDebug) == 64);

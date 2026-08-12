@@ -154,13 +154,13 @@ void EditorImGui::DrawBodyOverlayDetails(vx::Body& body, vx::BodyDebug& body_deb
 	if (body.GetID().Idx() >= cache_body_euler.size())
 	{
 		cache_body_euler.resize(body.GetID().Idx() + 1);
-		vx::Vec3 angle = vx::RadToDeg(body.GetOrientation().GetEulerAngles());
+		vx::Vec3 angle = vx::RadToDeg(body.Orientation().GetEulerAngles());
 		cache_body_euler[body.GetID().Idx()].FromVec3(angle);
 	}
 
 	auto& euler = cache_body_euler[body.GetID().Idx()];
 
-	Vec3 p = body.GetPosition();
+	Vec3 p = body.Position();
 	ImGui::Text("Island Idx: %d", body.GetIslandIndex());
 	ImGui::Text("Active Body Idx: %d", body.GetIndexInActiveBodies());
 	if (ImGui::DragFloat3("Position ", &p[0], 0.01f))
@@ -170,9 +170,9 @@ void EditorImGui::DrawBodyOverlayDetails(vx::Body& body, vx::BodyDebug& body_deb
 			body.SetPosition(p);
 		else
 		{
-			vx::Vec3 old_pos = body.GetPosition();
+			vx::Vec3 old_pos = body.Position();
 			vx::Vec3 delta = p - old_pos;
-			delta = body.GetOrientation().InverseRotate(delta);
+			delta = body.Orientation().InverseRotate(delta);
 			body.SetPosition(old_pos + delta);
 			//ImGui::TextColored(ImVec4(1, 0, 0, 1), "This causes position ui output missmatch in Local space");
 		}
@@ -180,7 +180,7 @@ void EditorImGui::DrawBodyOverlayDetails(vx::Body& body, vx::BodyDebug& body_deb
 
 	if (body.IsAwake())
 	{
-		vx::Vec3 angle = vx::RadToDeg(body.GetOrientation().GetEulerAngles());
+		vx::Vec3 angle = vx::RadToDeg(body.Orientation().GetEulerAngles());
 		euler.FromVec3(angle);
 	}
 
@@ -198,10 +198,10 @@ void EditorImGui::DrawBodyOverlayDetails(vx::Body& body, vx::BodyDebug& body_deb
 
 		//local - space 
 		if (euler.localSpace)
-			body.SetOrientation((body.GetOrientation() * dq).Normalised());
+			body.SetOrientation((body.Orientation() * dq).Normalised());
 		//world - space 
 		else
-			body.SetOrientation((dq * body.GetOrientation()).Normalised());
+			body.SetOrientation((dq * body.Orientation()).Normalised());
 	}
 
 	if constexpr (Type == EMotionType::Dynamic)
@@ -250,11 +250,11 @@ void EditorImGui::DrawBodyOverlayDetails(vx::Body& body, vx::BodyDebug& body_deb
 		ImGui::Text("Body Type %s", (body.IsDynamic()) ? "Dynamic" : "Static");
 		ImGui::Text("Awake: %s", (body.mAwake) ? "true" : "false");
 		//ImGui::Text("Acceleration: %s", body.mAcceleration.ToString().c_str());
-		vx::Vec3 body_orientation_euler = body.GetOrientation().GetEulerAngles();
+		vx::Vec3 body_orientation_euler = body.Orientation().GetEulerAngles();
 		ImGui::SeparatorText("Transformation");
 		ImGui::Text("Euler Angles: %s degrees", vx::RadToDeg(body_orientation_euler).ToString().c_str());
 		ImGui::Text("UI Cache Euler Angles: %s degrees", euler.ToVec3().ToString().c_str());
-		ImGui::Text("Orientation Quat: %s ", body.GetOrientation().ToString().c_str());
+		ImGui::Text("Orientation Quat: %s ", body.Orientation().ToString().c_str());
 
 		ImGui::SeparatorText("Motion Dynamics");
 		ImGui::Text("Linear Velocity: %s", body.mLinearVelocity.ToString().c_str());
@@ -276,16 +276,16 @@ void EditorImGui::DrawBodyOverlayDetails(vx::Body& body, vx::BodyDebug& body_deb
 	if (ImGui::TreeNode("Debug Shape Properies"))
 	{
 		auto shape = body.GetShape();
-		ImGui::Text("Type: %s", shape->GetShapeTypeName());
-		ImGui::Text("Density: %f", shape->GetDensity());
-		switch (shape->GetType())
+		ImGui::Text("Type: %s", shape->ShapeTypeName());
+		ImGui::Text("Density: %f", shape->Density());
+		switch (shape->Type())
 		{
-		case EShapeType::Sphere: ImGui::Text("Radius %f", shape->GetHalfExtents().X());
+		case EShapeType::Sphere: ImGui::Text("Radius %f", shape->HalfExtents().X());
 			break;
 		case EShapeType::Box:
 		case EShapeType::Capsule:
 		case EShapeType::Plane:
-			ImGui::Text("Half Size %s", shape->GetHalfExtents().ToString().c_str());
+			ImGui::Text("Half Size %s", shape->HalfExtents().ToString().c_str());
 			break;
 		default:
 			break;
@@ -306,13 +306,13 @@ void EditorImGui::DrawBodiesOverlayItems(vx::BodyManager& body_manager, vx::Phys
 	std::vector<vx::Body>& bodies = body_manager.GetBodies();
 
 	//auto draw_body_prop = [](vx::Body& body) {
-	//	Vec3 p = body.GetPosition();
+	//	Vec3 p = body.Position();
 	//	if (ImGui::DragFloat3("Position: ", &p[0], 0.01f))
 	//		body.SetPosition(p);
 	//	if (body.GetID().Value() >= cache_body_euler.size())
 	//	{
 	//		cache_body_euler.resize(body.GetID().Value() + 1);
-	//		vx::Vec3 angle = vx::RadToDeg(body.GetOrientation().GetEulerAngles());
+	//		vx::Vec3 angle = vx::RadToDeg(body.Orientation().GetEulerAngles());
 	//		cache_body_euler[body.GetID().Value()].FromVec3(angle);
 	//	}
 	//	auto& euler = cache_body_euler[body.GetID().Value()];
@@ -320,7 +320,7 @@ void EditorImGui::DrawBodiesOverlayItems(vx::BodyManager& body_manager, vx::Phys
 	//	bool body_dyn = body.IsDynamic();
 	//	if (body_dyn && body.IsAwake())
 	//	{
-	//		vx::Vec3 angle = vx::RadToDeg(body.GetOrientation().GetEulerAngles());
+	//		vx::Vec3 angle = vx::RadToDeg(body.Orientation().GetEulerAngles());
 	//		euler.FromVec3(angle);
 	//	}
 	//	if(body_dyn)
@@ -339,10 +339,10 @@ void EditorImGui::DrawBodiesOverlayItems(vx::BodyManager& body_manager, vx::Phys
 
 	//			//local - space 
 	//			if (euler.localSpace)
-	//				body.SetOrientation((body.GetOrientation() * dq).Normalised());
+	//				body.SetOrientation((body.Orientation() * dq).Normalised());
 	//			//world - space 
 	//			else
-	//				body.SetOrientation((dq * body.GetOrientation()).Normalised());
+	//				body.SetOrientation((dq * body.Orientation()).Normalised());
 	//		}
 	//		ImGui::SliderFloat("Linear Damping", &body.mLinearDamping, 0.0f, 1.0f);
 	//		ImGui::SliderFloat("Angular Damping", &body.mAngularDamping, 0.0f, 1.0f);
@@ -377,10 +377,10 @@ void EditorImGui::DrawBodiesOverlayItems(vx::BodyManager& body_manager, vx::Phys
 	//		ImGui::Text("Body Type %s", (body.IsDynamic()) ? "Dynamic" : "Static");
 	//		ImGui::Text("Awake: %s", (body.bAwake) ? "true" : "false");
 	//		//ImGui::Text("Acceleration: %s", body.mAcceleration.ToString().c_str());
-	//		vx::Vec3 body_orientation_euler = body.GetOrientation().GetEulerAngles();
+	//		vx::Vec3 body_orientation_euler = body.Orientation().GetEulerAngles();
 	//		ImGui::Text("Euler Angles: %s degrees", vx::RadToDeg(body_orientation_euler).ToString().c_str());
 	//		ImGui::Text("UI Cache Euler Angles: %s degrees", euler.ToVec3().ToString().c_str());
-	//		ImGui::Text("Orientation Quat: %s ", body.GetOrientation().ToString().c_str());
+	//		ImGui::Text("Orientation Quat: %s ", body.Orientation().ToString().c_str());
 	//		ImGui::Text("Force Accumulated: %s", body.mForceAccumulated.ToString().c_str());
 	//		ImGui::Text("Torque Accumulated: %s", body.mTorqueAccumulated.ToString().c_str());
 	//		ImGui::Text("Linear Velocity: %s", body.mLinearVelocity.ToString().c_str());
@@ -395,19 +395,19 @@ void EditorImGui::DrawBodiesOverlayItems(vx::BodyManager& body_manager, vx::Phys
 	//		ImGui::Text("Sleep Timer: %f", body.mSleepTimer);
 	//		ImGui::TreePop();
 	//	}
-	//	if (ImGui::TreeNode("Debug Shape Properies"))
+	//	if (ImGui::TreeNode("Debug GetShape Properies"))
 	//	{
 	//		auto shape = body.GetShape();
-	//		ImGui::Text("Type: %s", shape->GetShapeTypeName());
-	//		ImGui::Text("Density: %f", shape->GetDensity());
-	//		switch (shape->GetType())
+	//		ImGui::Text("Type: %s", shape->ShapeTypeName());
+	//		ImGui::Text("Density: %f", shape->Density());
+	//		switch (shape->Type())
 	//		{
-	//		case EShapeType::Sphere: ImGui::Text("Radius %f", shape->GetHalfExtents().X());
+	//		case EShapeType::Sphere: ImGui::Text("Radius %f", shape->HalfExtents().X());
 	//			break;
 	//		case EShapeType::Box: 
 	//		case EShapeType::Capsule:
 	//		case EShapeType::Plane:
-	//			ImGui::Text("Half Size %s", shape->GetHalfExtents().ToString().c_str());
+	//			ImGui::Text("Half Size %s", shape->HalfExtents().ToString().c_str());
 	//			break;
 	//		default:
 	//			break;
@@ -444,7 +444,7 @@ void EditorImGui::DrawBodiesOverlayItems(vx::BodyManager& body_manager, vx::Phys
 		ImGui::PushID(&p);
 		ImGui::SeparatorText(body_manager.GetBodyDebugName(id));
 		//draw_body_prop(p);
-		(this->*draw_body_table[static_cast<int>(p.GetMotionType())])(p, body_manager.GetBodyDebugInfo(p));
+		(this->*draw_body_table[static_cast<int>(p.MotionType())])(p, body_manager.GetBodyDebugInfo(p));
 		if (ImGui::Button("Delete"))
 			physics_world->RemoveBody(id);
 		ImGui::PopID();

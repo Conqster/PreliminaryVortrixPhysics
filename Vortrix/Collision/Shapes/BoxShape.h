@@ -42,10 +42,10 @@ namespace vx {
 
 		static constexpr const char* GetDebugName() { return "Box"; }
 
-		virtual const char* GetName() const override { return "Box"; }
-		virtual Vec3 GetHalfExtents() const override { return Vec3(mHalfExtent); }
+		virtual const char* Name() const override { return "Box"; }
+		virtual Vec3 HalfExtents() const override { return Vec3(mHalfExtent); }
 
-		virtual AABB GetLocalBounds() const;
+		virtual AABB LocalBounds() const;
 		std::array<Vec3, 8> GetCorners() const;
 		std::array<Vec3, 8> GetCornersWS(const Mat44& in_transform) const;
 
@@ -77,7 +77,7 @@ namespace vx {
 
 		bool DataEq(const Shape* rhs) const override
 		{
-			if (rhs == nullptr || GetType() != rhs->GetType()) return false;
+			if (rhs == nullptr || Type() != rhs->Type()) return false;
 
 			const BoxShape* box_rhs = static_cast<const BoxShape*>(rhs);
 

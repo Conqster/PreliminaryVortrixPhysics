@@ -81,6 +81,7 @@ namespace vx {
 
 		const char* Data() const { return mData; }
 
+		char* BufferHead() { return &mData[0];}
 
 		template<size_t M>
 		StackString& operator << (const StackString<M>& other)

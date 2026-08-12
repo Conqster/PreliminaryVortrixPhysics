@@ -136,33 +136,33 @@ namespace vx{
 		RefConst<Shape> upper_leg = GetLimbShapePart(ERagdollLimbsShape::Box_Left_UpperLeg);
 		RefConst<Shape> lower_leg = GetLimbShapePart(ERagdollLimbsShape::Box_Left_LowerLeg);
 
-		Vec3 torso_half_size = torso_shape->GetHalfExtents();
+		Vec3 torso_half_size = torso_shape->HalfExtents();
 
 		float limb_offset = settings.limbsOffset;
 
-		float upper_arm_thickness = upper_arm->GetHalfExtents().X();
-		Vec3 head_pos(0.0f, head->GetHalfExtents().Y() + torso_shape->GetHalfExtents().Y() + limb_offset, 0.0f);
-		float shoulder_x = torso_shape->GetHalfExtents().X();// +upper_arm_thickness;
-		float shoulder_y = torso_shape->GetHalfExtents().Y() * 0.6f;
+		float upper_arm_thickness = upper_arm->HalfExtents().X();
+		Vec3 head_pos(0.0f, head->HalfExtents().Y() + torso_shape->HalfExtents().Y() + limb_offset, 0.0f);
+		float shoulder_x = torso_shape->HalfExtents().X();// +upper_arm_thickness;
+		float shoulder_y = torso_shape->HalfExtents().Y() * 0.6f;
 
-		//float upper_arm_length = upper_arm->GetHalfExtents().Y(); 
-		float upper_arm_half_length = upper_arm->GetHalfExtents().Y();
-		//float lower_arm_length = lower_arm->GetHalfExtents().Y() * 2.0f; 
+		//float upper_arm_length = upper_arm->HalfExtents().Y(); 
+		float upper_arm_half_length = upper_arm->HalfExtents().Y();
+		//float lower_arm_length = lower_arm->HalfExtents().Y() * 2.0f; 
 		Vec3  upper_armLPos(-(shoulder_x + upper_arm_half_length + limb_offset), shoulder_y, 0.0f);
 		Vec3  upper_armRPos(upper_armLPos * vx::Vec3(-1, 1, 1));
 
-		Vec3 lower_armLPos = upper_armLPos - Vec3(upper_arm_half_length + lower_arm->GetHalfExtents().Y() + limb_offset, 0, 0);
+		Vec3 lower_armLPos = upper_armLPos - Vec3(upper_arm_half_length + lower_arm->HalfExtents().Y() + limb_offset, 0, 0);
 		Vec3 lower_armRPos(lower_armLPos * vx::Vec3(-1, 1, 1));
 
 		float torso_half_width = torso_half_size.X();
 		float torso_half_height = torso_half_size.Y();
 		float hipX = torso_half_width * 0.45f;
-		float upper_leg_half_length = upper_leg->GetHalfExtents().Y();
+		float upper_leg_half_length = upper_leg->HalfExtents().Y();
 		Vec3 upper_legRPos(hipX, -(torso_half_height + upper_leg_half_length + limb_offset), 0);
 		Vec3 upper_legLPos(upper_legRPos * vx::Vec3(-1, 1, 1));
 
 
-		float lower_leg_length = lower_leg->GetHalfExtents().Y();
+		float lower_leg_length = lower_leg->HalfExtents().Y();
 		Vec3 lower_legRPos = upper_legRPos - Vec3(0, upper_leg_half_length + lower_leg_length + limb_offset, 0);
 		Vec3 lower_legLPos(lower_legRPos * vx::Vec3(-1, 1, 1));
 
@@ -262,7 +262,7 @@ namespace vx{
 
 			vx::PointConstraint(_head,
 				torso,
-				vx::PointConstraintSettings(vx::Vec3(0.0f, -(head->GetHalfExtents().Y() + half_limb_offset), 0.0f),
+				vx::PointConstraintSettings(vx::Vec3(0.0f, -(head->HalfExtents().Y() + half_limb_offset), 0.0f),
 					vx::Vec3(0.0f, torso_half_height + half_limb_offset, 0.0f), vx::EConstraintFrame::Local)), ///neck_joint
 
 					///upper left arm
@@ -270,7 +270,7 @@ namespace vx{
 				upper_armL,
 				torso,
 				vx::PointConstraintSettings(
-					vx::Vec3(0.0f, -(upper_arm->GetHalfExtents().Y() + half_limb_offset), 0.0f),
+					vx::Vec3(0.0f, -(upper_arm->HalfExtents().Y() + half_limb_offset), 0.0f),
 					vx::Vec3(-(torso_half_width + half_limb_offset), shoulder_y, 0.0f),
 					vx::EConstraintFrame::Local)), ///left_shoulder_body_upper_left_arm
 
@@ -279,7 +279,7 @@ namespace vx{
 			upper_armR,
 			torso,
 				vx::PointConstraintSettings(
-					vx::Vec3(0.0f, -(upper_arm->GetHalfExtents().Y() + half_limb_offset), 0.0f),
+					vx::Vec3(0.0f, -(upper_arm->HalfExtents().Y() + half_limb_offset), 0.0f),
 					vx::Vec3(torso_half_width + half_limb_offset, shoulder_y, 0.0f),
 					vx::EConstraintFrame::Local)), ///left_arm__upper_left_lower_left_arn
 
@@ -288,8 +288,8 @@ namespace vx{
 			upper_armL,
 			lower_armL,
 			vx::PointConstraintSettings(
-				vx::Vec3(0.0f, (upper_arm->GetHalfExtents().Y() + half_limb_offset), 0.0f),
-				vx::Vec3(0.0f, -(lower_arm->GetHalfExtents().Y() + half_limb_offset), 0.0f),
+				vx::Vec3(0.0f, (upper_arm->HalfExtents().Y() + half_limb_offset), 0.0f),
+				vx::Vec3(0.0f, -(lower_arm->HalfExtents().Y() + half_limb_offset), 0.0f),
 				vx::EConstraintFrame::Local)), ///right_shoulder_body_upper_right_arm
 
 				///lower right arm elbow
@@ -297,8 +297,8 @@ namespace vx{
 					upper_armR,
 					lower_armR,
 					vx::PointConstraintSettings(
-				vx::Vec3(0.0f, (upper_arm->GetHalfExtents().Y() + half_limb_offset), 0.0f),
-					vx::Vec3(0.0f, -(lower_arm->GetHalfExtents().Y() + half_limb_offset), 0.0f),
+				vx::Vec3(0.0f, (upper_arm->HalfExtents().Y() + half_limb_offset), 0.0f),
+					vx::Vec3(0.0f, -(lower_arm->HalfExtents().Y() + half_limb_offset), 0.0f),
 					vx::EConstraintFrame::Local)), ///right_shoulder_body_upper_right_arm
 
 
@@ -308,7 +308,7 @@ vx::PointConstraint(
 	upper_legL,
 	vx::PointConstraintSettings(
 		vx::Vec3(-hipX, -(torso_half_height + half_limb_offset), 0.0f),
-		vx::Vec3(0.0f, upper_leg->GetHalfExtents().Y() + half_limb_offset, 0.0f),
+		vx::Vec3(0.0f, upper_leg->HalfExtents().Y() + half_limb_offset, 0.0f),
 		vx::EConstraintFrame::Local)), ///right_shoulder_body_upper_right_arm
 
 
@@ -318,7 +318,7 @@ vx::PointConstraint(
 					upper_legR,
 					vx::PointConstraintSettings(
 						vx::Vec3(hipX, -(torso_half_height + half_limb_offset), 0.0f),
-						vx::Vec3(0.0f, upper_leg->GetHalfExtents().Y() + half_limb_offset, 0.0f),
+						vx::Vec3(0.0f, upper_leg->HalfExtents().Y() + half_limb_offset, 0.0f),
 						vx::EConstraintFrame::Local)), ///right_shoulder_body_upper_right_arm
 
 
@@ -327,8 +327,8 @@ vx::PointConstraint(
 	upper_legL,
 	lower_legL,
 	vx::PointConstraintSettings(
-		vx::Vec3(0.0f, -(upper_leg->GetHalfExtents().Y() + half_limb_offset), 0.0f),
-		vx::Vec3(0.0f, (lower_leg->GetHalfExtents().Y() + half_limb_offset), 0.0f),
+		vx::Vec3(0.0f, -(upper_leg->HalfExtents().Y() + half_limb_offset), 0.0f),
+		vx::Vec3(0.0f, (lower_leg->HalfExtents().Y() + half_limb_offset), 0.0f),
 		vx::EConstraintFrame::Local)), ///right_shoulder_body_upper_right_arm
 
 				/// right knee
@@ -336,14 +336,14 @@ vx::PointConstraint(
 	upper_legR,
 	lower_legR,
 	vx::PointConstraintSettings(
-		vx::Vec3(0.0f, -(upper_leg->GetHalfExtents().Y() + half_limb_offset), 0.0f),
-		vx::Vec3(0.0f, (lower_leg->GetHalfExtents().Y() + half_limb_offset), 0.0f),
+		vx::Vec3(0.0f, -(upper_leg->HalfExtents().Y() + half_limb_offset), 0.0f),
+		vx::Vec3(0.0f, (lower_leg->HalfExtents().Y() + half_limb_offset), 0.0f),
 		vx::EConstraintFrame::Local)), ///right_shoulder_body_upper_right_arm
 
 		};
 		//move body upward world frame
 		for (auto& b : bodies)
-			b->SetPosition(b->GetPosition() + settings.position);
+			b->SetPosition(b->Position() + settings.position);
 
 		uint32 count = mPhysicsWorld->GetConstraints().size();
 		mPhysicsWorld->CreateConstraintsT(joints, 9);
@@ -387,33 +387,33 @@ vx::PointConstraint(
 		RefConst<Shape> upper_leg = GetLimbShapePart(ERagdollLimbsShape::Capsule_Left_UpperLeg);
 		RefConst<Shape> lower_leg = GetLimbShapePart(ERagdollLimbsShape::Capsule_Left_LowerLeg);
 
-		Vec3 torso_half_size = torso_shape->GetHalfExtents();
+		Vec3 torso_half_size = torso_shape->HalfExtents();
 
 		float limb_offset = settings.limbsOffset;
 
-		float upper_arm_thickness = upper_arm->GetHalfExtents().X();
-		Vec3 head_pos(0.0f, head->GetHalfExtents().Y() + torso_shape->GetHalfExtents().Y() + limb_offset, 0.0f);
-		float shoulder_x = torso_shape->GetHalfExtents().X();// +upper_arm_thickness;
-		float shoulder_y = torso_shape->GetHalfExtents().Y() * 0.6f;
+		float upper_arm_thickness = upper_arm->HalfExtents().X();
+		Vec3 head_pos(0.0f, head->HalfExtents().Y() + torso_shape->HalfExtents().Y() + limb_offset, 0.0f);
+		float shoulder_x = torso_shape->HalfExtents().X();// +upper_arm_thickness;
+		float shoulder_y = torso_shape->HalfExtents().Y() * 0.6f;
 
-		//float upper_arm_length = upper_arm->GetHalfExtents().Y(); 
-		float upper_arm_half_length = upper_arm->GetHalfExtents().Y();
-		//float lower_arm_length = lower_arm->GetHalfExtents().Y() * 2.0f; 
+		//float upper_arm_length = upper_arm->HalfExtents().Y(); 
+		float upper_arm_half_length = upper_arm->HalfExtents().Y();
+		//float lower_arm_length = lower_arm->HalfExtents().Y() * 2.0f; 
 		Vec3  upper_armLPos(-(shoulder_x + upper_arm_half_length + limb_offset), shoulder_y, 0.0f);
 		Vec3  upper_armRPos(upper_armLPos * vx::Vec3(-1, 1, 1));
 
-		Vec3 lower_armLPos = upper_armLPos - Vec3(upper_arm_half_length + lower_arm->GetHalfExtents().Y() + limb_offset, 0, 0);
+		Vec3 lower_armLPos = upper_armLPos - Vec3(upper_arm_half_length + lower_arm->HalfExtents().Y() + limb_offset, 0, 0);
 		Vec3 lower_armRPos(lower_armLPos * vx::Vec3(-1, 1, 1));
 
 		float torso_half_width = torso_half_size.X();
 		float torso_half_height = torso_half_size.Y();
 		float hipX = torso_half_width * 0.45f;
-		float upper_leg_half_length = upper_leg->GetHalfExtents().Y();
+		float upper_leg_half_length = upper_leg->HalfExtents().Y();
 		Vec3 upper_legRPos(hipX, -(torso_half_height + upper_leg_half_length + limb_offset), 0);
 		Vec3 upper_legLPos(upper_legRPos * vx::Vec3(-1, 1, 1));
 
 
-		float lower_leg_length = lower_leg->GetHalfExtents().Y();
+		float lower_leg_length = lower_leg->HalfExtents().Y();
 		Vec3 lower_legRPos = upper_legRPos - Vec3(0, upper_leg_half_length + lower_leg_length + limb_offset, 0);
 		Vec3 lower_legLPos(lower_legRPos * vx::Vec3(-1, 1, 1));
 
@@ -512,7 +512,7 @@ vx::PointConstraint(
 
 			vx::PointConstraint(_head,
 				torso,
-				vx::PointConstraintSettings(vx::Vec3(0.0f, -(head->GetHalfExtents().Y() + half_limb_offset), 0.0f),
+				vx::PointConstraintSettings(vx::Vec3(0.0f, -(head->HalfExtents().Y() + half_limb_offset), 0.0f),
 					vx::Vec3(0.0f, torso_half_height + half_limb_offset, 0.0f), vx::EConstraintFrame::Local)), ///neck_joint
 
 					///upper left arm
@@ -520,7 +520,7 @@ vx::PointConstraint(
 				upper_armL,
 				torso,
 				vx::PointConstraintSettings(
-					vx::Vec3(0.0f, -(upper_arm->GetHalfExtents().Y() + half_limb_offset), 0.0f),
+					vx::Vec3(0.0f, -(upper_arm->HalfExtents().Y() + half_limb_offset), 0.0f),
 					vx::Vec3(-(torso_half_width + half_limb_offset), shoulder_y, 0.0f),
 					vx::EConstraintFrame::Local)), ///left_shoulder_body_upper_left_arm
 
@@ -529,7 +529,7 @@ vx::PointConstraint(
 			upper_armR,
 			torso,
 				vx::PointConstraintSettings(
-					vx::Vec3(0.0f, -(upper_arm->GetHalfExtents().Y() + half_limb_offset), 0.0f),
+					vx::Vec3(0.0f, -(upper_arm->HalfExtents().Y() + half_limb_offset), 0.0f),
 					vx::Vec3(torso_half_width + half_limb_offset, shoulder_y, 0.0f),
 					vx::EConstraintFrame::Local)), ///left_arm__upper_left_lower_left_arn
 
@@ -538,8 +538,8 @@ vx::PointConstraint(
 			upper_armL,
 			lower_armL,
 			vx::PointConstraintSettings(
-				vx::Vec3(0.0f, (upper_arm->GetHalfExtents().Y() + half_limb_offset), 0.0f),
-				vx::Vec3(0.0f, -(lower_arm->GetHalfExtents().Y() + half_limb_offset), 0.0f),
+				vx::Vec3(0.0f, (upper_arm->HalfExtents().Y() + half_limb_offset), 0.0f),
+				vx::Vec3(0.0f, -(lower_arm->HalfExtents().Y() + half_limb_offset), 0.0f),
 				vx::EConstraintFrame::Local)), ///right_shoulder_body_upper_right_arm
 
 				///lower right arm elbow
@@ -547,8 +547,8 @@ vx::PointConstraint(
 					upper_armR,
 					lower_armR,
 					vx::PointConstraintSettings(
-				vx::Vec3(0.0f, (upper_arm->GetHalfExtents().Y() + half_limb_offset), 0.0f),
-					vx::Vec3(0.0f, -(lower_arm->GetHalfExtents().Y() + half_limb_offset), 0.0f),
+				vx::Vec3(0.0f, (upper_arm->HalfExtents().Y() + half_limb_offset), 0.0f),
+					vx::Vec3(0.0f, -(lower_arm->HalfExtents().Y() + half_limb_offset), 0.0f),
 					vx::EConstraintFrame::Local)), ///right_shoulder_body_upper_right_arm
 
 
@@ -558,7 +558,7 @@ vx::PointConstraint(
 	upper_legL,
 	vx::PointConstraintSettings(
 		vx::Vec3(-hipX, -(torso_half_height + half_limb_offset), 0.0f),
-		vx::Vec3(0.0f, upper_leg->GetHalfExtents().Y() + half_limb_offset, 0.0f),
+		vx::Vec3(0.0f, upper_leg->HalfExtents().Y() + half_limb_offset, 0.0f),
 		vx::EConstraintFrame::Local)), ///right_shoulder_body_upper_right_arm
 
 
@@ -568,7 +568,7 @@ vx::PointConstraint(
 					upper_legR,
 					vx::PointConstraintSettings(
 						vx::Vec3(hipX, -(torso_half_height + half_limb_offset), 0.0f),
-						vx::Vec3(0.0f, upper_leg->GetHalfExtents().Y() + half_limb_offset, 0.0f),
+						vx::Vec3(0.0f, upper_leg->HalfExtents().Y() + half_limb_offset, 0.0f),
 						vx::EConstraintFrame::Local)), ///right_shoulder_body_upper_right_arm
 
 
@@ -577,8 +577,8 @@ vx::PointConstraint(
 	upper_legL,
 	lower_legL,
 	vx::PointConstraintSettings(
-		vx::Vec3(0.0f, -(upper_leg->GetHalfExtents().Y() + half_limb_offset), 0.0f),
-		vx::Vec3(0.0f, (lower_leg->GetHalfExtents().Y() + half_limb_offset), 0.0f),
+		vx::Vec3(0.0f, -(upper_leg->HalfExtents().Y() + half_limb_offset), 0.0f),
+		vx::Vec3(0.0f, (lower_leg->HalfExtents().Y() + half_limb_offset), 0.0f),
 		vx::EConstraintFrame::Local)), ///right_shoulder_body_upper_right_arm
 
 				/// right knee
@@ -586,14 +586,14 @@ vx::PointConstraint(
 	upper_legR,
 	lower_legR,
 	vx::PointConstraintSettings(
-		vx::Vec3(0.0f, -(upper_leg->GetHalfExtents().Y() + half_limb_offset), 0.0f),
-		vx::Vec3(0.0f, (lower_leg->GetHalfExtents().Y() + half_limb_offset), 0.0f),
+		vx::Vec3(0.0f, -(upper_leg->HalfExtents().Y() + half_limb_offset), 0.0f),
+		vx::Vec3(0.0f, (lower_leg->HalfExtents().Y() + half_limb_offset), 0.0f),
 		vx::EConstraintFrame::Local)), ///right_shoulder_body_upper_right_arm
 
 		};
 		//move body upward world frame
 		for (auto& b : bodies)
-			b->SetPosition(b->GetPosition() + settings.position);
+			b->SetPosition(b->Position() + settings.position);
 		uint32 count = mPhysicsWorld->GetConstraints().size();
 		mPhysicsWorld->CreateConstraintsT(joints, 9);
 
@@ -642,8 +642,8 @@ vx::PointConstraint(
 		RefConst<Shape> upper_leg = GetLimbShapePart(ERagdollLimbsShape::Box_Left_UpperLeg);
 		RefConst<Shape> lower_leg = GetLimbShapePart(ERagdollLimbsShape::Box_Left_LowerLeg);
 
-		float chest_half_height = chest->GetHalfExtents().Y();
-		float pelvis_half_height = pelvis->GetHalfExtents().Y();
+		float chest_half_height = chest->HalfExtents().Y();
+		float pelvis_half_height = pelvis->HalfExtents().Y();
 
 		float limb_offset = settings.limbsOffset;
 
@@ -652,34 +652,34 @@ vx::PointConstraint(
 		Vec3 chestPos(0, pelvis_half_height + chest_half_height + chest_plevis_offset, 0);
 
 
-		float upper_arm_thickness = upper_arm->GetHalfExtents().X();
-		Vec3 head_pos = chestPos + Vec3(0.0f, head->GetHalfExtents().Y() + chest_half_height + limb_offset, 0.0f);
-		float shoulder_pos_x = chest->GetHalfExtents().X();// +upper_arm_thickness;
+		float upper_arm_thickness = upper_arm->HalfExtents().X();
+		Vec3 head_pos = chestPos + Vec3(0.0f, head->HalfExtents().Y() + chest_half_height + limb_offset, 0.0f);
+		float shoulder_pos_x = chest->HalfExtents().X();// +upper_arm_thickness;
 		///pelvis is the origin 
-		float shoulder_chest_local_y = (chest->GetHalfExtents().Y() * 0.6f);
+		float shoulder_chest_local_y = (chest->HalfExtents().Y() * 0.6f);
 		float shoulder_world_y = chestPos.Y() + shoulder_chest_local_y;
 
 
-		//float upper_arm_length = upper_arm->GetHalfExtents().Y(); 
-		float upper_arm_half_length = upper_arm->GetHalfExtents().Y();
-		//float lower_arm_length = lower_arm->GetHalfExtents().Y() * 2.0f; 
+		//float upper_arm_length = upper_arm->HalfExtents().Y(); 
+		float upper_arm_half_length = upper_arm->HalfExtents().Y();
+		//float lower_arm_length = lower_arm->HalfExtents().Y() * 2.0f; 
 		Vec3  upper_armLPos(-(shoulder_pos_x + upper_arm_half_length + limb_offset), shoulder_world_y, 0.0f);
 		Vec3  upper_armRPos(upper_armLPos * vx::Vec3(-1, 1, 1));
 
-		Vec3 lower_armLPos = upper_armLPos - Vec3(upper_arm_half_length + lower_arm->GetHalfExtents().Y() + limb_offset, 0, 0);
+		Vec3 lower_armLPos = upper_armLPos - Vec3(upper_arm_half_length + lower_arm->HalfExtents().Y() + limb_offset, 0, 0);
 		Vec3 lower_armRPos(lower_armLPos * vx::Vec3(-1, 1, 1));
 
-		float pelvis_half_width = pelvis->GetHalfExtents().X();
+		float pelvis_half_width = pelvis->HalfExtents().X();
 		float hipX = pelvis_half_width * 0.45f;
-		float upper_leg_half_length = upper_leg->GetHalfExtents().Y();
+		float upper_leg_half_length = upper_leg->HalfExtents().Y();
 		Vec3 upper_legRPos(hipX, -(pelvis_half_height + upper_leg_half_length + limb_offset), 0);
 		Vec3 upper_legLPos(upper_legRPos * vx::Vec3(-1, 1, 1));
 
-		float lower_leg_length = lower_leg->GetHalfExtents().Y();
+		float lower_leg_length = lower_leg->HalfExtents().Y();
 		Vec3 lower_legRPos = upper_legRPos - Vec3(0, upper_leg_half_length + lower_leg_length + limb_offset, 0);
 		Vec3 lower_legLPos(lower_legRPos * vx::Vec3(-1, 1, 1));
 
-		float chest_half_width = chest->GetHalfExtents().X();
+		float chest_half_width = chest->HalfExtents().X();
 
 		std::vector<Body*> bodies;
 		vx::BodySettings body_settings = vx::BodySettings::DefaultDynamicConstruct();
@@ -811,7 +811,7 @@ vx::PointConstraint(
 		{
 			vx::PointConstraint(_head,
 				chest_body,
-				vx::PointConstraintSettings(vx::Vec3(0.0f, -(head->GetHalfExtents().Y() + half_limb_offset), 0.0f),
+				vx::PointConstraintSettings(vx::Vec3(0.0f, -(head->HalfExtents().Y() + half_limb_offset), 0.0f),
 					vx::Vec3(0.0f, chest_half_height + half_limb_offset, 0.0f), vx::EConstraintFrame::Local)), ///neck_joint
 
 			vx::PointConstraint(
@@ -827,7 +827,7 @@ vx::PointConstraint(
 			upper_armL,
 			chest_body,
 			vx::PointConstraintSettings(
-				vx::Vec3(0.0f, -(upper_arm->GetHalfExtents().Y() + half_limb_offset), 0.0f),
+				vx::Vec3(0.0f, -(upper_arm->HalfExtents().Y() + half_limb_offset), 0.0f),
 				vx::Vec3(-(chest_half_width + half_limb_offset), shoulder_chest_local_y, 0.0f),
 				vx::EConstraintFrame::Local)), ///left_shoulder_body_upper_left_arm
 
@@ -836,7 +836,7 @@ vx::PointConstraint(
 			upper_armR,
 			chest_body,
 			vx::PointConstraintSettings(
-				vx::Vec3(0.0f, -(upper_arm->GetHalfExtents().Y() + half_limb_offset), 0.0f),
+				vx::Vec3(0.0f, -(upper_arm->HalfExtents().Y() + half_limb_offset), 0.0f),
 				vx::Vec3(chest_half_width + half_limb_offset, shoulder_chest_local_y, 0.0f),
 				vx::EConstraintFrame::Local)), ///left_arm__upper_left_lower_left_arn
 
@@ -845,8 +845,8 @@ vx::PointConstraint(
 			upper_armL,
 			lower_armL,
 			vx::PointConstraintSettings(
-				vx::Vec3(0.0f, (upper_arm->GetHalfExtents().Y() + half_limb_offset), 0.0f),
-				vx::Vec3(0.0f, -(lower_arm->GetHalfExtents().Y() + half_limb_offset), 0.0f),
+				vx::Vec3(0.0f, (upper_arm->HalfExtents().Y() + half_limb_offset), 0.0f),
+				vx::Vec3(0.0f, -(lower_arm->HalfExtents().Y() + half_limb_offset), 0.0f),
 				vx::EConstraintFrame::Local)), ///right_shoulder_body_upper_right_arm
 
 				///lower right arm elbow
@@ -854,8 +854,8 @@ vx::PointConstraint(
 					upper_armR,
 					lower_armR,
 					vx::PointConstraintSettings(
-				vx::Vec3(0.0f, (upper_arm->GetHalfExtents().Y() + half_limb_offset), 0.0f),
-					vx::Vec3(0.0f, -(lower_arm->GetHalfExtents().Y() + half_limb_offset), 0.0f),
+				vx::Vec3(0.0f, (upper_arm->HalfExtents().Y() + half_limb_offset), 0.0f),
+					vx::Vec3(0.0f, -(lower_arm->HalfExtents().Y() + half_limb_offset), 0.0f),
 					vx::EConstraintFrame::Local)), ///right_shoulder_body_upper_right_arm
 
 
@@ -865,7 +865,7 @@ vx::PointConstraint(
 	upper_legL,
 	vx::PointConstraintSettings(
 		vx::Vec3(-hipX, -(pelvis_half_height + half_limb_offset), 0.0f),
-		vx::Vec3(0.0f, upper_leg->GetHalfExtents().Y() + half_limb_offset, 0.0f),
+		vx::Vec3(0.0f, upper_leg->HalfExtents().Y() + half_limb_offset, 0.0f),
 		vx::EConstraintFrame::Local)), ///right_shoulder_body_upper_right_arm
 
 
@@ -875,7 +875,7 @@ vx::PointConstraint(
 	upper_legR,
 	vx::PointConstraintSettings(
 		vx::Vec3(hipX, -(pelvis_half_height + half_limb_offset), 0.0f),
-		vx::Vec3(0.0f, upper_leg->GetHalfExtents().Y() + half_limb_offset, 0.0f),
+		vx::Vec3(0.0f, upper_leg->HalfExtents().Y() + half_limb_offset, 0.0f),
 		vx::EConstraintFrame::Local)), ///right_shoulder_body_upper_right_arm
 
 
@@ -884,8 +884,8 @@ vx::PointConstraint(
 	upper_legL,
 	lower_legL,
 	vx::PointConstraintSettings(
-		vx::Vec3(0.0f, -(upper_leg->GetHalfExtents().Y() + half_limb_offset), 0.0f),
-		vx::Vec3(0.0f, (lower_leg->GetHalfExtents().Y() + half_limb_offset), 0.0f),
+		vx::Vec3(0.0f, -(upper_leg->HalfExtents().Y() + half_limb_offset), 0.0f),
+		vx::Vec3(0.0f, (lower_leg->HalfExtents().Y() + half_limb_offset), 0.0f),
 		vx::EConstraintFrame::Local)), ///right_shoulder_body_upper_right_arm
 
 				/// right knee
@@ -893,8 +893,8 @@ vx::PointConstraint(
 	upper_legR,
 	lower_legR,
 	vx::PointConstraintSettings(
-		vx::Vec3(0.0f, -(upper_leg->GetHalfExtents().Y() + half_limb_offset), 0.0f),
-		vx::Vec3(0.0f, (lower_leg->GetHalfExtents().Y() + half_limb_offset), 0.0f),
+		vx::Vec3(0.0f, -(upper_leg->HalfExtents().Y() + half_limb_offset), 0.0f),
+		vx::Vec3(0.0f, (lower_leg->HalfExtents().Y() + half_limb_offset), 0.0f),
 		vx::EConstraintFrame::Local)), ///right_shoulder_body_upper_right_arm
 
 		};
@@ -915,6 +915,6 @@ vx::PointConstraint(
 
 		//move body upward world frame
 		for (auto& b : bodies)
-			b->SetPosition(b->GetPosition() + settings.position);
+			b->SetPosition(b->Position() + settings.position);
 	}
 } //namespace vx

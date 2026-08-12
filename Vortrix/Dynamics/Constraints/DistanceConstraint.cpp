@@ -98,11 +98,11 @@ namespace vx{
 	{
 		//lets take into consideration that 
 		// that the achor point is not COM
-		o_rA = mBodyA->GetOrientation().Rotate(mLocalAnchorA);
-		o_rB = mBodyB->GetOrientation().Rotate(mLocalAnchorB);
+		o_rA = mBodyA->Orientation().Rotate(mLocalAnchorA);
+		o_rB = mBodyB->Orientation().Rotate(mLocalAnchorB);
 
-		mWorldAnchorA = o_rA + mBodyA->GetPosition();
-		mWorldAnchorB = o_rB + mBodyB->GetPosition();
+		mWorldAnchorA = o_rA + mBodyA->Position();
+		mWorldAnchorB = o_rB + mBodyB->Position();
 
 
 		Vec3 dispW = mWorldAnchorB - mWorldAnchorA;
@@ -299,11 +299,11 @@ namespace vx{
 			float ratio = (total_mass > kEpsilon) ? (mB / total_mass) : 0.5;
 
 
-			Vec3 rA = mBodyA->GetOrientation().Rotate(mLocalAnchorA);
-			Vec3 rB = mBodyB->GetOrientation().Rotate(mLocalAnchorB);
+			Vec3 rA = mBodyA->Orientation().Rotate(mLocalAnchorA);
+			Vec3 rB = mBodyB->Orientation().Rotate(mLocalAnchorB);
 
-			Vec3 rAw = rA + mBodyA->GetPosition();
-			Vec3 rBw = rB + mBodyB->GetPosition();
+			Vec3 rAw = rA + mBodyA->Position();
+			Vec3 rBw = rB + mBodyB->Position();
 
 			Vec3 disp = rBw - rAw;
 			float curr_dist = disp.Length();

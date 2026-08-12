@@ -2,7 +2,7 @@
 #include "Vortrix/Geometry/AABB.h"
 
 namespace vx {
-	AABB SphereShape::GetLocalBounds() const
+	AABB SphereShape::LocalBounds() const
 	{
 		Vec3 half_extent(mRadius);
 		return AABB(-half_extent, half_extent);
@@ -32,7 +32,7 @@ namespace vx {
 		float radius_sq = mRadius * mRadius;
 		return Float3((2.0f / 5.0f) * mass * radius_sq);
 	}
-	AABB SphereShape::GetWorldBounds(const Mat44& tranform, const Vec3& scale) const
+	AABB SphereShape::ComputeWorldBounds(const Mat44& tranform, const Vec3& scale) const
 	{
 		Vec3 scaled_radius = scale.Abs() * mRadius;
 		scaled_radius = scaled_radius.SplatX();

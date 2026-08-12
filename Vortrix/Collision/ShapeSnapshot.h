@@ -53,14 +53,14 @@
 //	struct BroadphaseProxy
 //	{
 //		BodyID bodyID;
-//		class Shape* mShape;
+//		class GetShape* mShape;
 //		AABB bounds;
 //	};
 //
 //	ctx.OnBroadphaseHit({ n.body, shape_type, ..... });
 //
 //
-//	using RaycastFunc = bool(*)(const Shape*, const Vec3&, const Quat&, const Shape*, const Vec3&, const Quat&, ContactManifold&);
+//	using RaycastFunc = bool(*)(const GetShape*, const Vec3&, const Quat&, const GetShape*, const Vec3&, const Quat&, ContactManifold&);
 //
 //	class Broadphase
 //	{
@@ -135,7 +135,7 @@
 //	{
 //		Vec3 mPosition;
 //		Quat mOrientation;
-//		class Shape* mShape;
+//		class GetShape* mShape;
 //	};
 //
 //
@@ -174,7 +174,7 @@
 //
 //		Vec3 mPosition;
 //		Quat mOrientation;
-//		class Shape* mShape;
+//		class GetShape* mShape;
 //	};
 //}
 //

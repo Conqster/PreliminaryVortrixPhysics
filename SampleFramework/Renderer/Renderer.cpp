@@ -60,8 +60,8 @@ void RendererImpl::Initialise(ApplicationWindow* display_window)
 	mShadowMapRT.Create(4096, 4096);
 
 	TextureCreateInfo ci;
-	ci.width = 256/2;// mWindow->GetWidth();
-	ci.height = 256/2;// mWindow->GetHeight();
+	ci.width = 256/2;// mWindow->Width();
+	ci.height = 256/2;// mWindow->Height();
 	ci.internalFormat = TextureFormat::RGBA16F;// TextureFormat::SRGBA8;
 	ci.pxFormat = PixelFormat::RGBA;
 	ci.pxType = PixelType::Float;// PixelType::UByte;
@@ -91,21 +91,24 @@ void RendererImpl::Initialise(ApplicationWindow* display_window)
 	CreateCapsuleGeometry(0.5f, 0.5f, 3);
 	mQuadXZGeometry = LoadMeshAsGeometry("assets/meshes/quadXZ.rmesh");
 	mQuadXZGeometry->AssignGPULabel("Quad XZ Geometry");
+
+	mQuadXZDoubledSidedGeometry = mQuadXZGeometry->Instance();
+
 	mQuadGeometry = LoadMeshAsGeometry("assets/meshes/quad.rmesh");
 	mQuadGeometry->AssignGPULabel("Quad Geometry");
 }
 
 void RendererImpl::DrawText3D(const std::string_view& text, const vx::Vec3& pos, float scale, const vx::Colour& col, ETextAlignment align)
 {
-	mFont->DrawText3D(text, pos, mCamera->GetRight(), mCamera->GetUp(), scale, col, align);
+	mFont->DrawText3D(text, pos, mCamera->GetRight(), mCamera->Up(), scale, col, align);
 }
 
 
 void RendererImpl::DrawText3D_DynScale(const std::string_view& text, const vx::Vec3& pos, float scale, const vx::Colour& col, ETextAlignment align)
 {
-	float dist = vx::VxAbs((mCamera->GetPosition() - pos).Length());
+	float dist = vx::VxAbs((mCamera->Position() - pos).Length());
 	scale *= dist;
-	mFont->DrawText3D(text, pos, mCamera->GetRight(), mCamera->GetUp(), scale, col, align);
+	mFont->DrawText3D(text, pos, mCamera->GetRight(), mCamera->Up(), scale, col, align);
 }
 
 void RendererImpl::BeginFrame(Camera* p_camera, vx::Colour clear_colour)
@@ -140,7 +143,7 @@ void RendererImpl::BeginFrame(Camera* p_camera, vx::Colour clear_colour)
 
 
 	mFontShader->Bind();
-	mFontShader->SetUniformMat4("uProjection", mCamera->ProjMat(mWindow->GetAspectRatio()));
+	mFontShader->SetUniformMat4("uProjection", mCamera->ProjMat(mWindow->AspectRatio()));
 	mFontShader->SetUniformMat4("uView", mCamera->ViewMat());
 
 
@@ -206,7 +209,7 @@ void RendererImpl::ShadowPass()
 	//swicth back to default frame buffer
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glCullFace(GL_BACK);
-	glViewport(0, 0, mWindow->GetWidth(), mWindow->GetHeight());
+	glViewport(0, 0, mWindow->Width(), mWindow->Height());
 }
 
 void RendererImpl::DrawPass()
@@ -226,7 +229,7 @@ void RendererImpl::DrawPass()
 
 	////DRAW FONTS 
 	//glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	//glViewport(0, 0, mWindow->GetWidth(), mWindow->GetHeight());
+	//glViewport(0, 0, mWindow->Width(), mWindow->Height());
 	DisableDepth();
 	DepthWriteMask(false);
 	mFont->DrawFrame();
@@ -250,8 +253,8 @@ void RendererImpl::DrawPass()
 
 	//swicth back to default frame buffer
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	//glViewport(0, 0, mWindow->GetWidth(), mWindow->GetHeight());
-	glViewport(0, 0, mWindow->GetWidth() * 0.4f, mWindow->GetHeight() * 0.4f);
+	//glViewport(0, 0, mWindow->Width(), mWindow->Height());
+	glViewport(0, 0, mWindow->Width() * 0.4f, mWindow->Height() * 0.4f);
 
 	//glEnable(GL_STENCIL_TEST);
 	//glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
@@ -264,7 +267,7 @@ void RendererImpl::DrawPass()
 	mTestRt.BindAttachment(0, 0);
 	//mQuadPrimitive.DrawOutline();
 	//mQuadPrimitive.Draw();
-	//glViewport(0, 0, mWindow->GetWidth(), mWindow->GetHeight());
+	//glViewport(0, 0, mWindow->Width(), mWindow->Height());
 	
 	//glStencilMask(0xFF);
 	//glStencilFunc(GL_ALWAYS, 1, 0xFF);
@@ -294,7 +297,7 @@ void RendererImpl::SetCallbacks()
 
 	//	float split_far = z_near + (z_far - z_near) * shadow_data->split_depth;
 	//	float split_center = (split_near + split_far) * 0.5f;
-	//	return mCamera->GetPosition() + mCamera->GetForward() * split_center;
+	//	return mCamera->Position() + mCamera->Forward() * split_center;
 
 
 	//	});
@@ -356,7 +359,7 @@ void RendererImpl::SetCallbacks()
 		float z_far = cam_prop.zFar;
 		float split_far = z_near + (z_far - z_near) * shadow_data->split_depth;
 		float split_near = z_near + shadow_data->zNearOffset;
-		vx::Mat44 proj = vx::Perspective(vx::DegToRad(cam_prop.fovY), mWindow->GetAspectRatio(), split_near, split_far);
+		vx::Mat44 proj = vx::Perspective(vx::DegToRad(cam_prop.fovY), mWindow->AspectRatio(), split_near, split_far);
 		vx::Mat44 vp = proj.Multiply(mCamera->ViewMat());
 
 		GetFrustum(corners, vp);
@@ -468,8 +471,8 @@ void RendererImpl::RenderGeometriesInstances(bool only_depth)
 
 		CamHackData cam_data =
 		{
-			{mCamera->ProjMat(mWindow->GetAspectRatio()), mCamera->ViewMat()},
-			vx::Vec4(mCamera->GetPosition(),0.0f)
+			{mCamera->ProjMat(mWindow->AspectRatio()), mCamera->ViewMat()},
+			vx::Vec4(mCamera->Position(),0.0f)
 		};
 
 
@@ -497,6 +500,11 @@ void RendererImpl::RenderGeometriesInstances(bool only_depth)
 			//mPlainTexture->Bind(1);
 			mGeometryShader->SetUniform1i("uFallback", 0);
 		}
+
+
+		glEnable(GL_BLEND);
+		glEnable(GL_DEPTH_TEST);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	}
 
 
@@ -521,9 +529,16 @@ void RendererImpl::RenderGeometriesInstances(bool only_depth)
 			mInstanceSSBO.SegmentUpload(instances.buffer.data(), required_bytes);
 		//	instances.isDirty = false;
 		}
-
+		
 		//draw 
-		ref_geometry->GetBatch()->DrawInstances(instances.buffer.size());
+		if (!only_depth && instances.disableCulling)
+		{
+			glDisable(GL_CULL_FACE);
+			ref_geometry->GetBatch()->DrawInstances(instances.buffer.size());
+			glEnable(GL_CULL_FACE);
+		}
+		else
+			ref_geometry->GetBatch()->DrawInstances(instances.buffer.size());
 		//auto ref_tri_batch = ref_geometry->GetBatch();
 		//ref_tri_batch->BindArray();
 		////no need to bind the buffer only is write/upload is needed
@@ -534,6 +549,9 @@ void RendererImpl::RenderGeometriesInstances(bool only_depth)
 
 
 	first = false;
+
+	if (!only_depth)
+		glDisable(GL_BLEND);
 
 }
 
