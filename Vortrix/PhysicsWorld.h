@@ -89,6 +89,8 @@ namespace vx
 	class BodySettings;
 	class Broadphase;
 
+	class TaskCoordinator;
+
 	class AABB;
 	template<typename T>
 	class BVHBroadphase;
@@ -102,7 +104,7 @@ namespace vx
 	class VX_API PhysicsWorld : NonCopyable
 	{
 	public:
-		PhysicsWorld(const PhysicsWorldSettings& in_settings);
+		PhysicsWorld(PhysicsWorldSettings* in_settings);
 		~PhysicsWorld();
 
 		static void CreateSimpleWorld(PhysicsWorld* io_world);
@@ -110,119 +112,170 @@ namespace vx
 		static void GenerateWorldDefaultConfig(int& o_max_bodies, int& o_max_body_pairs, int& o_max_contact_constraint);
 		void Init(float max_bodies, float max_body_pairs, float max_contact_constraint);
 
-		Body* CreateBody(const BodySettings& body_setting, bool activate_body = true);
-		void RemoveBody(const BodyID& id);
+		const PhysicsWorldSettings* Settings() const { return mSettings; }
+		PhysicsWorldSettings* Settings() { return mSettings; }
+
+		const TaskCoordinator* GetTaskCoordinator() const { return mTaskCoordinator; }
+
+		const ScratchAllocator* GetScratchAllocator() const { return mScratchAllocator; }
 
 		////////////////////////////////////////////////////////////////////////
 		/// Step Simulation
 		/// 
 		/// a single step into physics frame 
 		void StepSimulation(float dt);
-		template<EShapeType Type>
-		void OnDrawBody(const Body& body, Renderer* draw_renderer, 
-			const RenderSettings& setting, const Colour& c = Colour::sMagenta);
-		void OnDrawBodies(Renderer* draw_renderer, const RenderSettings& setting);
-		void OnDebugDraw(DebugGizmosRenderer* debug_renderer);
 
+		static uint32 CurrentSimStepIndex() { return mStepIndex; }
+
+		const IslandCoordinator* GetIslandCoordinator() const { return mIslandCoordinator; }
+		/// Post Physics world query (ray casting)
+		WorldQuery GetWorldQuery() const { return mWorldQuery; }
+
+		void SetFrictionCombineMode(ECombineMode friction_combine_mode)
+		{
+			mSettings->solver.frictionCombineMode = friction_combine_mode;
+			mContactConstraintSolver.SetFrictionCombineMode(friction_combine_mode);
+		}
+		void SetRestitutionCombineMode(ECombineMode restitution_combine_mode)
+		{
+			mContactConstraintSolver.SetRestitutionCombineMode(mSettings->solver.restitutionCombineMode);
+			mSettings->solver.restitutionCombineMode = restitution_combine_mode;
+		}
+
+
+
+
+
+		/// Bodies Management
+		const BodyManager& GetBodyManager() const { return mBodyManager; }
+		BodyManager& GetBodyManager() { return mBodyManager; }
+
+		Body* CreateBody(const BodySettings& body_setting, bool activate_body = true);
+		void RemoveBody(const BodyID& id);
+		void RemoveBodies(const BodyID* ids, uint32 count);
+
+		BodyVector& Bodies() { return mBodyManager.GetBodies(); }
+
+		BodyID* ActiveBodies() const { return mBodyManager.ActiveBodies(); }
+		uint32 NumActiveBodies() const { return mBodyManager.NumActiveBodies(); }
+
+		void ActivateBodies(const BodyID* body_ids, uint32 count) { mBodyManager.ActivateBodies(body_ids, count); }
+
+		///interface bodies; add mutex later
+		void ApplyImpulse(const BodyID body_id, const Vec3& impulse)
+		{
+			Body& body = mBodyManager.GetBody(body_id);
+
+			if (body.IsDynamic())
+			{
+				body.ApplyImpulse(impulse);
+				if (body.IsSleeping())
+					mBodyManager.ActivateBodies(&body_id, 1);
+			}
+		}
+
+		void AddForce(const BodyID body_id, const Vec3& force)
+		{
+			Body& body = mBodyManager.GetBody(body_id);
+
+			if (body.IsDynamic())
+			{
+				body.AddForce(force);
+				if (body.IsSleeping())
+					mBodyManager.ActivateBodies(&body_id, 1);
+			}
+		}
+
+
+		/// Constraints 
 		template<typename T>
 		T* CreateConstraintT(const T& constraint) { return mConstraintCoordinator.CreateT(constraint); }
 		template<typename T>
 		void CreateConstraintsT(const T* constraint_Ts, uint32 count) { return mConstraintCoordinator.CreateT(constraint_Ts, count); }
 		void AddConstraint(Constraint* constraint) { return mConstraintCoordinator.Add(&constraint, 1); }
 		void RemoveConstraint(Constraint* constraint) { return mConstraintCoordinator.Remove(&constraint, 1); }
+		void RemoveConstraints(Constraint** constraints, uint32 count) { return mConstraintCoordinator.Remove(constraints, count); }
 
-		Constraints& GetConstraints() { return mConstraintCoordinator.GetConstraints(); }
+		Constraints& NonContactConstraints() { return mConstraintCoordinator.GetConstraints(); }
 
-		void QuickDebugDrawInertia(DebugGizmosRenderer* debug_renderer);
 
-		BodyVector& GetBodies() { return mBodyManager.GetBodies(); }
 
-		const PhysicsWorldSettings& GetSettings() const { return mSettings; }
-		PhysicsWorldSettings& GetSettings() { return mSettings; }
-
-		const CollisionResolutionStat GetNarrowphaseStats() const;
-
-		const ContactConstraintSolver::ContactConstraintSolverStat& GetContactConstraintSolverStats() const 
-		{ return mContactConstraintSolver.GetStats(); }
-
+		/// Broadphase
 		void SetBroadphaseNodeBoundThreshold(float treshold) { mBroadphase->SetBoundThreshold(treshold); }
-		void SetFrictionCombineMode(ECombineMode friction_combine_mode) 
-		{ 
-			mSettings.solver.frictionCombineMode = friction_combine_mode;
-			mContactConstraintSolver.SetFrictionCombineMode(friction_combine_mode); 
-		}
-		void SetRestitutionCombineMode(ECombineMode restitution_combine_mode) 
-		{
-			mContactConstraintSolver.SetRestitutionCombineMode(mSettings.solver.restitutionCombineMode); 
-			mSettings.solver.restitutionCombineMode = restitution_combine_mode;
-		}
-
 		//TODO(Jay): Later dont return broadphase only state
 		VX_INLINE Broadphase* GetBroadphase() { return mBroadphase; }
 		//VX_INLINE BVHBroadphase<AABB>* GetBVH_AABB_Broadphase() { return mBroadphase->AsBVH_AABB(); }
-		const BroadphasePair* GetBroadphasePairsPtr() const { return mBroadphaseBuffer.data; }
-		const uint32 GetBroadphasePairsCount() const { return mBroadphaseBuffer.count; }
+		const BroadphasePair* BroadphasePairsPtr() const { return mBroadphaseBuffer.data; }
+		const uint32 BroadphasePairsCount() const { return mBroadphaseBuffer.count; }
 
 
-		const BodyManager& GetBodyManager() const { return mBodyManager; }
-		BodyManager& GetBodyManager() { return mBodyManager; }
+		/// Narrowphase
+		const CollisionResolutionStat NarrowphaseStats() const;
 
-		static uint32 GetCurrentSimStep() { return static_cast<uint32>(mFrameIdx); }
+		/// Solver
+		const ContactConstraintSolver* ContactConstraintCoordinator() const { return &mContactConstraintSolver; }
+		ConstraintSolver* GetConstraintSolver() const { return mConstraintSolver; }
+		const ContactConstraintSolver::ContactConstraintSolverStat& ContactConstraintSolverStats() const 
+		{ return mContactConstraintSolver.Stats(); }
 
 
-		WorldQuery GetWorldQuery() const { return mWorldQuery; }
+		/// Visuals 
+		void SetContextDebugGizmos(DebugGizmosRenderer* debug_renderer) 
+		{ 
+			mContext.mDebugRenderer = debug_renderer; 
+			mWorldQuery.SetDebugRender(debug_renderer);
+		}
+
+		template<EShapeType Type>
+		void OnDrawBody(const Body& body, Renderer* draw_renderer,
+			const RenderSettings& setting, const Colour& c = Colour::sMagenta);
+		void OnDrawBodies(Renderer* draw_renderer, const RenderSettings& setting);
+		void OnDebugDraw(DebugGizmosRenderer* debug_renderer);
+		void QuickDebugDrawInertia(DebugGizmosRenderer* debug_renderer);
 
 
-		BodyID* GetActiveBodies() const { return mBodyManager.GetActiveBodies(); }
-		uint32 GetNumActiveBodies() const { return mBodyManager.GetNumActiveBodies(); }
-
-		void ActivateBodies(const BodyID* body_ids, uint32 count) { mBodyManager.ActivateBodies(body_ids, count); }
 	private:
-		PhysicsWorldSettings mSettings;
-		PhysicsStepContext mContext;
-
-		BodyManager mBodyManager;
-
+		Colour BodySimphaseDebugColour(const Body& body) const;
 		void UpdateBodiesIslandActivationState(float dt);
 
 
-		Broadphase* mBroadphase = nullptr;
-		//std::vector<BroadphasePair> mBroadphasePairs;
-		//BroadphasePair* mBroadphasePairs;
-		//uint32 mBroadpairCount = 0;
+		PhysicsStepContext mContext;
+		PhysicsWorldSettings* mSettings;
+		static uint32 mStepIndex;
 
-		struct BroadphaseBuffer
-		{
-			BroadphasePair* data;
-			uint32 count = 0;
-			uint32 maxPairs = 0;
-		}mBroadphaseBuffer;
-		std::vector<class ContactManifold> mStepManifolds;
+		class ScratchAllocator* mScratchAllocator = nullptr;
+		BodyManager mBodyManager;
+
+		TaskCoordinator* mTaskCoordinator = nullptr;
+		std::vector<class Task*> mProcessPairAndTrySetupContactConstraintTasks;
+
+		Broadphase* mBroadphase = nullptr;
 		NarrowphaseQuery mNarrowphaseQuery;
 
-		ContactConstraintSolver mContactConstraintSolver;
 
+		class IslandCoordinator* mIslandCoordinator = nullptr;
+
+		ContactConstraintSolver mContactConstraintSolver;
+		/// non contact corrdinator 
 		ConstraintCoordinator mConstraintCoordinator;
 		class ConstraintSolver* mConstraintSolver = nullptr;
 
-		//hack for now 
-		DebugGizmosRenderer* mHackDebugRenderer = nullptr;
-
-		static uint64 mFrameIdx;
-
-		Colour GetBodySimphaseDebugColour(const Body& body) const;
 
 		WorldQuery mWorldQuery;
+
+
+		struct BroadphaseBuffer
+		{
+			BroadphasePair* data = nullptr;
+			uint32 count = 0;
+			uint32 maxPairs = 0;
+		}mBroadphaseBuffer;
+
+
+#if defined(VX_DEBUG_ALLOCATOR)
+		///debug allocator
 		void* testAllocation;
 		size_t testAllocationSize;
-	public:
-		class ScratchAllocator* mScratchAllocator = nullptr;
-
-		class TaskCoordinator* mTaskCoordinator = nullptr;
-		std::vector<class Task*> mProcessPairAndTrySetupContactConstraintTasks;
-		class IslandCoordinator* mIslandCoordinator = nullptr;
-
-		const ContactConstraintSolver* ContactConstraintCoordinator() const { return &mContactConstraintSolver; }
-		ConstraintSolver* GetConstraintSolver() const { return mConstraintSolver; }
+#endif // defined(VX_DEBUG_ALLOCATOR)
 	};
 }

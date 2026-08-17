@@ -46,7 +46,7 @@ void BoxPyramidStackScenario::Init(vx::PhysicsWorld* i_world)
 			vx::Vec3& c = pyramid1D.count;
 			return vx::Vec2(c.X(), c.Z()) - vx::Vec2(0.0f, layer);
 		};
-	CreateStructure(body_setting, pyramid1D);
+	CreateStructure(body_setting, pyramid1D, vx::Quat::Identity());
 	pyramid1D.count = vx::Vec3(1, 10, 20);
 	//pyramid1D.halfExtent = half_extents;
 	pyramid1D.basePos = vx::Vec3(-10.0f, 0.5f, 0.0f);
@@ -55,7 +55,7 @@ void BoxPyramidStackScenario::Init(vx::PhysicsWorld* i_world)
 			vx::Vec3& c = pyramid1D.count;
 			return vx::Vec2(c.X(), c.Z()) - vx::Vec2(0.0f, layer);
 		};
-	CreateStructure(body_setting, pyramid1D);
+	CreateStructure(body_setting, pyramid1D, vx::Quat::Identity());
 	pyramid1D.count = vx::Vec3(1, 15, 30);
 	pyramid1D.halfExtent = vx::Vec3(0.7f, 0.5f, 1.0f) * 2.0f;
 	pyramid1D.basePos = vx::Vec3(-20.0f, 1.0f, 0.0f);
@@ -66,18 +66,18 @@ void BoxPyramidStackScenario::Init(vx::PhysicsWorld* i_world)
 		};
 	vx::BodySettings _body_settings = body_setting;
 	_body_settings.shape = vx::MakeRef<vx::BoxShape>(pyramid1D.halfExtent);
-	CreateStructure(_body_settings, pyramid1D);
+	CreateStructure(_body_settings, pyramid1D, vx::Quat::Identity());
 
 
 	StructureConfig wall;
 	wall.count = vx::Vec3(10, 4, 1);
 	wall.basePos = vx::Vec3(10.0f, 2.9f, 10.0f);
 	wall.halfExtent = vx::Vec3(0.5f);
-	CreateStructure(body_setting, wall);
+	CreateStructure(body_setting, wall, vx::Quat::Identity());
 
 	wall.count = vx::Vec3(1, 4, 10);
 	wall.basePos = vx::Vec3(15.5f, 2.9f, 14.5f);
-	CreateStructure(body_setting, wall);
+	CreateStructure(body_setting, wall, vx::Quat::Identity());
 
 
 	StructureConfig ziggurat;
@@ -91,7 +91,7 @@ void BoxPyramidStackScenario::Init(vx::PhysicsWorld* i_world)
 			int step = layer * 0.5f;
 			return vx::Vec2(c.X(), c.Z()) - vx::Vec2(step, step);
 		};
-	CreateStructure(body_setting, ziggurat);
+	CreateStructure(body_setting, ziggurat, vx::Quat::Identity());
 
 
 
@@ -105,7 +105,7 @@ void BoxPyramidStackScenario::Init(vx::PhysicsWorld* i_world)
 		vx::Vec3& c = pyramid.count;
 		return vx::Vec2(c.X(), c.Z()) - vx::Vec2(layer, layer);
 	};
-	CreateStructure(body_setting, pyramid);
+	CreateStructure(body_setting, pyramid, vx::Quat::Identity());
 
 
 	StructureConfig ramp;
@@ -122,7 +122,7 @@ void BoxPyramidStackScenario::Init(vx::PhysicsWorld* i_world)
 		return vx::Vec3(layer * 0.5f, 0, 0);
 	};
 	body_setting.motionType = vx::EMotionType::Static;
-	CreateStructure(body_setting, ramp);
+	CreateStructure(body_setting, ramp, vx::Quat::Identity());
 
 	StructureConfig ramp1;
 	ramp1.count = vx::Vec3(10, 5, 3);
@@ -138,7 +138,7 @@ void BoxPyramidStackScenario::Init(vx::PhysicsWorld* i_world)
 			return vx::Vec3(layer * 0.5f, 0, 0);
 		};
 	body_setting.motionType = vx::EMotionType::Dynamic;
-	CreateStructure(body_setting, ramp1);
+	CreateStructure(body_setting, ramp1, vx::Quat::Identity());
 
 
 	CreateGroundPlane(100.0f);

@@ -29,6 +29,7 @@ namespace vx{
 
 	void ConstraintCoordinator::Remove(Constraint** constraints, uint32 count)
 	{
+		VX_ASSERT(count > 0);
 		for (Constraint** c = constraints, **c_end = constraints + count; c < c_end; ++c)
 		{
 			VX_ASSERT((*c), "Attempting to remove null constraint");

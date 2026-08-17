@@ -15,26 +15,21 @@ namespace vx {
 	public:
 
 		NarrowphaseQuery();
-		void Init(BodyManager* in_body_manager);
 
 		const CollisionResolutionStat& Stats() const { return mStats; }
 
-		void ProcessPairAndTrySetupContactConstraint(const Body* a, const Body* b, ContactConstraintSolver& contact_solver, const CollisionContext& ctx);
-		void ProcessPairs(struct BroadphasePair* in_pairs, std::vector<ContactManifold>& out_manifolds, class ContactConstraintSolver& contact_solver, const CollisionContext& ctx);
+		bool ProcessPairAndTrySetupContactConstraint(const Body* a, const Body* b, ContactConstraintSolver& contact_solver, const CollisionContext& ctx);
+		void ProcessPairs(struct BroadphasePair* in_pairs, class ContactConstraintSolver& contact_solver, const CollisionContext& ctx);
 
 	private:
 		CollisionDispatcher mDispatcher;
-
 		CollisionResolutionStat mStats;
-
-		//used for bodies simulation stat update
-		BodyManager* mBodyManager = nullptr;
 	};
 }
 
 
 /// note (what is not thread safe): 
-/// ManifoldMapEntry new_manifold_entry = write_manifold_cache.Create(key, CachedManifold(manifold.a->GetID(), manifold.b->GetID(), num_contact_pts));
+/// ManifoldMapEntry new_manifold_entry = write_manifold_cache.Create(key, CachedManifold(manifold.a->ID(), manifold.b->ID(), num_contact_pts));
 /// 
 /// ManifoldMap& read_manifold_cache = mManifoldCache[mManifoldWriteCache ^ 1]; (partial)
 /// 

@@ -24,8 +24,8 @@ namespace vx {
 		bool body0_nonstatic = !body0.IsStatic();
 		bool body1_nonstatic = !body1.IsStatic();
 
-		const float inv0 = (body0_nonstatic) ? body0.GetInverseMass() : 0.0f;
-		const float inv1 = (body1_nonstatic) ? body1.GetInverseMass() : 0.0f;
+		const float inv0 = (body0_nonstatic) ? body0.InverseMass() : 0.0f;
+		const float inv1 = (body1_nonstatic) ? body1.InverseMass() : 0.0f;
 
 		float total_inv_mass = inv0 + inv1;
 
@@ -248,10 +248,10 @@ namespace vx {
 			else if (priority_a == priority_b)
 			{
 				/// 2. dynamic - dynamic 
-				//if (manifold.a->GetID() < manifold.b->GetID())
+				//if (manifold.a->ID() < manifold.b->ID())
 				//	manifold.Swap();
 
-				if (manifold.a->GetID() > manifold.b->GetID())
+				if (manifold.a->ID() > manifold.b->ID())
 					manifold.Swap();
 			}
 		}
@@ -265,11 +265,11 @@ namespace vx {
 
 
 		//both bodies need to be sorted and valid up to this point
-		BodyPair key = BodyPair::Create(manifold.a->GetID(), manifold.b->GetID());
+		BodyPair key = BodyPair::Create(manifold.a->ID(), manifold.b->ID());
 
 		uint32 num_contact_pts = VxMin(manifold.mPointCount, kMaxPoints);
 
-		CachedManifold* new_manifold = CreateNewManifold(key, manifold.a->GetID(), manifold.b->GetID(), num_contact_pts);
+		CachedManifold* new_manifold = CreateNewManifold(key, manifold.a->ID(), manifold.b->ID(), num_contact_pts);
 		VX_ASSERT_WARN_VOID(new_manifold != nullptr, "unable to create new cache manifold entry");
 
 		/// since body 2 is less dominates to 1 either static if static is part of 
@@ -339,9 +339,9 @@ namespace vx {
 			BodyID body_ids[2];
 
 			if (manifold.a->IsDynamic() && !manifold.a->IsAwake())
-				body_ids[bodies_activate_count++] = manifold.a->GetID();
+				body_ids[bodies_activate_count++] = manifold.a->ID();
 			if (manifold.b->IsDynamic() && !manifold.b->IsAwake())
-				body_ids[bodies_activate_count++] = manifold.b->GetID();
+				body_ids[bodies_activate_count++] = manifold.b->ID();
 
 			if (bodies_activate_count > 0)
 				ctx.bodyManager->ActivateBodies(body_ids, bodies_activate_count);
@@ -483,10 +483,10 @@ namespace vx {
 			else if (priority_a == priority_b)
 			{
 				/// 2. dynamic - dynamic 
-				//if (manifold.a->GetID() < manifold.b->GetID())
+				//if (manifold.a->ID() < manifold.b->ID())
 				//	manifold.Swap();
 
-				if (manifold.a->GetID() > manifold.b->GetID())
+				if (manifold.a->ID() > manifold.b->ID())
 					manifold.Swap();
 			}
 		}
@@ -510,7 +510,7 @@ namespace vx {
 		
 		uint32 num_contact_pts = VxMin(manifold.mPointCount, kMaxPoints);
 
-		CachedManifold new_manifold_cache(manifold.a->GetID(), manifold.b->GetID(), num_contact_pts);
+		CachedManifold new_manifold_cache(manifold.a->ID(), manifold.b->ID(), num_contact_pts);
 
 		/// befoer this 
 		/// 	CacheContactPoint& cp = new_manifold->ContactPointPtr()[i];
@@ -633,9 +633,9 @@ namespace vx {
 			BodyID body_ids[2];
 
 			if (manifold.a->IsDynamic() && !manifold.a->IsAwake())
-				body_ids[bodies_activate_count++] = manifold.a->GetID();
+				body_ids[bodies_activate_count++] = manifold.a->ID();
 			if (manifold.b->IsDynamic() && !manifold.b->IsAwake())
-				body_ids[bodies_activate_count++] = manifold.b->GetID();
+				body_ids[bodies_activate_count++] = manifold.b->ID();
 
 			if (bodies_activate_count > 0)
 				ctx.bodyManager->ActivateBodies(body_ids, bodies_activate_count);
@@ -1098,12 +1098,12 @@ for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
 
 				if (dyn_a)
 				{
-					a->ApplyLinearDisplacement(-lambda_vector * a->GetInverseMass());
+					a->ApplyLinearDisplacement(-lambda_vector * a->InverseMass());
 					a->ApplyAngularDisplacement(-lambda * inv_Ir0_Xn);
 				}
 				if (dyn_b)
 				{
-					b->ApplyLinearDisplacement(lambda_vector * b->GetInverseMass());
+					b->ApplyLinearDisplacement(lambda_vector * b->InverseMass());
 					b->ApplyAngularDisplacement(lambda * inv_Ir1_Xn);
 				}
 			}
@@ -1255,7 +1255,7 @@ for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
 				}
 				if (dyn_b)
 				{
-					lin_vel1 += impluse * sbA.invMass * n;
+					lin_vel1 += impluse * sbB.invMass * n;
 					ang_vel1 += impluse * Vec3::LoadFloat3Raw(nor_axis_contraint.invIr1XAxis);
 				}
 
@@ -1495,12 +1495,12 @@ for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
 
 					if (dyn_a)
 					{
-						a->ApplyLinearDisplacement(-lambda_vector * a->GetInverseMass());
+						a->ApplyLinearDisplacement(-lambda_vector * a->InverseMass());
 						a->ApplyAngularDisplacement(-lambda * inv_Ir0_Xn);
 					}
 					if (dyn_b)
 					{
-						b->ApplyLinearDisplacement(lambda_vector * b->GetInverseMass());
+						b->ApplyLinearDisplacement(lambda_vector * b->InverseMass());
 						b->ApplyAngularDisplacement(lambda * inv_Ir1_Xn);
 					}
 				}

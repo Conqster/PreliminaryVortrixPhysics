@@ -7,8 +7,6 @@
 #include "VxMemory.h"
 
 
-#define VX_DEBUG_ALLOCATOR 1
-
 namespace vx {
 
 	class ScratchAllocator : public NonCopyable
@@ -41,9 +39,9 @@ namespace vx {
 			void* alloc_base = mMemStart + mStackTop;
 			mStackTop = new_stack_top;
 
-#if VX_DEBUG_ALLOCATOR
+#if defined(VX_DEBUG_ALLOCATOR)
 			mDebugTotalAlloc += size;
-#endif // VX_DEBUG_ALLOCATOR
+#endif // defined VX_DEBUG_ALLOCATOR
 
 			return alloc_base;
 		}
@@ -53,6 +51,7 @@ namespace vx {
 			if (mem_base == nullptr)
 			{
 				VX_ASSERT_WARN(size == 0, "Attempting to free mem from scratch, which is null but has size");
+				return; // pointer is null and size is zero
 			}
 
 			mStackTop -= AlignUp(size, 16);
@@ -69,19 +68,19 @@ namespace vx {
 			return _addr >= mMemStart && _addr < mMemStart + mStackSize;
 		}
 
-#if VX_DEBUG_ALLOCATOR
+#if defined(VX_DEBUG_ALLOCATOR)
 		void ResetDebugAlloc() { mDebugTotalAlloc = 0; }
-		size_t GetDebugTotalAlloc() const { return mDebugTotalAlloc; }
-#endif // VX_DEBUG_ALLOCATOR
+		size_t DebugTotalAlloc() const { return mDebugTotalAlloc; }
+#endif // defined VX_DEBUG_ALLOCATOR
 
 	private:
 		uint8* mMemStart;
 		size_t mStackSize;
 		size_t mStackTop = 0;
 
-#if VX_DEBUG_ALLOCATOR
+#if defined(VX_DEBUG_ALLOCATOR)
 		size_t mDebugTotalAlloc = 0;
-#endif // VX_DEBUG_ALLOCATOR
+#endif // defined VX_DEBUG_ALLOCATOR
 
 	};
 } //namespace vx

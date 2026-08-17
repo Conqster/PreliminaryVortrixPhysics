@@ -16,6 +16,7 @@ class Texture;
 
 #include "Vortrix/Dynamics/Body/EBodyDebugFlags.h"
 #include "Vortrix/Dynamics/Body/EDynamicsDofs.h"
+#include "Vortrix/Dynamics/Body/BodyID.h"
 namespace vx{
 	class PhysicsWorld;
 	class BodyManager;
@@ -40,9 +41,13 @@ public:
 	bool UIBlockingInput();
 
 	void DrawParticlesOverlayItems(std::vector<vx::Particles::Particle>& particles) const;
+
+	void DrawBodyOverlayDetails(vx::BodyID body_id, vx::PhysicsWorld* physics_world);
 	void DrawBodiesOverlayItems(vx::BodyManager& body_manager, vx::PhysicsWorld* physics_world);
 	void DrawConstraintsOverlayItems(vx::BodyManager& body_manager, std::vector<vx::Constraint*>& constraints);
 
+
+	static void HelpInformation(const char* desc);
 
 	static bool EditQuatWithDrag(vx::Quat& quat, bool& editing,
 		vx::Vec2& pad_size);
@@ -68,12 +73,11 @@ private:
 	static bool InternalCombo(const char* label, int* current_item, const char* items_separated_by_zeros, int height_in_items = -1);
 	
 
-	template<vx::EMotionType Type>
-	void DrawBodyOverlayDetails(vx::Body& body, vx::BodyDebug& body_debug_info);
 	static void DrawBodyFlags(vx::EBodySimphaseFlags flags);
 	static bool DrawAllowedDofFlags(vx::EDynamicsDofs& flags);
 
-
+	template<vx::EMotionType Type>
+	void DrawBodyOverlayDetailsImpl(vx::Body& body, vx::BodyDebug& body_debug_info);
 	void DrawDistanceConstraintOverlayUniqueProps(vx::DistanceConstraint& constraint);
 	void DrawPointConstraintOverlayUniqueProps(vx::PointConstraint& constraint);
 };

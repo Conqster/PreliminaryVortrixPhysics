@@ -140,7 +140,7 @@ public:
 		//static size
 		//mTestRt.Resize(w, h);
 		//mDirLightDebugRT.Resize(w, h);
-		VX_ASSERT(false);
+		//VX_ASSERT(false);
 	}
 
 	Sampler* GetASampler() { return mLinearRepeatSampler; }
@@ -188,20 +188,7 @@ private:
 
 	void DrawObjects(Shader& shader, bool only_depth = false);
 
-
-	//RenderableMesh mSpherePrimitive;
-	//RenderableMesh mCubePrimitive;
 	RenderableMesh mQuadPrimitive;
-	//RenderableMesh mQuadXZPrimitive;
-	//RenderableMesh mTrianglePrimitive;
-	//RenderableMesh mCapsulePrimitive;
-
-
-	//unsigned int mMaxFrameEntity = 500;
-	//std::array<RenderableEntity, 500> mFrameRenderableEntities;
-	//unsigned int mFrameEntitiesCount = 0;
-	//void AddFrameRenderableEntity(const RenderableEntity entity);
-
 
 	vx::Ref<Texture> mBrickTexture = nullptr;
 	vx::Ref<Texture> mCheckersTexture = nullptr;

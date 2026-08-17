@@ -135,7 +135,7 @@ public:
 		TextureRegistry::Instance().SetAssetName(mRegisterIdx, name);
 		ApplyGPUDebugName(name);
 	}
-	std::string_view GetDebugName() const { VX_ASSERT(mRegisterIdx != TextureRegistry::kInvalidIdx);  return TextureRegistry::Instance().GetAssetName(mRegisterIdx); }
+	std::string_view DebugName() const { VX_ASSERT(mRegisterIdx != TextureRegistry::kInvalidIdx);  return TextureRegistry::Instance().GetAssetName(mRegisterIdx); }
 
 	void Destroy();
 

@@ -66,7 +66,7 @@ namespace vx {
 			//{
 			//	//if(t_min < old_hit.fraction)
 			//	{
-			//		hit_result.body = body.GetID();
+			//		hit_result.body = body.ID();
 			//		hit_result.fraction = t_min;
 			//		hit_result._min = b_min;
 			//		hit_result._max = b_max;
@@ -83,7 +83,7 @@ namespace vx {
 			if (dispatchTable[int(shape_type)](local_cast, body.GetShape(), hit_result))
 			{
 				//world space normal 
-				hit_result.body = body.GetID();
+				hit_result.body = body.ID();
 
 				VX_ASSERT_WARN(hit_result.body.IsValid(), "Invalid Bodiy");
 				hit_result.normal = q.Rotate(hit_result.normal);

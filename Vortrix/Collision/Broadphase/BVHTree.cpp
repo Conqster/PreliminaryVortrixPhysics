@@ -73,7 +73,7 @@ namespace vx
 			n < n_end; ++n)
 		{
 			if(mNodes[*n].body)
-				if (mNodes[*n].body->GetID() == id)
+				if (mNodes[*n].body->ID() == id)
 				{
 					DeleteAndUpdateParent(*n);
 					return;

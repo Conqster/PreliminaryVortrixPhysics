@@ -13,6 +13,8 @@
 
 #include "Vortrix/Visuals/RenderSettings.h"
 
+#include "Vortrix/PhysicsWorldSettings.h"
+
 
 class PhysicsAppSetting
 {
@@ -89,9 +91,20 @@ namespace vx {
 		class Particle;
 	}
 	class Body;
+	class PhysicsWorldSettings;
 	class PhysicsWorld;
 	//class DebugGizmosRenderer;
 }
+
+
+
+enum class EScenarioObjectType
+{
+	Ragdoll,
+	Jenga,
+	BoxPyramid
+};
+ 
 class Scenario;
 
 class Application
@@ -112,6 +125,8 @@ private:
 
 	//class VPHX::ParticleWorld* mParticleWorld = nullptr;
 	vx::Particles::ParticleWorld* mParticleWorld = nullptr;
+	vx::PhysicsWorldSettings* mPhysicsWorldSettings = nullptr;
+	vx::DrawSettings mPhysicsDrawSettings;
 	vx::PhysicsWorld* mPhysicsWorld = nullptr;
 
 	class ScenarioCatergory// : public vx::NonCopyable
@@ -132,7 +147,6 @@ private:
 	void ScenarioInspectionWindow();
 
 	vx::RenderSettings mPhysicsRenderSettings{};
-	SpawnObjectCanon mTestCanon{};
 
 	EditorImGui mUI;
 
@@ -201,6 +215,11 @@ private:
 	/// window tab of PhysicsIslandCoordImGuiWindow
 	void PhysicsIslandCoordSplitterTab();
 
+	void CreateConstraintsWindow();
+	
+	void ApplyForceToSelectedBody();
+
+	void CreateNewCustomPhysicsObject();
 
 	void DrawUICameraStatePanel();
 	void DrawUI_LightingPanel();
@@ -227,11 +246,24 @@ private:
 	{
 		bool appHelpWindow = false;
 		bool activeBodiesList = false;
-		bool islandCoord = true;
+		bool islandCoord = false;
 		bool applyExternalEffectOnBodies = false;
 		bool scenarioWindowManagement = false;
 		bool loadScenarioWindow= false;
+		bool createNewCustomPhysicsObject = false;
+		bool createConstraints = false;
 	}mPhysicsImGuiWindows;
+
+
+	double mPhysicsStepDuration;
+
+	struct CustomPhysicsObject
+	{
+		vx::Ref<Texture> previewTexture;
+		EScenarioObjectType mObjectType;
+	};
+
+	std::vector<CustomPhysicsObject> mCustomPhysicsObjs;
 
 	//vx::BodyID mHighlightingBody = vx::BodyID();
 
@@ -243,6 +275,19 @@ private:
 	DebugAngularImpulse mDebugAngularImpulse;
 	bool bShowDebugRotation = false;
 
+
+	struct {
+		std::vector<vx::Vec3> positions;
+		vx::Float3 euler{ 0 };
+		vx::Vec3 halfExtent;
+	}mSampleStructure;
+
+
+	AppCreateConstraint mAppCreateConstraint;
+
+
+	vx::BodyID mSelectedBodyToApplyForce;
+	vx::Vec3 mSelectedBodyToApplyForceFwd;
 
 	std::vector<vx::RefConst<vx::Shape>> mCreatedShape;
 	vx::RefConst<vx::Shape> TryGetCreatedShape(const vx::Float3& he, float density, const vx::EShapeType shape_type) const;

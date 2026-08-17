@@ -14,16 +14,22 @@
 #include <functional>
 
 #include "Vortrix/Dynamics/Constraints/DistanceConstraint.h"
+
+#include "SampleFramework/ScenarioSerialiser.h"
 namespace vx {
 	class PhysicsWorld;
 	struct BodySettings;
 	
 	class DebugGizmosRenderer;
+
+	class Ragdoll;
+	class RagdollBuilder;
+	class RagdollSettings;
 }
 class Camera;
 class ApplicationWindow;
 class EditorImGui;
-
+struct AppCreateConstraint;
 
 enum class EClickEvent : vx::uint8
 {
@@ -32,6 +38,7 @@ enum class EClickEvent : vx::uint8
 	Held, 
 	Up,
 };
+
 
 
 class Scenario
@@ -62,7 +69,40 @@ public:
 
 	bool GetAllowBaseScenarioMouseCast() const { return mAllowBaseMouseCast; }
 	void SetAllowBaseScenarioMouseCast(bool v) { mAllowBaseMouseCast = v; }
+
+	bool& UsePhysicsConstraintForInteraction() { return mHasMouseConstraint; }
+
+
+	void CreateRagdoll(const vx::RagdollSettings& settings, vx::Ragdoll* o_ragdoll);
+	void CreateRagdoll(SerialisedRagdollSettings settings, vx::Ragdoll* o_ragdoll);
+
+
+	void CreateConstraint(const AppCreateConstraint& app_constraint, vx::DistanceConstraint* o_constraint);
+
+	struct ScenarioJengaSetting
+	{
+		bool dynamicBodies = true;
+
+		float bodiesFriction = 0.8f;
+		float bodiesRestitution = 0.05f;
+
+		vx::Vec3 half_extent = vx::Vec3(0.5f, 0.3f, 1.5f);
+		int layers = 8;
+
+		vx::Vec3 basePosition;
+
+		float gap = 0.05f;
+	};
+	void CreateJenga(const ScenarioJengaSetting& settings);
+
+	const std::vector<vx::BodyID>& RagdollCreatedBodies() const { return mRagdollBodies; }
+	std::vector<vx::Constraint*>& RagdollCreatedConstraints() { return mRagdollConstraints; }
+	const std::vector<SerialisedRagdollSettings>& RagdollSettings() const { return mRagdollSettings; }
+	std::vector<SerialisedRagdollSettings>& RagdollSettings() { return mRagdollSettings; }
+	vx::PhysicsWorld* PhysicsWorld() { return mPhysicsWorld; }
+
 protected:
+
 	friend class Application;
 	vx::PhysicsWorld* mPhysicsWorld = nullptr;
 	Camera* mAppCamera = nullptr;
@@ -89,6 +129,11 @@ protected:
 	vx::DistanceConstraint* mMouseDragConstraint = nullptr;
 	bool mHasMouseConstraint = false;
 
+	vx::Ref<vx::RagdollBuilder> mRagdollBuilder = nullptr;
+	std::vector<vx::BodyID> mRagdollBodies;
+	std::vector<SerialisedRagdollSettings> mRagdollSettings;
+	std::vector<vx::Constraint*> mRagdollConstraints;
+
 	vx::Vec3 mCamFwd;
 	float t_dist;
 
@@ -107,7 +152,7 @@ protected:
 	void Create1DBoxPyramidStack(const vx::BodySettings& body_settings, int base_width, int base_depth, int height, const vx::Vec3& half_extent, const vx::Vec3& base_pos, vx::Axis shrink_axis);
 
 
-	void CreateJenga(vx::BodySettings body_setting, const vx::Vec3& half_extent, int layers, vx::Vec3 base_pos, float gap = 0.05f);
+	void CreateJengaImp(vx::BodySettings body_setting, const vx::Vec3& half_extent, int layers, vx::Vec3 base_pos, float gap = 0.05f);
 
 	struct Footprint
 	{
@@ -152,6 +197,7 @@ protected:
 		const InterleavePattern& pattern,
 		float gap = 0.05f);
 
+public:
 	struct StructureConfig
 	{
 		vx::Vec3 count; //width, hwight, depth
@@ -163,7 +209,11 @@ protected:
 		std::function<bool(int x, int y, int z, int w, int d)> PlaceRule;
 	};
 
-	void CreateStructure(const vx::BodySettings& body_settings, const StructureConfig& cfg);
+	void CreateStructure(const vx::BodySettings& body_settings, const StructureConfig& cfg, const vx::Quat& orientation);
+
+
+
+	void SampleStructure(std::vector<vx::Vec3>& positions, const vx::Quat& orientation, const StructureConfig& cfg);
 
 
 };

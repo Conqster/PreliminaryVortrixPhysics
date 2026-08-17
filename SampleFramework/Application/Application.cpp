@@ -16,7 +16,7 @@
 //#include <Vortrix/Visuals/Renderers.h>
 //#include "Vortrix/ForceSolver/Particle2PointOscillatingSpringSolver.h"
 
-
+#include "Vortrix/Geometry/OBB.h"
 
 #include <external/imgui/imgui.h>
 #include <external/imgui/imgui_impl_glfw.h>
@@ -61,6 +61,10 @@
 
 
 #include "SampleFramework/ScenarioSerialiser.h"
+
+#include "Vortrix/Dynamics/RagdollBuilder.h"
+
+#include "Vortrix/Core/TaskCoordinator.h"
 
 
 Application* CreateApplication(const ApplicationSpecification& app_spec)
@@ -181,6 +185,7 @@ void Application::ScenarioInspectionWindow()
 			bool base_scenario_mouse_cast = mCurrScenario->GetAllowBaseScenarioMouseCast();
 			if (ImGui::Checkbox("Allow base scenario mouse cast", &base_scenario_mouse_cast))
 				mCurrScenario->SetAllowBaseScenarioMouseCast(base_scenario_mouse_cast);
+			ImGui::Checkbox("Use physics constraint for interaction", &mCurrScenario->UsePhysicsConstraintForInteraction());
 		}
 		else
 			ImGui::TextColored(ImVec4(1, 0, 0, 1), "No Active Scenario");
@@ -258,7 +263,7 @@ void Application::ScenarioInspectionWindow()
 			{
 				if (ImGui::Button((vx::StackString<56>("Save: ") << scenario_name).Data()))
 				{
-					serialiser::Serialise(&mPhysicsWorld->GetBodyManager(), mCamera, scenario_name, serialiser::directory.Data(), "information");
+					serialiser::Serialise(&mPhysicsWorld->GetBodyManager(), mCamera, scenario_name, serialiser::directory.Data(), "information", mCurrScenario);
 				}
 			}
 			else
@@ -315,6 +320,10 @@ Application::Application(const ApplicationSpecification& app_spec)
 
 	TextureLoader::Free(img_data);
 
+	mCustomPhysicsObjs.push_back({ TextureFactory::CreateFromFile("assets/textures/RagdollPreview.png", true, "Ragdoll"), EScenarioObjectType::Ragdoll });
+	mCustomPhysicsObjs.push_back({ TextureFactory::CreateFromFile("assets/textures/JengaPreview.png", true, "Jenga"), EScenarioObjectType::Jenga });
+	mCustomPhysicsObjs.push_back({ TextureFactory::CreateFromFile("assets/textures/BoxPyramidPreview.png", true, "BoxPyramid"), EScenarioObjectType::BoxPyramid });
+
 
 	if (!bFailLaunch)
 	{
@@ -325,7 +334,7 @@ Application::Application(const ApplicationSpecification& app_spec)
 
 
 		//mCamera = Camera(vx::Vec3(0.0f, 5.0f, 14.00f), 0.0f, 180.0f, 17.5f, 4.0f);
-		mCamera = Camera(vx::Vec3(0.0f, 5.0f, 14.00f), 0.0f, 180.0f, 40.0f, 10.0f);
+		mCamera = Camera(vx::Vec3(0.0f, 5.0f, 14.00f), 0.0f, 180.0f, 40.0f, 0.05f);
 
 		
 		mRenderer.SetDirectionalLightColour(vx::Colour(vx::Vec3(0.8f)));
@@ -383,12 +392,17 @@ Application::~Application()
 {
 	//fix ?????, ui crash if programm closes early 
 	//
+
+	for (auto& obj : mCustomPhysicsObjs)
+		obj.previewTexture->Destroy();
+
 	mUI.Shutdown();
 	mRenderer.Destroy();
 
 	delete mLoadedFromDiskScenario;
 
 	delete mDebugGizmos;
+	delete mPhysicsWorldSettings;
 	delete mPhysicsWorld;
 	delete mParticleWorld;
 	mDebugGizmos = nullptr;
@@ -446,6 +460,7 @@ void Application::Run()
 		bool simulated_physics_world = false;
 		if (mPhysicsAppSetting.AllowStep())
 		{
+
 			if (!CheckInputsBlocked())
 				PhysicsInteraction();
 
@@ -453,7 +468,10 @@ void Application::Run()
 			//hack to ensure 
 			//physiucs has debug draw command to use
 			mDebugGizmos->PushDrawCommand(mCamera.ProjMat(mWindow.AspectRatio()), mCamera.ViewMat(), nullptr);
-			PhysicsStep(mFrameDeltaTime);
+			{
+
+				PhysicsStep(mFrameDeltaTime);
+			}
 			mDebugGizmos->EndCurrentDrawCommand();
 
 			simulated_physics_world = true;
@@ -536,8 +554,21 @@ void Application::Run()
 void Application::ResetWorld(bool& reset_flag)
 {
 	VX_PROFILE_FUNCTION();
-	vx::PhysicsWorldSettings phy_wld_setting = (mPhysicsWorld && mPhysicsDebugState.keepSettingsOnReset) ?
-					mPhysicsWorld->GetSettings() : vx::PhysicsWorldSettings();
+
+	if (!mPhysicsWorldSettings)
+		mPhysicsWorldSettings = new vx::PhysicsWorldSettings();
+	//ensure sync 
+	*mPhysicsWorldSettings = (mPhysicsWorld && mPhysicsDebugState.keepSettingsOnReset) ?
+					*mPhysicsWorld->Settings() : vx::PhysicsWorldSettings();
+
+	if (mPhysicsWorld && mPhysicsDebugState.keepSettingsOnReset)
+		*mPhysicsWorldSettings = *mPhysicsWorld->Settings();
+	else
+	{
+		*mPhysicsWorldSettings = vx::PhysicsWorldSettings();
+		mPhysicsWorldSettings->drawSettings = &mPhysicsDrawSettings;
+	}
+
 
 	delete mPhysicsWorld;
 
@@ -545,11 +576,13 @@ void Application::ResetWorld(bool& reset_flag)
 	/// but could be overwritten in Scenario if needed
 	ResetCamera();
 
-	mPhysicsWorld = new PhysicsWorld(phy_wld_setting);
+	mPhysicsWorld = new PhysicsWorld(mPhysicsWorldSettings);
 
 	int _max_bodies, _max_body_pairs, _max_constact_constraints;
 	PhysicsWorld::GenerateWorldDefaultConfig(_max_bodies, _max_body_pairs, _max_constact_constraints);
 	mPhysicsWorld->Init(_max_bodies, _max_body_pairs, _max_constact_constraints);
+
+	mPhysicsWorld->SetContextDebugGizmos(mDebugGizmos);
 
 	//PhysicsWorld::CreateSimpleWorld(mPhysicsWorld);
 	if (mCurrScenario != nullptr)
@@ -607,7 +640,8 @@ void Application::PhysicsStep(double frame_dt)
 		VX_PROFILE_SCOPE("Physics-Update", &curr_state.frameTime, false);
 		while (curr_state.accumulator >= physics_dt && curr_state.subSteps < mPhysicsAppSetting.mMaxSubStep)
 		{
-
+			using Clock = std::chrono::steady_clock;
+			auto start = Clock::now();
 			if (mPhysicsWorld)
 				mPhysicsWorld->StepSimulation(physics_dt);
 			if (mParticleWorld)
@@ -615,6 +649,8 @@ void Application::PhysicsStep(double frame_dt)
 
 			curr_state.accumulator -= physics_dt;
 			curr_state.subSteps++;
+			auto end = Clock::now();
+			mPhysicsStepDuration = std::chrono::duration<double, std::milli>(end - start).count();
 		}
 	}
 
@@ -642,7 +678,15 @@ void Application::UpdateCamera(float dt)
 		return;
 
 	if (mWindow.GetLockCursor())
-		mCamera.Rotate(Input::GetMouseAxisFloat(IAxis::Vertical), Input::GetMouseAxisFloat(IAxis::Horizontal), dt);
+		mCamera.Rotate(Input::GetMouseAxisFloat(IAxis::Vertical), Input::GetMouseAxisFloat(IAxis::Horizontal));
+
+
+	bool ctr_pressed = Input::GetKey(IKeyCode::RightControl) || Input::GetKey(IKeyCode::LeftControl);
+	bool alt_pressed = Input::GetKey(IKeyCode::RightAlt) || Input::GetKey(IKeyCode::LeftAlt);
+	bool shift_pressed = Input::GetKey(IKeyCode::RightShift) || Input::GetKey(IKeyCode::LeftShift);
+
+	if (ctr_pressed || alt_pressed || shift_pressed)
+		return;
 
 
 	//inputs
@@ -667,7 +711,7 @@ void Application::UpdateCamera(float dt)
 void Application::ResetCamera()
 {
 	Camera::State cam_state(vx::Vec3(0.0f, 5.0f, 14.00f), 0.0f, 180.0f);
-	Camera::Properties cam_props(40.0f, 10.0f);
+	Camera::Properties cam_props(40.0f, 0.05f);
 
 	mCamera.SetState(cam_state);
 	mCamera.SetProperties(cam_props);
@@ -760,6 +804,74 @@ void Application::OnRenderer()
 		if (mPhysicsWorld)
 			mPhysicsWorld->OnDrawBodies(&mRenderer, mPhysicsRenderSettings);
 
+
+		/// debug sampled structure
+		if(mPhysicsImGuiWindows.createNewCustomPhysicsObject)
+		{
+			for (const auto& pos : mSampleStructure.positions)
+			{
+				//vx::Mat44 M = vx::Mat44::Translation(pos);
+				vx::Quat q = vx::Quat::FromEulerAngle(vx::DegToRad(vx::Vec3::LoadFloat3Raw(mSampleStructure.euler)));
+				vx::Mat44 M = vx::Mat44::RotationTranslation(q, pos);
+
+
+				Vec3 scale = mSampleStructure.halfExtent * 2.0f;
+				M = M.MultiplyAffine(Mat44::Scale(scale));
+
+				mRenderer.SubmitCubePrimitive({ nullptr, M, true, true,
+						vx::Colour(0.0f, 0.0f, 0.8f, 0.2f), true
+					}, vx::ERenderInstanceFlags::CastShadow | vx::ERenderInstanceFlags::ReceiveShadow);
+			}
+		}
+
+
+		if (mNewPhyObjectSettings.showSpawnPreview)
+		{
+			vx::Vec3 dir = (mNewPhyObjectSettings.spawnFromView) ? mCamera.Forward() : vx::Vec3::Zero();
+			const Vec3 pos = (mNewPhyObjectSettings.spawnFromView) ? mCamera.Position() + dir * mNewPhyObjectSettings.offsetFromView : vx::Vec3::Zero();
+			vx::Mat44 M = vx::Mat44::Translation(pos);
+
+			vx::ERenderInstanceFlags flags = vx::ERenderInstanceFlags::None;//vx::ERenderInstanceFlags::CastShadow | vx::ERenderInstanceFlags::ReceiveShadow;
+			vx::Colour col = vx::Colour(0.0f, 0.0f, 0.8f, 0.2f);
+
+			
+
+			if(mNewPhyObjectSettings.bodyShape == vx::EShapeType::Sphere)
+			{
+				vx::Vec3 scale = vx::Vec3::LoadFloat3Raw(mNewPhyObjectSettings.halfExtents) * 2.0f;
+				M = M.MultiplyAffine(Mat44::Scale(scale));
+
+				mRenderer.SubmitSpherePrimitive({ nullptr, M, true, true,
+						col, true}, flags);
+			}
+			else if (mNewPhyObjectSettings.bodyShape == vx::EShapeType::Box)
+			{
+				vx::Vec3 scale = vx::Vec3::LoadFloat3Raw(mNewPhyObjectSettings.halfExtents) * 2.0f;
+				M = M.MultiplyAffine(Mat44::Scale(scale));
+
+				mRenderer.SubmitCubePrimitive({ nullptr, M, true, true,
+					col, true }, flags);
+			}
+			else if (mNewPhyObjectSettings.bodyShape == vx::EShapeType::Capsule)
+			{
+				vx::Vec3 scale = vx::Vec3::LoadFloat3Raw(mNewPhyObjectSettings.halfExtents) * Vec3(2.0f, 1.0f, 2.0f);
+				M = M.MultiplyAffine(Mat44::Scale(scale));
+
+				mRenderer.SubmitCapsulePrimitive({ nullptr, M, true, true,
+					col, true }, flags);
+			}
+			else if (mNewPhyObjectSettings.bodyShape == vx::EShapeType::Plane)
+			{
+				vx::Vec3 scale = vx::Vec3::LoadFloat3Raw(mNewPhyObjectSettings.halfExtents) * 2.0f;
+				M = M.MultiplyAffine(Mat44::Scale(scale));
+
+				mRenderer.SubmitQuadXZPrimitive({ nullptr, M, true, true,
+					col, true }, flags);
+			}
+		}
+
+
+
 		if (mCurrScenario != nullptr)
 		{
 			if (mCurrScenario->mMouseHoveringBody.IsValid())
@@ -775,13 +887,13 @@ void Application::OnRenderer()
 
 
 		/// test drawing constraint
-		if(mPhysicsWorld && mPhysicsWorld->GetSettings().drawSettings.drawPerIslandConstraintGroup)
+		if(mPhysicsWorld && mPhysicsWorld->Settings()->drawSettings->drawPerIslandConstraintGroup)
 		{
 			DrawCommand* draw_cmd = mDebugGizmos->PushDrawCommand(mCamera.ProjMat(mWindow.AspectRatio()), mCamera.ViewMat(), nullptr);
 
 			using Draw_Sphere_Func = void(vx::DebugGizmosRenderer::*)(const vx::Vec3& center, float radius, vx::Colour col);
 
-			const Draw_Sphere_Func draw_sphere_func = (mPhysicsWorld->GetSettings().drawSettings.drawPerIslandConstraintGroupPointAsWireframe == 0) ?
+			const Draw_Sphere_Func draw_sphere_func = (mPhysicsWorld->Settings()->drawSettings->drawPerIslandConstraintGroupPointAsWireframe == 0) ?
 				&vx::DebugGizmosRenderer::DrawSphere : &vx::DebugGizmosRenderer::DrawWireSphere;
 
 
@@ -789,9 +901,9 @@ void Application::OnRenderer()
 
 			if(!debug_draw_constraint_wc_grp)
 			{
-				for (uint32 island = 0; island < mPhysicsWorld->mIslandCoordinator->IslandCount(); ++island)
+				for (uint32 island = 0; island < mPhysicsWorld->GetIslandCoordinator()->IslandCount(); ++island)
 				{
-					vx::IslandCoordinator::IslandRange<vx::uint32> contact_island = mPhysicsWorld->mIslandCoordinator->ContactConstraintIndicesIslandRange(island);
+					vx::IslandCoordinator::IslandRange<vx::uint32> contact_island = mPhysicsWorld->GetIslandCoordinator()->ContactConstraintIndicesIslandRange(island);
 
 					vx::uint32 curr_body_count = 0;
 					for (const vx::uint32* constraint_idx = contact_island.begin; constraint_idx < contact_island.end; ++constraint_idx)
@@ -831,14 +943,14 @@ void Application::OnRenderer()
 						vx::Mat44 M = Mat44::RotationTranslation(vx::Quat::Identity(), pos);
 						//M =;
 
-						if (mPhysicsWorld->GetSettings().drawSettings.drawPerIslandConstraintGroupPoint)
+						if (mPhysicsWorld->Settings()->drawSettings->drawPerIslandConstraintGroupPoint)
 						{
 							mRenderer.SubmitSpherePrimitive(
 								{ nullptr, M.MultiplyAffine(Mat44::Scale(scale)), true,
 									true, vx::Colour::sOrange,  (int(flags & ERenderInstanceFlags::UseTexture) == 0) }, flags);
 						}
 
-						if (mPhysicsWorld->GetSettings().drawSettings.drawPerIslandConstraintGroupPlane)
+						if (mPhysicsWorld->Settings()->drawSettings->drawPerIslandConstraintGroupPlane)
 						{
 							vx::Vec3 n = constraint->Normal();
 							vx::Vec3 X_axis = bA.Orientation().RotateAxisX().Dot(n) * bA.GetShape()->HalfExtents();
@@ -871,13 +983,13 @@ void Application::OnRenderer()
 			{
 
 				///draw with island 
-				for (uint32 island = 0; island < mPhysicsWorld->mIslandCoordinator->IslandCount(); ++island)
+				for (uint32 island = 0; island < mPhysicsWorld->GetIslandCoordinator()->IslandCount(); ++island)
 				{
 					//could sort with indices
 
 					for (uint32 i = 0; i < vx::IslandCoordinator::Splitter::kMaxBin; ++i)
 					{
-						vx::IslandCoordinator::IslandRange<vx::uint32> constraint_island_grp = mPhysicsWorld->mIslandCoordinator->mSplitter.ContactConstraintIndicesIslandRange(island, i);
+						vx::IslandCoordinator::IslandRange<vx::uint32> constraint_island_grp = mPhysicsWorld->GetIslandCoordinator()->GetSplitter().ContactConstraintIndicesIslandRange(island, i);
 
 						if (constraint_island_grp.begin == nullptr) continue;						
 						
@@ -893,10 +1005,10 @@ void Application::OnRenderer()
 							auto* constraint = mPhysicsWorld->ContactConstraintCoordinator()->GetContactConstraint(constraint_idx);
 
 							vx::Colour constraint_grp_col = vx::Colour::RandomColour(i);
-							constraint_grp_col.SetAlpha(mPhysicsWorld->GetSettings().drawSettings.drawPerIslandConstraintGroupColourAlpha);
+							constraint_grp_col.SetAlpha(mPhysicsWorld->Settings()->drawSettings->drawPerIslandConstraintGroupColourAlpha);
 
 							vx::ERenderInstanceFlags flags = vx::ERenderInstanceFlags::CastShadow;
-							vx::Vec3 scale = vx::Vec3(mPhysicsWorld->GetSettings().drawSettings.drawPerIslandConstraintGroupPointSize);
+							vx::Vec3 scale = vx::Vec3(mPhysicsWorld->Settings()->drawSettings->drawPerIslandConstraintGroupPointSize);
 
 							vx::Vec3 pos0 = vx::Vec3::LoadFloat3Raw(constraint->PointConstraint(0).cacheLocalPoint->localPoint0);
 							vx::Vec3 pos1 = vx::Vec3::LoadFloat3Raw(constraint->PointConstraint(0).cacheLocalPoint->localPoint1);
@@ -929,7 +1041,7 @@ void Application::OnRenderer()
 							//M =;
 
 
-							if(mPhysicsWorld->GetSettings().drawSettings.drawPerIslandConstraintGroupPoint)
+							if(mPhysicsWorld->Settings()->drawSettings->drawPerIslandConstraintGroupPoint)
 							{
 								//mRenderer.SubmitSpherePrimitive(
 								//	{ nullptr, M.MultiplyAffine(Mat44::Scale(scale)), true,
@@ -940,7 +1052,7 @@ void Application::OnRenderer()
 								(mDebugGizmos->*draw_sphere_func)(pos, scale.X(), constraint_grp_col);
 							}
 
-							if(mPhysicsWorld->GetSettings().drawSettings.drawPerIslandConstraintGroupPlane)
+							if(mPhysicsWorld->Settings()->drawSettings->drawPerIslandConstraintGroupPlane)
 							{
 								vx::Vec3 n = constraint->Normal();
 								vx::Vec3 X_axis = bA.Orientation().RotateAxisX().Dot(n) * bA.GetShape()->HalfExtents();
@@ -1005,6 +1117,100 @@ void Application::OnRenderer()
 
 		if (mPhysicsWorld)
 			mPhysicsWorld->OnDebugDraw(mDebugGizmos);
+
+
+
+		///draw arrow sligthly above body 
+		if(mSelectedBodyToApplyForce.IsValid())
+		{
+			auto& body = mPhysicsWorld->GetBodyManager().GetBody(mSelectedBodyToApplyForce);
+			vx::Vec3 body_up = body.Orientation().RotateAxisY();
+			float offset = body.GetShape()->HalfExtents().Y() + 0.5f;
+			vx::Vec3 draw_pos = body.Position() + body_up * offset;
+
+
+			float half_length = 1.5f;
+			vx::Vec3 v0 = draw_pos - mSelectedBodyToApplyForceFwd * half_length;
+			vx::Vec3 v1 = draw_pos + mSelectedBodyToApplyForceFwd * half_length;
+			mDebugGizmos->DrawArrowCone(v0, v1, 0.25, 0.7, 0.25, 4, vx::Colour::sBlue);
+
+
+			vx::OBB obb = OBB(body.GetShape()->LocalBounds(), body.Orientation());
+			mDebugGizmos->DrawBox(obb.ComputeCorners(body.Position()), vx::Colour::sOrange);
+		}
+
+
+
+		if (mPhysicsWorld)
+		{
+			vx::Body* bodyA = nullptr;
+			vx::Body* bodyB = nullptr;
+
+			Vec3 rAw;
+			Vec3 rBw;
+			if(mAppCreateConstraint.body_a.IsValid())
+			{
+				vx::Body* bodyA = &mPhysicsWorld->GetBodyManager().GetBody(mAppCreateConstraint.body_a);
+
+
+				Vec3 rA = bodyA->Orientation().Rotate(mAppCreateConstraint.anchor_a);
+				rAw = rA + bodyA->Position();
+
+				vx::Colour c = vx::Colour(mAppCreateConstraint.anchorADebugCol.x, mAppCreateConstraint.anchorADebugCol.y, mAppCreateConstraint.anchorADebugCol.z);
+				mDebugGizmos->DrawSphere4x4(rAw, mAppCreateConstraint.sphereSize, c);
+
+				if(mAppCreateConstraint.highlightBodies)
+				{
+					vx::OBB obb = OBB(bodyA->GetShape()->LocalBounds(), bodyA->Orientation());
+					mDebugGizmos->DrawBox(obb.ComputeCorners(bodyA->Position()), c);
+				}
+			}
+			if(mAppCreateConstraint.body_b.IsValid())
+			{
+				vx::Body* bodyB = &mPhysicsWorld->GetBodyManager().GetBody(mAppCreateConstraint.body_b);
+
+
+				Vec3 rB = bodyB->Orientation().Rotate(mAppCreateConstraint.anchor_b);
+				rBw = rB + bodyB->Position();
+
+				vx::Colour c = vx::Colour(mAppCreateConstraint.anchorBDebugCol.x, mAppCreateConstraint.anchorBDebugCol.y, mAppCreateConstraint.anchorBDebugCol.z);
+				mDebugGizmos->DrawSphere4x4(rBw, mAppCreateConstraint.sphereSize, c);
+
+				if (mAppCreateConstraint.highlightBodies)
+				{
+					vx::OBB obb = OBB(bodyB->GetShape()->LocalBounds(), bodyB->Orientation());
+					mDebugGizmos->DrawBox(obb.ComputeCorners(bodyB->Position()), c);
+				}
+			}
+
+
+			if (mAppCreateConstraint.body_a.IsValid() && mAppCreateConstraint.body_b.IsValid())
+			{
+				Vec3 disp = rBw - rAw;
+				float curr_dist = disp.Length();
+				Vec3 nor = (curr_dist > kEpsilon) ? disp / curr_dist : Vec3::Up();
+
+				Colour line_col = Colour(0.3f);
+				if (mAppCreateConstraint.min_dist != mAppCreateConstraint.max_dist)
+				{
+					if (curr_dist >= mAppCreateConstraint.max_dist)
+						line_col = Colour(1.0f, 0.3f, 0.3f);
+					else if (curr_dist <= mAppCreateConstraint.min_dist)
+						line_col = Colour(0.3f, 0.6f, 1.0f);
+				}
+
+
+				if(mAppCreateConstraint.debugLine)
+					mDebugGizmos->DrawLine(rAw, rBw, line_col);
+
+				//if (mAppCreateConstraint.min_dist == mAppCreateConstraint.max_dist)
+				//{
+				//	mDebugGizmos->DrawLine(rAw, (rAw + (nor * static_cast<float>(mAppCreateConstraint.max_dist * ratio))), Colour(1.0f, 1.0f, 0.0f));
+				//	mDebugGizmos->DrawLine(rBw, (rBw + (-nor * static_cast<float>(mAppCreateConstraint.max_dist * (1 - ratio)))), Colour(0.0f, 1.0f, 0.0f));
+				//}
+			}
+		}
+
 
 		if (mPhysicsRenderSettings.drawWorldAxes)
 		{
@@ -1258,7 +1464,7 @@ void Application::SubmitRenderObjects()
 
 	//ground
 
-	if(!mPhysicsWorld || !mPhysicsWorld->GetSettings().drawSettings.drawBodiesAsSolid)
+	if(!mPhysicsWorld || !mPhysicsWorld->Settings()->drawSettings->drawBodiesAsSolid)
 	{
 		vx::Mat44 trans = vx::Quat::FromAxisAngle(-vx::Vec3::Right(), vx::DegToRad(90.0f)).GetRotationMat44().ScaledLocal(vx::Vec3(100.0f));
 		mRenderer.SubmitQuadPrimitive({ nullptr, trans,
@@ -1302,25 +1508,6 @@ void Application::SubmitRenderObjects()
 				vx::Colour(0.0f, 1.0f, 0.0f, 1.0f), true
 			}, vx::ERenderInstanceFlags::CastShadow | vx::ERenderInstanceFlags::ReceiveShadow);
 	}
-	//draw canon
-	mRenderer.SubmitCubePrimitive(
-		{
-			nullptr,
-			vx::Mat44::Translation(mTestCanon.spawn).ScaledLocal(vx::Vec3(0.1f)),
-			//glm::scale(glm::mat4(1.0f), glm::vec3(0.1f)),
-			true, true,
-			vx::Colour(1.0f, 0.0f, 0.0f, 1.0f), true
-		}, vx::ERenderInstanceFlags::CastShadow | vx::ERenderInstanceFlags::ReceiveShadow);
-	mRenderer.SubmitCubePrimitive(
-		{
-			nullptr,
-			vx::Mat44::Translation(mTestCanon.back).ScaledLocal(vx::Vec3(0.1f)),
-			//glm::translate(glm::mat4(1.0f), mTestCanon.back) *
-			//glm::scale(glm::mat4(1.0f), glm::vec3(0.1f)),
-			true, true,
-			vx::Colour(1.0f, 0.0f, 0.0f, 1.0f), true
-			
-		}, vx::ERenderInstanceFlags::CastShadow | vx::ERenderInstanceFlags::ReceiveShadow);
 }
 
 
@@ -1356,7 +1543,8 @@ void Application::OnDrawImGuiOverlays()
 	VX_VARIABLE_PROFILE_FUNCTION();
 	mUI.BeginNewFrame();
 
-	
+	ApplyForceToSelectedBody();
+
 	static bool open_phy_debug = true;
 	static bool open_phy_entt_win = false;
 	//static bool open_create_new_body_win = false;
@@ -1381,11 +1569,15 @@ void Application::OnDrawImGuiOverlays()
 		if (ImGui::BeginMenu("Edit"))
 		{
 			if (ImGui::MenuItem("Create New body", "SPACE BAR to spawn")) mNewPhyObjectSettings.openWindow = !mNewPhyObjectSettings.openWindow;
+			if (ImGui::MenuItem("Create New Constraints")) mPhysicsImGuiWindows.createConstraints = !mPhysicsImGuiWindows.createConstraints;
+			if (ImGui::MenuItem("Create New Custom Physics Object")) mPhysicsImGuiWindows.createNewCustomPhysicsObject = !mPhysicsImGuiWindows.createNewCustomPhysicsObject;
 			ImGui::EndMenu();
 		}
 		if (ImGui::BeginMenu("Windows"))
 		{
-			if (ImGui::MenuItem("Physics Config & Debug ")) open_phy_debug = !open_phy_debug;
+			if (ImGui::MenuItem("Physics Entities")) open_phy_entt_win = !open_phy_entt_win;
+			if (ImGui::MenuItem("Active Bodies List")) mPhysicsImGuiWindows.activeBodiesList = !mPhysicsImGuiWindows.activeBodiesList;
+			if (ImGui::MenuItem("Island Coordinator")) mPhysicsImGuiWindows.islandCoord = !mPhysicsImGuiWindows.islandCoord;
 			if (ImGui::BeginMenu("Collisions"))
 			{
 				if (ImGui::MenuItem("BroadPhase Insights")) show_broadphase_insight = !show_broadphase_insight;
@@ -1393,9 +1585,25 @@ void Application::OnDrawImGuiOverlays()
 
 				ImGui::EndMenu();
 			}
-			if (ImGui::MenuItem("Physics Entities")) open_phy_entt_win = !open_phy_entt_win;
+			if (ImGui::MenuItem("Physics Config & Debug ")) open_phy_debug = !open_phy_debug;
+
+			ImGui::Separator();
+
 			if (ImGui::MenuItem("Application")) open_app_win = !open_app_win;
+			if (ImGui::MenuItem("Scenario Window Management")) mPhysicsImGuiWindows.scenarioWindowManagement = !mPhysicsImGuiWindows.scenarioWindowManagement;
+
+			ImGui::Separator();
+
+			if (ImGui::MenuItem("Create Physics Body")) mNewPhyObjectSettings.openWindow = !mNewPhyObjectSettings.openWindow;
+			if (ImGui::MenuItem("Create Constraints")) mPhysicsImGuiWindows.createConstraints = !mPhysicsImGuiWindows.createConstraints;
+			if (ImGui::MenuItem("Create New Custom Physics Objects")) mPhysicsImGuiWindows.createNewCustomPhysicsObject = !mPhysicsImGuiWindows.createNewCustomPhysicsObject;
+			if (ImGui::MenuItem("Apply External Effect On Bodies WIP")) mPhysicsImGuiWindows.applyExternalEffectOnBodies = !mPhysicsImGuiWindows.applyExternalEffectOnBodies;
+
+			ImGui::Separator();
+
+			if (ImGui::MenuItem("Help")) mPhysicsImGuiWindows.appHelpWindow = !mPhysicsImGuiWindows.appHelpWindow;
 			if (ImGui::MenuItem("Show ImGui Demo")) open_imgui_demo = !open_imgui_demo;
+
 			ImGui::EndMenu();
 		}
 		if (ImGui::BeginMenu("Simulation Controls"))
@@ -1449,22 +1657,22 @@ void Application::OnDrawImGuiOverlays()
 	{
 		if (ImGui::Begin("Active Bodies List", &mPhysicsImGuiWindows.activeBodiesList))
 		{
-			BodyID* active_bodies = mPhysicsWorld->GetActiveBodies();
+			BodyID* active_bodies = mPhysicsWorld->ActiveBodies();
 
-			ImGui::Text("Broadphase Pair: %d", mPhysicsWorld->GetBroadphasePairsCount());
+			ImGui::Text("Broadphase Pair: %d", mPhysicsWorld->BroadphasePairsCount());
 			if (active_bodies)
 			{
 				vx::StackString<32> text("Num Bodies: ");
 				text << mPhysicsWorld->GetBodyManager().BodyCount();
 				ImGui::Text(text.Data());
 				
-				uint32 num_active_bodies = mPhysicsWorld->GetNumActiveBodies();
+				uint32 num_active_bodies = mPhysicsWorld->NumActiveBodies();
 				text.Clear();
 				text << "Num Active Bodies: " << num_active_bodies;
 				ImGui::Text(text.Data());
 
 				text.Clear();
-				text << "Active Ratio: " << float(num_active_bodies) / float(mPhysicsWorld->GetBodies().size());
+				text << "Active Ratio: " << float(num_active_bodies) / float(mPhysicsWorld->Bodies().size());
 				ImGui::Text(text.Data());
 				ImGui::Separator();
 				for (int i = 0; i < num_active_bodies; ++i)
@@ -1495,6 +1703,14 @@ void Application::OnDrawImGuiOverlays()
 	if(mPhysicsImGuiWindows.islandCoord)
 		PhysicsIslandCoordImGuiWindow();
 	
+	if(mPhysicsImGuiWindows.createNewCustomPhysicsObject)
+		CreateNewCustomPhysicsObject();
+
+	if(mPhysicsImGuiWindows.createConstraints)
+		CreateConstraintsWindow();
+
+
+
 	if (open_phy_debug)
 	{
 		ImVec2 win_size(349, 753);
@@ -1548,7 +1764,7 @@ void Application::OnDrawImGuiOverlays()
 			if (ImGui::BeginTabItem("Physics - Constraints"))
 			{
 				if (mPhysicsWorld)
-					mUI.DrawConstraintsOverlayItems(mPhysicsWorld->GetBodyManager(), mPhysicsWorld->GetConstraints());
+					mUI.DrawConstraintsOverlayItems(mPhysicsWorld->GetBodyManager(), mPhysicsWorld->NonContactConstraints());
 				else
 					ImGui::Text("Physics World Null!!!");
 				ImGui::EndTabItem();
@@ -1580,6 +1796,11 @@ void Application::OnDrawImGuiOverlays()
 				(in_ms) ? (float)mFrameDeltaTime * 1000 : (float)mFrameDeltaTime,
 				(in_ms) ? "ms" : "s");
 			ImGui::SameLine();  ImGui::Checkbox("In_ms", &in_ms);
+			
+			ImGui::Text("physics step: %.3f%s.",
+				(in_ms) ? (float)mPhysicsStepDuration : (float)mPhysicsStepDuration / 1000.0f,
+				(in_ms) ? "ms" : "s");
+
 			ImGui::SliderFloat("Time Scale", &mTimeScale, 0.0f, 1.0f);
 
 			ImGui::BeginTabBar("#Application");
@@ -1587,9 +1808,6 @@ void Application::OnDrawImGuiOverlays()
 
 			if (ImGui::BeginTabItem("Rendering"))
 			{
-				ImGui::Checkbox("Open/Close Help Window", &mPhysicsImGuiWindows.appHelpWindow);
-				ImGui::Checkbox("Open/Close Scenario inspection Window", &mPhysicsImGuiWindows.scenarioWindowManagement);
-
 				auto Render_Inst_Ops = [](ERenderInstanceFlags& flags)
 					{
 						ImGui::CheckboxFlags("Cast Shadow", (vx::uint32*)&flags, vx::uint32(ERenderInstanceFlags::CastShadow));
@@ -1661,9 +1879,9 @@ void Application::OnDrawImGuiOverlays()
 				ImGui::DragFloat3("Debug angular Impluse Point", &mDebugAngularImpulse.pointA[0], 0.01f);
 				ImGui::DragFloat3("Debug angular Impluse", &mDebugAngularImpulse.impluse[0], 0.01f);
 
-				ImGui::Checkbox("Apply only angular impluse", &mDebugAngularImpulse.onlyAngularImpluse);
-				ImGui::Checkbox("Apply impluse to bodies", &mDebugAngularImpulse.apply);
-				ImGui::Checkbox("Draw impluse in world", &mDebugAngularImpulse.draw);
+				ImGui::Checkbox("Apply only angular impulse", &mDebugAngularImpulse.onlyAngularImpluse);
+				ImGui::Checkbox("Apply impulse to bodies", &mDebugAngularImpulse.apply);
+				ImGui::Checkbox("Draw impulse in world", &mDebugAngularImpulse.draw);
 
 				//ImGui::TreePop();
 				ImGui::EndTabItem();
@@ -1726,7 +1944,7 @@ void Application::OnDrawImGuiOverlays()
 			{
 				if (ImGui::TreeNode("Broadphase Stat"))
 				{
-					ImGui::Text("Bodies count: %llu", static_cast<uint>(mPhysicsWorld->GetBodies().size()));
+					ImGui::Text("Bodies count: %llu", static_cast<uint>(mPhysicsWorld->Bodies().size()));
 					vx::BVHBroadphase<AABB>* broad_phase;// = mPhysicsWorld->GetBVH_AABB_Broadphase();
 					{
 						auto* _v = mPhysicsWorld->GetBroadphase();
@@ -1750,20 +1968,20 @@ void Application::OnDrawImGuiOverlays()
 				ImGui::Separator();
 				if (ImGui::TreeNodeEx("Broadphase Pair", ImGuiTreeNodeFlags_DefaultOpen))
 				{
-					uint32 bp_count = mPhysicsWorld->GetBroadphasePairsCount();
+					uint32 bp_count = mPhysicsWorld->BroadphasePairsCount();
 					ImGui::Text("Pair count: %llu", static_cast<uint>(bp_count));
 					int idx = 0;
 
 					const vx::BodyManager& body_manager = mPhysicsWorld->GetBodyManager();
-					const auto* bps = mPhysicsWorld->GetBroadphasePairsPtr();
+					const auto* bps = mPhysicsWorld->BroadphasePairsPtr();
 					for (const BroadphasePair* bp = bps, *bp_end = bps + bp_count; bp < bp_end; ++bp)
 					{
 						const auto& p_a = (*bp).a, p_b = (*bp).b;
 						ImGui::PushID(idx);
 						//ImGui::Text("Pair %d: [%s] with [%s].", idx++, p_a->mDebugName.c_str(), p_b->mDebugName.c_str());
 						ImGui::Text("Pair %d: [%s] with [%s].", idx++, 
-							body_manager.GetBodyDebugName(p_a->GetID()),
-							body_manager.GetBodyDebugName(p_b->GetID()));
+							body_manager.GetBodyDebugName(p_a->ID()),
+							body_manager.GetBodyDebugName(p_b->ID()));
 						ImGui::PopID();
 					}
 					ImGui::TreePop();
@@ -1789,7 +2007,7 @@ void Application::OnDrawBodiesOverlays()
 
 	if (ImGui::Begin("Rigibodies"))
 	{
-		auto& physics_bodies = mPhysicsWorld->GetBodies();
+		auto& physics_bodies = mPhysicsWorld->Bodies();
 		for (auto& body : physics_bodies)
 		{
 			ImGui::PushID(&body);
@@ -1935,7 +2153,7 @@ void Application::PhysicsSettingItemOverlays()
 	{
 		if (ImGui::Begin("Contact Constraint Solver", p_open))
 		{
-			auto& solver_stat = mPhysicsWorld->GetContactConstraintSolverStats();
+			auto& solver_stat = mPhysicsWorld->ContactConstraintSolverStats();
 			ImGui::Text("Number of Contacts: %d", solver_stat.numContactConstraints);
 			ImGui::Text("Number of Persistent Contacts: %d", solver_stat.numPersistentContact);
 
@@ -1975,10 +2193,10 @@ void Application::PhysicsSettingItemOverlays()
 
 	static bool format_KiB = true;
 	ImGui::Checkbox("Format KiB", &format_KiB);
-	float status_kB = (format_KiB) ? vx::ToKibibyte(mPhysicsWorld->mScratchAllocator->Usage()) :
-									 vx::ToMebibyte(mPhysicsWorld->mScratchAllocator->Usage());
-	float size_kB = (format_KiB) ? vx::ToKibibyte(mPhysicsWorld->mScratchAllocator->Size()) :
-											vx::ToMebibyte(mPhysicsWorld->mScratchAllocator->Size());
+	float status_kB = (format_KiB) ? vx::ToKibibyte(mPhysicsWorld->GetScratchAllocator()->Usage()) :
+		vx::ToMebibyte(mPhysicsWorld->GetScratchAllocator()->Usage());
+	float size_kB = (format_KiB) ? vx::ToKibibyte(mPhysicsWorld->GetScratchAllocator()->Size()) :
+		vx::ToMebibyte(mPhysicsWorld->GetScratchAllocator()->Size());
 	vx::StackString<32> text;
 	text << status_kB << "/" << size_kB << ((format_KiB) ? " KiB" : " MiB");
 	float ratio = status_kB / size_kB;
@@ -1986,16 +2204,16 @@ void Application::PhysicsSettingItemOverlays()
 	ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
 	ImGui::Text("Scratch Allocation");
 
-#if VX_DEBUG_ALLOCATOR
-	status_kB = (format_KiB) ? vx::ToKibibyte(mPhysicsWorld->mScratchAllocator->GetDebugTotalAlloc()) :
-										vx::ToMebibyte(mPhysicsWorld->mScratchAllocator->GetDebugTotalAlloc());
+#if defined(VX_DEBUG_ALLOCATOR)
+	status_kB = (format_KiB) ? vx::ToKibibyte(mPhysicsWorld->GetScratchAllocator()->DebugTotalAlloc()) :
+		vx::ToMebibyte(mPhysicsWorld->GetScratchAllocator()->DebugTotalAlloc());
 	text.Clear();
 	text << status_kB << "/" << size_kB << ((format_KiB) ? " KiB" : " MiB");
 	ratio = status_kB / size_kB;
 	ImGui::ProgressBar(ratio, ImVec2(0.0f, 0.0f), text.Data());
 	ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
 	ImGui::Text("Scratch Total Step Debug Allocation");
-#endif // VX_DEBUG_ALLOCATOR
+#endif // defined VX_DEBUG_ALLOCATOR
 
 	static int freq_idx = (int)std::log2((float)mPhysicsAppSetting.Rate() / 30.0f);
 	if (ImGui::Combo("Physics Freq (Hz)", &freq_idx, "30 Hz\0""60 Hz\0""120 Hz\0""240 Hz\0"))
@@ -2034,23 +2252,21 @@ void Application::PhysicsSettingItemOverlays()
 
 	ImGui::Separator();
 
-	auto& phy_settings = mPhysicsWorld->GetSettings();
-
-
-	if (ImGui::TreeNodeEx("WINDOWS"))
-	{
-		ImGui::Checkbox("App Help Window", &mPhysicsImGuiWindows.appHelpWindow);
-		ImGui::Checkbox("Create New Physics Body", &mNewPhyObjectSettings.openWindow);
-		ImGui::Checkbox("Island Coordinator", &mPhysicsImGuiWindows.islandCoord);
-		ImGui::Checkbox("Active Bodies List", &mPhysicsImGuiWindows.activeBodiesList);
-		ImGui::Checkbox("Apply External Effect On Bodies", &mPhysicsImGuiWindows.applyExternalEffectOnBodies);
-		ImGui::TreePop();
-	}
+	auto& phy_settings = *mPhysicsWorld->Settings();
 
 	if (ImGui::TreeNodeEx("SETTINGS", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		ImGui::DragFloat3("Gravity", &phy_settings.gravity[0]);
 		ImGui::SliderFloat("Gravity Scale", &phy_settings.gravityScale, 0.0f, 1.0f, "%.2f");
+
+
+		vx::uint32 curr_thread_count = mPhysicsWorld->GetTaskCoordinator()->MaxConcurrency() - 1;
+		const int max_threads = std::thread::hardware_concurrency() - 1;
+		ImGui::SliderInt("Max Concurrency", &phy_settings.maxConcurrency, -1, max_threads);
+		if (curr_thread_count != phy_settings.maxConcurrency && !(phy_settings.maxConcurrency == - 1 && curr_thread_count == max_threads))
+			ImGui::TextColored(ImVec4(1, 0, 0, 1), "Task Coordinator, thread count miss match reset physics world");
+		ImGui::Checkbox("Split large Islands", &phy_settings.splitLargeIsland);
+
 
 
 		if (ImGui::TreeNodeEx("COLLISION"))
@@ -2061,12 +2277,12 @@ void Application::PhysicsSettingItemOverlays()
 				mPhysicsWorld->SetBroadphaseNodeBoundThreshold(phy_settings.collision.boundsMargin);
 			ImGui::SliderFloat("Imbalance ratio treshold rebuild", &phy_settings.collision.rebuildBVH_ImbalanceRatioTreshold, 0.0f, 1.0f);
 			ImGui::Checkbox("Use New Manifold pt", &vx::ManifoldPoint::kUseNewManifoldPt);
-			ImGui::Checkbox("Debug Box - Box contacts", &phy_settings.drawSettings.drawAABBContactManifoldInFrame);
-			ImGui::Checkbox("Debug Box - Box contacts with plane", &phy_settings.drawSettings.drawAABBContactManifoldInFrameWcPlane);
+			ImGui::Checkbox("Debug Box - Box contacts", &phy_settings.drawSettings->drawAABBContactManifoldInFrame);
+			ImGui::Checkbox("Debug Box - Box contacts with plane", &phy_settings.drawSettings->drawAABBContactManifoldInFrameWcPlane);
 			if (ImGui::TreeNode("Narrowphase Stats"))
 			{
 				//if(auto& narrow_stats = mPhysicsWorld->GetNarrowphaseStats())
-				const auto& narrow_stats = mPhysicsWorld->GetNarrowphaseStats();
+				const auto& narrow_stats = mPhysicsWorld->NarrowphaseStats();
 				
 				ImGui::Text("Number of pair received: %d", narrow_stats.numPairReceived);
 				ImGui::Text("Number of contact pairs: %d", narrow_stats.numContactPair);
@@ -2134,7 +2350,7 @@ void Application::PhysicsSettingItemOverlays()
 	}
 
 	
-	vx::DrawSettings& draw_settings = phy_settings.drawSettings;
+	vx::DrawSettings& draw_settings = *phy_settings.drawSettings;
 	if(ImGui::TreeNodeEx("DEBUG DRAW", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		if (ImGui::TreeNodeEx("Body", ImGuiTreeNodeFlags_DefaultOpen))
@@ -2329,7 +2545,7 @@ void Application::DrawProfileOverlay()
 
 	if (ImGui::TreeNode("Physics Stat") && mPhysicsWorld)
 	{
-		ImGui::Text("Bodies count: %llu", static_cast<uint>(mPhysicsWorld->GetBodies().size()));
+		ImGui::Text("Bodies count: %llu", static_cast<uint>(mPhysicsWorld->Bodies().size()));
 		vx::BVHBroadphase<AABB>* broad_phase;// = mPhysicsWorld->GetBVH_AABB_Broadphase();
 		{
 			auto* _v = mPhysicsWorld->GetBroadphase();
@@ -2563,6 +2779,346 @@ void Application::DrawProfileOverlay()
 #endif // VPHX_ENABLE_PROFILING
 }
 
+void Application::CreateNewCustomPhysicsObject()
+{
+	if (ImGui::Begin("CreateNewCustomPhysicsObject", &mPhysicsImGuiWindows.createNewCustomPhysicsObject))
+	{
+		auto bind_texture_sampler = [](const ImDrawList* parent_list, const ImDrawCmd* cmd)
+			{
+				struct SamplerHandle
+				{
+					uint32_t sampler;
+				};
+
+				SamplerHandle* handle = (SamplerHandle*)cmd->UserCallbackData;
+				if (!handle)return;
+				glBindSampler(0, handle->sampler);
+			};
+
+			struct SamplerHandle
+			{
+				uint32_t sampler;
+			};
+
+			static SamplerHandle handle{ mRenderer.GetASampler()->ID() };
+
+			ImDrawList* dl = ImGui::GetWindowDrawList();
+			dl->AddCallback(bind_texture_sampler, &handle);
+
+			static ImVec2 preview_img_size = ImVec2(100, 100);
+
+			auto draw_object_item = [](const Texture* tex, bool clickable = true, ImVec2* custom_size = nullptr)
+			{
+				ImVec2 _img_size = (custom_size) ? *custom_size : preview_img_size;
+				//_img_size.y *= static_cast<float>(tex->Height()) / static_cast<float>(tex->Width());
+				_img_size.x *= static_cast<float>(tex->Width()) / static_cast<float>(tex->Height());
+
+
+				///capute position 
+				ImVec2 img_left_pos = ImGui::GetCursorPos();
+				ImGui::Image((ImTextureID)(intptr_t)tex->ID(), _img_size,
+					ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
+
+
+				bool selected = false;
+				if (clickable && ImGui::IsItemHovered())
+				{
+					ImVec2 _img_min = ImGui::GetItemRectMin();
+					ImVec2 _img_max = ImGui::GetItemRectMax();
+
+					//ImGui::InvisibleButton("##euler_editor", drag_panel_size);
+
+					ImGui::SetCursorPos(img_left_pos);
+
+
+					if (ImGui::Selectable("##editor", true, ImGuiSelectableFlags_AllowDoubleClick, preview_img_size))
+						selected = true;
+
+					//ImGui::Button("euler_editor", preview_img_size);
+
+		
+					
+					//ImGui::SameLine();
+
+					ImDrawList* draw_list = ImGui::GetWindowDrawList();
+					vx::Colour col = vx::Colour(0.0f, 0.0f, 1.0f, 1.0f);
+					draw_list->AddRect(_img_min, _img_max, col);
+				}
+
+				ImGui::SameLine();
+				ImGui::Text(tex->DebugName().data());
+
+				return selected;
+			};
+		
+
+			////const Texture* tex = mRenderer.mCheckersTexture.get();
+			//draw_object_item(mRenderer.mCheckersTexture.get());
+			//ImGui::Separator();
+			//draw_object_item(mRenderer.mBrickTexture.get());
+			//ImGui::Separator();
+
+			//for(const auto& obj : mCustomPhysicsObjs)
+			//{
+			//	draw_object_item(obj.previewTexture.get());
+			//	ImGui::Separator();
+			//}
+
+
+
+			if (ImGui::BeginTable("table_nested1", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable | ImGuiTableFlags_Hideable))
+			{
+				//ImGui::TableSetupColumn("A0");
+				//ImGui::TableSetupColumn("A1");
+				//ImGui::TableHeadersRow();
+
+			
+				static vx::uint32 selected_item_idx = vx::uint32(-1);
+				ImGui::TableNextColumn();
+				if (ImGui::BeginTable("table_nested2", 1, ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable | ImGuiTableFlags_Hideable))
+				{
+					uint32 idx = 0;
+					for (const auto& obj : mCustomPhysicsObjs)
+					{
+						ImGui::TableNextRow();
+						ImGui::TableNextColumn();
+						//draw_object_item(obj.previewTexture.get());
+						selected_item_idx = (draw_object_item(obj.previewTexture.get())) ? idx : selected_item_idx;
+						idx++;
+					}
+
+					ImGui::EndTable();
+				}
+
+				/// infor
+				ImGui::TableNextColumn(); 
+				ImGui::Text("Inspector");
+
+				if (selected_item_idx != uint32(-1))
+				{
+					ImVec2 img_size = ImVec2(50, 50);
+
+					CustomPhysicsObject obj = mCustomPhysicsObjs[selected_item_idx];
+					draw_object_item(obj.previewTexture.get(), false, &img_size);
+					
+					static bool spawn_cam_pos = false;
+					switch (obj.mObjectType)
+					{
+					case EScenarioObjectType::Ragdoll:
+					{
+						static vx::RagdollSettings ragdoll_settings;
+
+						ImGui::Text("Ragdoll Settings");
+						ImGui::DragFloat3("Position", &ragdoll_settings.position[0]);
+						EditorImGui::HelpInformation("Spawn from view with offset; uses camera position with forward and create new physics body offset from view value");
+						if (ImGui::Checkbox("Spawn from view with offset", &spawn_cam_pos))
+							ragdoll_settings.position = vx::Vec3::Zero();
+
+						if (spawn_cam_pos)
+							ragdoll_settings.position = (mCamera.Position() + (mCamera.Forward() * mNewPhyObjectSettings.offsetFromView));
+
+						ImGui::SliderFloat("limbs offset", &ragdoll_settings.limbsOffset, 0.0f, 2.0f);
+						ImGui::Checkbox("Split Torso", &ragdoll_settings.splitTorso);
+
+						if (ragdoll_settings.mShapesType != vx::EShapeType::Box)
+						{
+							ImGui::SameLine();
+							ImGui::TextColored(ImVec4(1, 1, 0, 1), "Only support Box split torso");
+						}
+
+						constexpr const char* sp_type_names[] = { "Box", "Capsule" };
+						int curr_sp_type = (ragdoll_settings.mShapesType != vx::EShapeType::Capsule) ? 0 : 1;
+						if (ImGui::Combo("Shape Type", &curr_sp_type, sp_type_names, IM_ARRAYSIZE(sp_type_names)))
+							ragdoll_settings.mShapesType = (curr_sp_type == 0) ? vx::EShapeType::Box : vx::EShapeType::Capsule;
+
+						if (!mPhysicsWorld)
+							ImGui::TextColored(ImVec4(1, 0, 0, 1), "No Physics World");
+
+						if (ImGui::Button("Spawn"))
+						{
+							/// hack to prevent defaulting to split box torso
+							if (ragdoll_settings.mShapesType == EShapeType::Capsule && ragdoll_settings.splitTorso)
+							{
+								vx::RagdollSettings settings = ragdoll_settings;
+								settings.splitTorso = false;
+								mCurrScenario->CreateRagdoll(settings, nullptr);
+							}
+							else
+								mCurrScenario->CreateRagdoll(ragdoll_settings, nullptr);
+						}
+						break;
+					}
+					case EScenarioObjectType::Jenga:
+					{
+						static Scenario::ScenarioJengaSetting jenga_settings;
+
+						ImGui::Text("Jenga Settings");
+						ImGui::DragFloat3("Position", &jenga_settings.basePosition[0]);
+						static bool spawn_cam_pos = false;
+						EditorImGui::HelpInformation("Spawn from view with offset; uses camera position with forward and create new physics body offset from view value");
+						if (ImGui::Checkbox("Spawn from view with offset", &spawn_cam_pos))
+							jenga_settings.basePosition = vx::Vec3::Zero();
+
+						if (spawn_cam_pos)
+							jenga_settings.basePosition = (mCamera.Position() + (mCamera.Forward() * mNewPhyObjectSettings.offsetFromView));
+
+
+						ImGui::Checkbox("Dyanmic bodies", &jenga_settings.dynamicBodies);
+						ImGui::SliderFloat("Bodies friction", &jenga_settings.bodiesFriction, 0.0f, 1.0f);
+						ImGui::SliderFloat("Bodies restitution", &jenga_settings.bodiesRestitution, 0.0f, 1.0f);
+
+						ImGui::DragFloat3("Shape half extent", &jenga_settings.half_extent[0]);
+						ImGui::DragInt("layer count", &jenga_settings.layers);
+						ImGui::DragFloat("gap", &jenga_settings.gap);
+
+						if (!mPhysicsWorld)
+							ImGui::TextColored(ImVec4(1, 0, 0, 1), "No Physics World");
+
+						if (ImGui::Button("Spawn"))
+							mCurrScenario->CreateJenga(jenga_settings);
+
+						break;
+					}
+					default:
+						//ImGui::TextColored(ImVec4(1, 1, 0, 1), "UNKNOWN object type");
+						//VX_ASSERT_WARN("UNKNOWN object type");
+
+
+						static Scenario::StructureConfig structure_config = {
+								vx::Vec3(1, 10, 10),
+								vx::Vec3(0.5f),
+								vx::Vec3(0.0f, 0.5f, 0.0f),
+							structure_config.GetSize = [&](int layer)
+								{
+									//vx::Vec3& c = structure_config.count;
+									//return vx::Vec2(c.X(), c.Z()) - vx::Vec2(0.0f, layer);
+
+									const vx::Vec3& c = structure_config.count;
+									int step = layer * 0.5f;
+									return vx::Vec2(c.X(), c.Z()) - vx::Vec2(step, step);
+								}
+						};
+						//structure_config.count = vx::Vec3(1, 10, 10);
+						static bool first_call = true;
+						bool updated = (first_call) || false;
+
+						static int counts[] = { 1, 10, 10 };
+
+						enum class EType : vx::uint8 {
+							Pyramid1D,
+							Wall,
+							Ziggurat,
+							Ramp
+						};
+
+						static EType structure_type = EType::Pyramid1D;
+
+						constexpr const char* structure_type_names[] = { "Pyramid1D", "Wall", "Ziggurat", "Ramp"};
+						int curr_structure_type = int(structure_type);
+						if (ImGui::Combo("Shape Type", &curr_structure_type, structure_type_names, IM_ARRAYSIZE(structure_type_names)))
+						{
+							structure_type = EType(curr_structure_type);
+							updated = true;
+						}
+
+						updated |= ImGui::DragInt3("Count", &counts[0]);
+						updated |= ImGui::DragFloat3("Half extent", &structure_config.halfExtent[0], 0.1f);
+						updated |= ImGui::DragFloat3("Position", &structure_config.basePos[0], 0.1f);
+						updated |= ImGui::DragFloat3("Euler", &mSampleStructure.euler[0], 0.25f);
+
+						ImGui::Separator();
+
+						static bool dynamic = true;
+						static float bodies_friction = 0.8f;
+						static float bodies_restitution = 0.05f;
+						ImGui::Checkbox("Dyanmic bodies", &dynamic);
+						ImGui::SliderFloat("Bodies friction", &bodies_friction, 0.0f, 1.0f);
+						ImGui::SliderFloat("Bodies restitution", &bodies_restitution, 0.0f, 1.0f);
+
+
+						switch (structure_type)
+						{
+						case EType::Pyramid1D:
+						{
+							structure_config.GetSize = [&](int layer)
+								{
+									vx::Vec3& c = structure_config.count;
+									return vx::Vec2(c.X(), c.Z()) - vx::Vec2(0.0f, layer);
+								};
+							structure_config.GetOffset = {};
+							break;
+						}
+						case EType::Wall:
+						{
+							structure_config.GetSize = {};
+							structure_config.GetOffset = {};
+							break;
+						}
+						case EType::Ziggurat:
+						{
+							structure_config.GetSize = [&](int layer)
+								{
+									const vx::Vec3& c = structure_config.count;
+									int step = layer * 0.5f;
+									return vx::Vec2(c.X(), c.Z()) - vx::Vec2(step, step);
+								};
+							structure_config.GetOffset = {};
+							break;
+						}
+						case EType::Ramp:
+						{
+							structure_config.GetSize = [&](int layer)
+								{
+									vx::Vec3& c = structure_config.count;
+									return vx::Vec2(c.X(), c.Z()) - vx::Vec2(layer, 0);
+								};
+							structure_config.GetOffset = [&](int layer)
+								{
+									return vx::Vec3(layer * 0.5f, 0, 0);
+								};
+						}
+							break;
+						default:
+							VX_ASSERT(false);
+							break;
+						}
+
+
+						first_call = false;
+
+
+
+						if(updated)
+						{
+							structure_config.count = vx::Vec3(counts[0], counts[1], counts[2]);
+							mSampleStructure.positions.clear();
+							mSampleStructure.halfExtent = structure_config.halfExtent;
+							vx::Vec3 angle_rad = vx::DegToRad(vx::Vec3::LoadFloat3Raw(mSampleStructure.euler));
+							mCurrScenario->SampleStructure(mSampleStructure.positions, vx::Quat::FromEulerAngle(angle_rad), structure_config);
+						}
+
+						if (ImGui::Button("Create Structure"))
+						{
+							vx::BodySettings body_setting = (dynamic) ? vx::BodySettings::DefaultDynamicConstruct() : vx::BodySettings::DefaultStaticConstruct();
+							body_setting.friction = bodies_friction;
+							body_setting.restitution = bodies_restitution;
+							body_setting.shape = vx::MakeRef<vx::BoxShape>(structure_config.halfExtent);
+							vx::Vec3 angle_rad = vx::DegToRad(vx::Vec3::LoadFloat3Raw(mSampleStructure.euler));
+							mCurrScenario->CreateStructure(body_setting, structure_config, vx::Quat::FromEulerAngle(angle_rad));
+						}
+						break;
+					}
+
+
+				}
+
+				ImGui::EndTable();
+			}
+
+	}
+	ImGui::End();
+}
+
 void Application::DrawUICameraStatePanel()
 {
 	auto& cam_props = mCamera.GetProperties();
@@ -2572,7 +3128,7 @@ void Application::DrawUICameraStatePanel()
 		cam_props.zNear = VxMax(cam_props.zNear, 1e-3f);
 	ImGui::DragFloat("Far", &cam_props.zFar, clipping_plane_prop_speed, 2000);
 	ImGui::SliderFloat("Move Speed", &cam_props.moveSpeed, 0.1f, 100.0f);
-	ImGui::SliderFloat("Rot Speed", &cam_props.rotSpeed, 0.1f, 20.0f);
+	ImGui::SliderFloat("Rot Sensitivity", &cam_props.rotSensitivity, 0.01f, 0.1f);
 
 	if (ImGui::TreeNode("Camera Prop Setting"))
 	{
@@ -2707,15 +3263,15 @@ void Application::PhysicsInteraction()
 {
 	if (!mPhysicsWorld && !mParticleWorld) return;
 
-  	bool create_obj = Input::GetKeyDown(IKeyCode::Space) || (mNewPhyObjectSettings.allowKeyHeld && Input::GetKey(IKeyCode::Space));
+	bool create_obj = Input::GetKeyDown(IKeyCode::Space) || (mNewPhyObjectSettings.allowKeyHeld && Input::GetKey(IKeyCode::Space));
 	
 	if (create_obj)
 	{
-		vx::Vec3 dir = (mNewPhyObjectSettings.spawnFromView) ? mCamera.Forward() : (mTestCanon.spawn - mTestCanon.back).Normalised();
+		vx::Vec3 dir = (mNewPhyObjectSettings.spawnFromView) ? mCamera.Forward() : vx::Vec3::Zero();
 
 		/// for convenie offset in the forward direction when spawning from view 
-		const Vec3 position = (mNewPhyObjectSettings.spawnFromView) ? mCamera.Position() + dir * mNewPhyObjectSettings.offsetFromView : mTestCanon.back;
-		const Vec3 impluse = dir * ((mNewPhyObjectSettings.applyImpulse) ? mNewPhyObjectSettings.impulse : 0.0f);
+		const Vec3 position = (mNewPhyObjectSettings.spawnFromView) ? mCamera.Position() + dir * mNewPhyObjectSettings.offsetFromView : vx::Vec3::Zero();
+		const Vec3 impluse = dir * ((mNewPhyObjectSettings.applyImpulseAndVel) ? mNewPhyObjectSettings.impulse : 0.0f);
 
 		if (mPhysicsWorld != nullptr && mNewPhyObjectSettings.type == CreatePhysicsObjectSettings::EType::Body)
 		{
@@ -2738,7 +3294,7 @@ void Application::PhysicsInteraction()
 					body_settings.inertia = mNewPhyObjectSettings.inertia;
 			}
 			body_settings.impluse = impluse;
-			body_settings.intialVelocity = dir * mNewPhyObjectSettings.initialLinearVelocity;
+			body_settings.intialVelocity = (mNewPhyObjectSettings.applyImpulseAndVel) ? dir * mNewPhyObjectSettings.initialLinearVelocity : vx::Vec3::Zero();
 			body_settings.linearDamping = mNewPhyObjectSettings.damping;
 			body_settings.angularDamping = mNewPhyObjectSettings.angularDamping;
 			body_settings.friction = mNewPhyObjectSettings.friction;
@@ -2802,7 +3358,7 @@ void Application::PhysicsInteraction()
 		else if(mParticleWorld)
 		{
 			float mass = (mNewPhyObjectSettings.newAsAnchor) ? 0.0f : mNewPhyObjectSettings.mass;
-			vx::Particles::Particle* p = mParticleWorld->CreateParticle(mTestCanon.back,
+			vx::Particles::Particle* p = mParticleWorld->CreateParticle(vx::Vec3::Zero(),
 				mass, 1.0f, mNewPhyObjectSettings.damping);
 			p->AddImpluse(impluse);
 
@@ -2824,7 +3380,7 @@ void Application::PhysicsInteraction()
 
 	if (mPhysicsWorld && mDebugAngularImpulse.apply)
 	{
-		auto& bodies = mPhysicsWorld->GetBodies();
+		auto& bodies = mPhysicsWorld->Bodies();
 		Vec3 pointA = vx::Vec3::LoadFloat3Raw(mDebugAngularImpulse.pointA);
 		Vec3 impluse =vx::Vec3::LoadFloat3Raw(mDebugAngularImpulse.impluse);
 		for (auto& body : bodies)
@@ -2881,8 +3437,8 @@ void Application::DrawHelpWindow(bool& p_open)
 		ImGui::Text(dir_light_controls.Data());
 
 		ImGui::SeparatorText("Util");
-		ImGui::Text("O to increase spawn impluse by 250 Ns : NEED NEED UPDATE");
-		ImGui::Text("N to decrease spawn impluse by 250 Ns : NEED NEED UPDATE");
+		ImGui::Text("O to increase spawn impulse by 250 Ns : NEED NEED UPDATE");
+		ImGui::Text("N to decrease spawn impulse by 250 Ns : NEED NEED UPDATE");
 		ImGui::Spacing();
 		ImGui::Text("Left Shift + N: move spawn NEED NEED UPDATE");
 		ImGui::Text("Left Arrow/Num Keypad 4: move spawn right");
@@ -3167,26 +3723,26 @@ void Application::DrawApplyExternalEffectDynamicBody(bool* p_open)
 	if (new_select)
 	{
 		mExternalEffectDynamicBodyInfo.ClearSelect();
-		int i = (type_select == ESelectType::First) ? 0 : int(mPhysicsWorld->GetBodies().size() - last_n_bodies);
+		int i = (type_select == ESelectType::First) ? 0 : int(mPhysicsWorld->Bodies().size() - last_n_bodies);
 		vx::BodyID first_selected_body;
 
 		bool found_first = false;
 		//for (;i < mPhysicsWorld->GetBodies().size();++i)
-		for (int steps = 0; steps < mPhysicsWorld->GetBodies().size(); i = (i + 1) % mPhysicsWorld->GetBodies().size(), ++steps)
+		for (int steps = 0; steps < mPhysicsWorld->Bodies().size(); i = (i + 1) % mPhysicsWorld->Bodies().size(), ++steps)
 		{
-			if (mPhysicsWorld->GetBodies()[i].IsDynamic())
+			if (mPhysicsWorld->Bodies()[i].IsDynamic())
 			{
-				auto body = mPhysicsWorld->GetBodies()[i];
+				auto body = mPhysicsWorld->Bodies()[i];
 				///cpu should be able to predicted this, as it done once 
 				if (!found_first)
 				{
-					first_selected_body = body.GetID();
+					first_selected_body = body.ID();
 					found_first = true;
 				}
 				//this check is for if this is the first it meant we have looped around
-				else if (first_selected_body == body.GetID()) break;
+				else if (first_selected_body == body.ID()) break;
 				//mExternalEffectDynamicBodyInfo.Add(mPhysicsWorld->GetBodyManager().GetBodyDebugInfo(body));
-				mExternalEffectDynamicBodyInfo.AddUnsafe(body.GetID());
+				mExternalEffectDynamicBodyInfo.AddUnsafe(body.ID());
 			}
 			if (mExternalEffectDynamicBodyInfo.GetInstanceCount() >= n_bodies || mExternalEffectDynamicBodyInfo.N >= ExternalEffectDynamicBodyInfo::kMaxBodies) break;
 		}
@@ -3339,6 +3895,7 @@ void Application::CreateNewPhysicsBodyWindow()
 		ImGui::Checkbox("Allow key held", &mNewPhyObjectSettings.allowKeyHeld);
 
 		ImGui::Checkbox("Pause On Shoot", &mNewPhyObjectSettings.pauseOnShoot);
+		ImGui::Checkbox("Show Spawn Preview", &mNewPhyObjectSettings.showSpawnPreview);
 
 		//ImGui::SeparatorText("New Physics Body");
 		if (mNewPhyObjectSettings.type == CreatePhysicsObjectSettings::EType::Body)
@@ -3372,16 +3929,19 @@ void Application::CreateNewPhysicsBodyWindow()
 
 			ImGui::SliderInt("Count", (int*)&mNewPhyObjectSettings.count, 1, 50);
 
+			bool updated_halfextent = false;
 			switch (mNewPhyObjectSettings.bodyShape)
 			{
-			case vx::EShapeType::Sphere: ImGui::DragFloat("Radius (m)", &mNewPhyObjectSettings.halfExtents[0], 0.1f, 0.0f);
+			case vx::EShapeType::Sphere: 
+				updated_halfextent |= ImGui::DragFloat("Radius (m)", &mNewPhyObjectSettings.halfExtents[0], 0.1f, 0.0f);
 				break;
-			case vx::EShapeType::Box:  ImGui::DragFloat3("Half Extents", &mNewPhyObjectSettings.halfExtents[0], 0.1f, 0.0f); 
+			case vx::EShapeType::Box: 
+				updated_halfextent |= ImGui::DragFloat3("Half Extents", &mNewPhyObjectSettings.halfExtents[0], 0.1f, 0.0f);
 				break;
 			case vx::EShapeType::Capsule: 
-				ImGui::DragFloat("Radius (m)", &mNewPhyObjectSettings.halfExtents[0], 0.1f, 0.0f);
+				updated_halfextent |= ImGui::DragFloat("Radius (m)", &mNewPhyObjectSettings.halfExtents[0], 0.1f, 0.0f);
 				
-				ImGui::DragFloat("Half Capsule height (m)", &mNewPhyObjectSettings.halfExtents[1], 0.1f, 0.0f);
+				updated_halfextent |= ImGui::DragFloat("Half Capsule height (m)", &mNewPhyObjectSettings.halfExtents[1], 0.1f, 0.0f);
 				break;
 			default:
 				VX_LOG_WARN("UNKNOWN Create Shape type!!!");
@@ -3390,9 +3950,24 @@ void Application::CreateNewPhysicsBodyWindow()
 
 			}
 
-			ImGui::Checkbox("Apply Impluse", &mNewPhyObjectSettings.applyImpulse);
+			if (updated_halfextent)
+			{
+				vx::VxClamp(mNewPhyObjectSettings.halfExtents.x, 0.0f, mNewPhyObjectSettings.halfExtents.x);
+				vx::VxClamp(mNewPhyObjectSettings.halfExtents.y, 0.0f, mNewPhyObjectSettings.halfExtents.y);
+				vx::VxClamp(mNewPhyObjectSettings.halfExtents.z, 0.0f, mNewPhyObjectSettings.halfExtents.z);
+			}
+
+
+
+
+			ImGui::Checkbox("Apply Impluse and initial velocity", &mNewPhyObjectSettings.applyImpulseAndVel);
 			ImGui::DragFloat("Impulse (kg m/s)", &mNewPhyObjectSettings.impulse);
 			ImGui::DragFloat("Initial Velocity", &mNewPhyObjectSettings.initialLinearVelocity);
+			if(mNewPhyObjectSettings.spawnFromView)
+			{
+				EditorImGui::HelpInformation("Spawns at origin");
+				ImGui::SameLine();
+			}
 			ImGui::Checkbox("Shoot from view", &mNewPhyObjectSettings.spawnFromView);
 			ImGui::SliderFloat("Offset from view", &mNewPhyObjectSettings.offsetFromView, 0.0f, 20.0f);
 			
@@ -3515,7 +4090,7 @@ void Application::DrawUIRendererResourcesPanel(/*bool* p_open*/)
 				ImGui::TableSetColumnIndex(0);
 				ImGui::Text("%d", item_table_no);
 				ImGui::TableSetColumnIndex(1);
-				ImGui::Text("%s, GPU ID: %d", tex->GetDebugName().data(), tex->ID());
+				ImGui::Text("%s, GPU ID: %d", tex->DebugName().data(), tex->ID());
 				ImGui::SameLine();
 				ImGui::TableSetColumnIndex(2);
 				ImGui::Image((ImTextureID)(intptr_t)tex->ID(), _img_size,
@@ -3577,8 +4152,8 @@ void Application::PhysicsIslandCoordImGuiWindow()
 
 	if (ImGui::Begin("Island Coordinator", &mPhysicsImGuiWindows.islandCoord))
 	{
-		ImGui::Text("Bodies Active count: %d", mPhysicsWorld->GetBodyManager().GetNumActiveBodies());
-		ImGui::Text("Islands count: %d", mPhysicsWorld->mIslandCoordinator->IslandCount());
+		ImGui::Text("Bodies Active count: %d", mPhysicsWorld->GetBodyManager().NumActiveBodies());
+		ImGui::Text("Islands count: %d", mPhysicsWorld->GetIslandCoordinator()->IslandCount());
 
 		ImGui::BeginTabBar("#Physics Config & Debug");
 
@@ -3601,11 +4176,11 @@ void Application::PhysicsIslandCoordImGuiWindow()
 
 void Application::PhysicsIslandCoordBuilderTab()
 {
-	uint32 body_active_count = mPhysicsWorld->GetBodyManager().GetNumActiveBodies();
+	uint32 body_active_count = mPhysicsWorld->GetBodyManager().NumActiveBodies();
 	//ImGui::Text("Island cache active count: %d", mPhysicsWorld->mIslandCoordinator->mActiveCount);
 
-	auto& island_idxs = mPhysicsWorld->mIslandCoordinator->IslandsIndicesUnsorted();
-	const auto& body_link_idxs = mPhysicsWorld->mIslandCoordinator->ActiveBodyLinkIndices();
+	auto& island_idxs = mPhysicsWorld->GetIslandCoordinator()->IslandsIndicesUnsorted();
+	const auto& body_link_idxs = mPhysicsWorld->GetIslandCoordinator()->ActiveBodyLinkIndices();
 
 	//for (uint32 i = 0; i < body_active_count; ++i)
 	//{
@@ -3675,7 +4250,7 @@ void Application::PhysicsIslandCoordBuilderTab()
 				ImGui::TableHeadersRow();
 			}
 
-			const auto& body_island = mPhysicsWorld->mIslandCoordinator->BodyIDIslands();
+			const auto& body_island = mPhysicsWorld->GetIslandCoordinator()->BodyIDIslands();
 
 			vx::uint32 _island_idx = 0xffffffff;
 			//VX_ASSERT(body_island->IsValid()); /// first body needs to be valid
@@ -3697,8 +4272,8 @@ void Application::PhysicsIslandCoordBuilderTab()
 					uint32 data[5] =
 					{
 						i,
-						body.GetID().ID(),
-						mPhysicsWorld->mIslandCoordinator->SolverBodyIndexIslands()[i].Value(),
+						body.ID().ID(),
+						mPhysicsWorld->GetIslandCoordinator()->SolverBodyIndexIslands()[i].Value(),
 						body.GetIndexInActiveBodies(),
 						body.GetIslandIndex()
 					};
@@ -3735,16 +4310,16 @@ void Application::PhysicsIslandCoordBuilderTab()
 				ImGui::TableHeadersRow();
 			}
 
-			if (mPhysicsWorld->mIslandCoordinator->ContactConstraintBodyLinkIndices())
+			if (mPhysicsWorld->GetIslandCoordinator()->ContactConstraintBodyLinkIndices())
 			{
-				uint32 constraint_count = mPhysicsWorld->GetContactConstraintSolverStats().numContactConstraints;
+				uint32 constraint_count = mPhysicsWorld->ContactConstraintSolverStats().numContactConstraints;
 				for (int i = 0; i < constraint_count; ++i)
 				{
 					ImGui::TableNextRow();
 					uint32 data[2] =
 					{
 						i,
-						mPhysicsWorld->mIslandCoordinator->ContactConstraintBodyLinkIndices()[i]
+						mPhysicsWorld->GetIslandCoordinator()->ContactConstraintBodyLinkIndices()[i]
 					};
 					for (int column = 0; column < 2; column++)
 					{
@@ -3780,9 +4355,9 @@ void Application::PhysicsIslandCoordBuilderTab()
 			}
 
 			uint32 table_item_count = 0;
-			for (uint32 island = 0; island < mPhysicsWorld->mIslandCoordinator->IslandCount(); ++island)
+			for (uint32 island = 0; island < mPhysicsWorld->GetIslandCoordinator()->IslandCount(); ++island)
 			{
-				vx::IslandCoordinator::IslandRange<uint32> constraint_island = mPhysicsWorld->mIslandCoordinator->ContactConstraintIndicesIslandRange(island);
+				vx::IslandCoordinator::IslandRange<uint32> constraint_island = mPhysicsWorld->GetIslandCoordinator()->ContactConstraintIndicesIslandRange(island);
 
 				if (constraint_island.begin == nullptr) continue;//should break
 
@@ -3797,7 +4372,7 @@ void Application::PhysicsIslandCoordBuilderTab()
 					ImVec4 _col(col.R(), col.G(), col.B(), 1.0f);
 					ImGui::ColorButton("##", _col);
 
-					const auto& constraint_body_link = mPhysicsWorld->mIslandCoordinator->ContactConstraintBodyLinkIndices();
+					const auto& constraint_body_link = mPhysicsWorld->GetIslandCoordinator()->ContactConstraintBodyLinkIndices();
 					//auto& body_active_indices = mPhysicsWorld->mIslandCoordinator->mActiveBodyLinkIndices;
 
 					//uint32 body_active_idx = body_active_indices[constraint_body_link[*constraint_idx]];
@@ -3853,9 +4428,9 @@ void Application::PhysicsIslandCoordBuilderTab()
 			}
 
 			uint32 table_item_count = 0;
-			for (uint32 island = 0; island < mPhysicsWorld->mIslandCoordinator->IslandCount(); ++island)
+			for (uint32 island = 0; island < mPhysicsWorld->GetIslandCoordinator()->IslandCount(); ++island)
 			{
-				vx::IslandCoordinator::IslandRange<uint32> constraint_island = mPhysicsWorld->mIslandCoordinator->IslandNonContactConstraintRowIndicesRange(island);
+				vx::IslandCoordinator::IslandRange<uint32> constraint_island = mPhysicsWorld->GetIslandCoordinator()->IslandNonContactConstraintRowIndicesRange(island);
 
 				if (constraint_island.begin == nullptr) continue;//should break
 
@@ -3886,12 +4461,130 @@ void Application::PhysicsIslandCoordBuilderTab()
 		}
 		ImGui::TreePop();
 	}
+
+
+
+
+	/////////////////////////////////////////////////////////////////////////////////////
+	/// Islands Constraint Count
+	/////////////////////////////////////////////////////////////////////////////////////
+	if (ImGui::TreeNodeEx("Islands Constraint Count"))
+	{
+		vx::uint32 island_count = mPhysicsWorld->GetIslandCoordinator()->IslandCount();
+
+		if (island_count > 0)
+			ImGui::Text("Island count: %d", island_count);
+		else
+			ImGui::TextColored(ImVec4(1, 0, 0, 1), "No Active Islands");
+
+		if (ImGui::BeginTable("table0", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+		{
+			{
+				ImGui::TableSetupColumn("No");
+				ImGui::TableSetupColumn("Island");
+				ImGui::TableSetupColumn("Contact Constraint");
+				ImGui::TableSetupColumn("Non Contact Constraint");
+				ImGui::TableSetupColumn("Total Constraint");
+				ImGui::TableHeadersRow();
+			}
+			for (vx::uint32 island = 0; island < island_count; ++island)
+			{
+				vx::IslandCoordinator::IslandRange<uint32> contact_island = mPhysicsWorld->GetIslandCoordinator()->ContactConstraintIndicesIslandRange(island);
+				vx::IslandCoordinator::IslandRange<uint32> non_contact_island = mPhysicsWorld->GetIslandCoordinator()->IslandNonContactConstraintRowIndicesRange(island); ///later its better to get actual constraint
+
+				ImGui::TableNextRow();
+
+				ImGui::TableSetColumnIndex(0);
+				ImGui::Text("%d", island);
+
+				ImGui::TableSetColumnIndex(1);
+				ImGui::Text("island%d ", island);
+
+				vx::Colour col = vx::Colour::RandomColour(island);
+				ImVec4 _col(col.R(), col.G(), col.B(), 1.0f);
+				ImGui::SameLine();
+				ImGui::ColorButton("##", _col);
+
+				uint32 constraint_count = 0;
+				if (contact_island.Valid())
+					constraint_count += contact_island.Size();
+
+				ImGui::TableSetColumnIndex(2);
+				ImGui::Text("%d", constraint_count);
+
+				if (non_contact_island.Valid())
+					constraint_count += non_contact_island.Size();
+
+				ImGui::TableSetColumnIndex(3);
+				ImGui::Text("%d", (non_contact_island.Valid() ? non_contact_island.Size() : 0));
+
+				ImGui::TableSetColumnIndex(4);
+				ImGui::Text("%d", constraint_count);
+			}
+
+			ImGui::EndTable();
+		}
+
+		ImGui::Text("Sorted Islands");
+		if (ImGui::BeginTable("table1", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+		{
+			{
+				ImGui::TableSetupColumn("No");
+				ImGui::TableSetupColumn("Island");
+				ImGui::TableSetupColumn("Contact Constraint");
+				ImGui::TableSetupColumn("Non Contact Constraint");
+				ImGui::TableSetupColumn("Total Constraint");
+				ImGui::TableHeadersRow();
+			}
+			for (vx::uint32 i = 0; i < island_count; ++i)
+			{
+				uint32 island = mPhysicsWorld->GetIslandCoordinator()->SortedIslandIndices()[i];
+				vx::IslandCoordinator::IslandRange<uint32> contact_island = mPhysicsWorld->GetIslandCoordinator()->ContactConstraintIndicesIslandRange(island);
+				vx::IslandCoordinator::IslandRange<uint32> non_contact_island = mPhysicsWorld->GetIslandCoordinator()->IslandNonContactConstraintRowIndicesRange(island); ///later its better to get actual constraint
+
+				ImGui::TableNextRow();
+
+				ImGui::TableSetColumnIndex(0);
+				ImGui::Text("%d", i);
+
+				ImGui::TableSetColumnIndex(1);
+				ImGui::Text("island%d ", island);
+
+				vx::Colour col = vx::Colour::RandomColour(island);
+				ImVec4 _col(col.R(), col.G(), col.B(), 1.0f);
+				ImGui::SameLine();
+				ImGui::ColorButton("##", _col);
+
+				uint32 constraint_count = 0;
+				if (contact_island.Valid())
+					constraint_count += contact_island.Size();
+
+				ImGui::TableSetColumnIndex(2);
+				ImGui::Text("%d", constraint_count);
+
+				if (non_contact_island.Valid())
+					constraint_count += non_contact_island.Size();
+
+				ImGui::TableSetColumnIndex(3);
+				ImGui::Text("%d", (non_contact_island.Valid() ? non_contact_island.Size() : 0));
+
+				ImGui::TableSetColumnIndex(4);
+				ImGui::Text("%d", constraint_count);
+			}
+
+			ImGui::EndTable();
+		}
+
+		ImGui::TreePop();
+	}
+
+
 }
 
 void Application::PhysicsIslandCoordSplitterTab()
 {
 
-	if (mPhysicsWorld->mIslandCoordinator->IslandCount() < 0)
+	if (mPhysicsWorld->GetIslandCoordinator()->IslandCount() < 0)
 	{
 		ImGui::TextColored(ImVec4(1, 0, 0, 1), "No Active Islands");
 		return;
@@ -3901,7 +4594,7 @@ void Application::PhysicsIslandCoordSplitterTab()
 	/////////////////////////////////////////////////////////////////////////////////////
 	/// Per Island Splitted Bodies
 	/////////////////////////////////////////////////////////////////////////////////////
-	if(ImGui::TreeNodeEx("Per Island Splitted Bodies"))
+	if (ImGui::TreeNodeEx("Per Island Splitted Bodies"))
 	{
 		ImGui::Text("Note: Static Bodies are ignored during binning");
 
@@ -3933,7 +4626,7 @@ void Application::PhysicsIslandCoordSplitterTab()
 
 
 
-			for (uint32 island = 0; island < mPhysicsWorld->mIslandCoordinator->IslandCount(); ++island)
+			for (uint32 island = 0; island < mPhysicsWorld->GetIslandCoordinator()->IslandCount(); ++island)
 			{
 				//ImGui::TableNextRow();
 
@@ -3976,7 +4669,7 @@ void Application::PhysicsIslandCoordSplitterTab()
 				}
 
 
-				vx::IslandCoordinator::IslandRange<vx::BodyID> bodyid_island = mPhysicsWorld->mIslandCoordinator->IslandBodyIDsRange(island);
+				vx::IslandCoordinator::IslandRange<vx::BodyID> bodyid_island = mPhysicsWorld->GetIslandCoordinator()->IslandBodyIDsRange(island);
 
 				vx::uint32 curr_body_count = 0;
 				for (const BodyID* bodyid = bodyid_island.begin; bodyid < bodyid_island.end; ++bodyid)
@@ -4028,7 +4721,7 @@ void Application::PhysicsIslandCoordSplitterTab()
 				ImGui::TableHeadersRow();
 			}
 
-			for (uint32 island = 0; island < mPhysicsWorld->mIslandCoordinator->IslandCount(); ++island)
+			for (uint32 island = 0; island < mPhysicsWorld->GetIslandCoordinator()->IslandCount(); ++island)
 			{
 				ImGui::TableNextRow();
 
@@ -4073,7 +4766,7 @@ void Application::PhysicsIslandCoordSplitterTab()
 				uint32 largest_bin_count = 0;
 				for (uint32 i = 0; i < vx::IslandCoordinator::Splitter::kMaxBin; ++i)
 				{
-					constraint_island_grps[i] = mPhysicsWorld->mIslandCoordinator->mSplitter.ContactConstraintIndicesIslandRange(island, i);
+					constraint_island_grps[i] = mPhysicsWorld->GetIslandCoordinator()->GetSplitter().ContactConstraintIndicesIslandRange(island, i);
 					if (constraint_island_grps[i].Valid())
 						largest_bin_count = vx::VxMax(constraint_island_grps[i].Size(), largest_bin_count);
 				}
@@ -4119,12 +4812,12 @@ void Application::PhysicsIslandCoordSplitterTab()
 	/////////////////////////////////////////////////////////////////////////////////////
 	if (ImGui::TreeNodeEx(" Per Island Constraint Bins with Batches (Workload balancing)"))
 	{
-		ImGui::Text("Bin constraint batch size: %d", mPhysicsWorld->mIslandCoordinator->mSplitter.kBatchSize);
+		ImGui::Text("Bin constraint batch size: %d", mPhysicsWorld->GetIslandCoordinator()->GetSplitter().kBatchSize);
 
-		for(uint32 island_idx = 0; island_idx < mPhysicsWorld->mIslandCoordinator->IslandCount(); ++island_idx)
+		for(uint32 island_idx = 0; island_idx < mPhysicsWorld->GetIslandCoordinator()->IslandCount(); ++island_idx)
 		{
 			///test bins 
-			auto& island_split_bins = mPhysicsWorld->mIslandCoordinator->mSplitter.mIslandSplitBins2[island_idx];
+			auto& island_split_bins = mPhysicsWorld->GetIslandCoordinator()->GetSplitter().IslandsSplitBins()[island_idx];
 
 			uint32 total_column = 1; /// numbering column
 			total_column += island_split_bins.mNumActiveBins + 1;  ///plus one non parallel bin
@@ -4181,7 +4874,7 @@ void Application::PhysicsIslandCoordSplitterTab()
 					ImGui::Text("%d", i);
 
 
-					bool batch_toggle = (i / mPhysicsWorld->mIslandCoordinator->mSplitter.kBatchSize) % 2 == 0;
+					bool batch_toggle = (i / mPhysicsWorld->GetIslandCoordinator()->GetSplitter().kBatchSize) % 2 == 0;
 					ImU32 col0 = IM_COL32(island_col.R8(), island_col.G8(), island_col.B8(), 100);
 					ImU32 col1 = IM_COL32(50, 50, 50, 100);
 					ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, batch_toggle ? col0 : col1);
@@ -4199,7 +4892,7 @@ void Application::PhysicsIslandCoordSplitterTab()
 						ImGui::TableSetColumnIndex(bin_idx + 1);
 						bool show_constraint_offset = true;
 
-						uint32 constraint_solver_idx = mPhysicsWorld->mIslandCoordinator->mSplitter.mConstraintIndices[curr_island_splitter_bin_range.contactStart + i];
+						uint32 constraint_solver_idx = mPhysicsWorld->GetIslandCoordinator()->GetSplitter().ConstraintIndicesBuffer()[curr_island_splitter_bin_range.contactStart + i];
 
 						if (show_constraint_offset)
 						{
@@ -4227,5 +4920,213 @@ void Application::PhysicsIslandCoordSplitterTab()
 		
 		ImGui::TreePop();
 	}
+}
+
+void Application::CreateConstraintsWindow()
+{
+	if (ImGui::Begin("Create Constraints Window", &mPhysicsImGuiWindows.createConstraints))
+	{
+		ImGui::Text("Using mouse hover to capture bodies");
+		
+		if (mCurrScenario && mCurrScenario->mMouseHoveringBody.IsValid())
+		{
+			ImGui::Text("Current Hovered Body: %d", mCurrScenario->mMouseHoveringBody.ID());
+
+			bool ctr_pressed = Input::GetKey(IKeyCode::RightControl) || Input::GetKey(IKeyCode::LeftControl);
+			if (ctr_pressed && Input::GetKey(IKeyCode::A))
+			{
+				if (mAppCreateConstraint.body_b != mCurrScenario->mMouseHoveringBody)
+					mAppCreateConstraint.body_a = mCurrScenario->mMouseHoveringBody;
+				else
+					VX_LOG_WARN("Cant assign same body to two constraints");
+			}
+			if (ctr_pressed && Input::GetKey(IKeyCode::B))
+			{
+				if (mAppCreateConstraint.body_a != mCurrScenario->mMouseHoveringBody)
+					mAppCreateConstraint.body_b = mCurrScenario->mMouseHoveringBody;
+				else
+					VX_LOG_WARN("Cant assign same body to two constraints");
+			}
+		}
+	
+		ImGui::Text("Ctrl + A: for body A");
+		ImGui::Text("Ctrl + B: for body B");
+		if (ImGui::Button((mPhysicsAppSetting.StateStats().paused) ? "Paused (Play)" : "Running (Pause)"))
+			mPhysicsAppSetting.StateStats().paused = !mPhysicsAppSetting.StateStats().paused;
+		ImGui::Separator();
+
+		ImGui::Text("Body A: %d", mAppCreateConstraint.body_a.ID());
+		ImGui::SameLine();
+		if (ImGui::Button("Reset"))
+			mAppCreateConstraint.body_a = vx::BodyID();
+		ImGui::Text("Body B: %d", mAppCreateConstraint.body_b.ID());
+		ImGui::SameLine();
+		ImGui::PushID(&mAppCreateConstraint.body_b);
+		if (ImGui::Button("Reset"))
+			mAppCreateConstraint.body_b = vx::BodyID();
+		ImGui::PopID();
+
+		ImGui::DragFloat3("Anchor A", &mAppCreateConstraint.anchor_a[0], 0.01f);
+		ImGui::SameLine();ImGui::ColorEdit3("##DebugColA", &mAppCreateConstraint.anchorADebugCol[0], ImGuiColorEditFlags_NoInputs);
+		ImGui::DragFloat3("Anchor B", &mAppCreateConstraint.anchor_b[0], 0.01f);
+		ImGui::SameLine();ImGui::ColorEdit3("##DebugColB", &mAppCreateConstraint.anchorBDebugCol[0], ImGuiColorEditFlags_NoInputs);
+
+
+		constexpr const char* sp_type_names[] = { "Distance Constraint", "Point Constraint" };
+		int curr_sp_type = static_cast<int>(mAppCreateConstraint.type);
+		VX_ASSERT(curr_sp_type < 2);
+		if (ImGui::Combo("Type", &curr_sp_type, sp_type_names, IM_ARRAYSIZE(sp_type_names)))
+		{
+			mAppCreateConstraint.type = static_cast<vx::EConstraintType>(curr_sp_type);
+
+			if (mAppCreateConstraint.type == vx::EConstraintType::Distance)
+				mAppCreateConstraint.SwitchDefaultDistance();
+			else if (mAppCreateConstraint.type == vx::EConstraintType::Point)
+				mAppCreateConstraint.SwitchDefaultPoint();
+		}
+
+		if(mAppCreateConstraint.type == vx::EConstraintType::Distance)
+		{
+			ImGui::DragFloat("Min Distance", &mAppCreateConstraint.min_dist, 0.1f);
+			ImGui::DragFloat("Max Distance", &mAppCreateConstraint.max_dist, 0.1f);
+
+			ImGui::SeparatorText("Spring Setting");
+
+			ImGui::SliderAngle("mFrequency [Hz:Rad/sec]", &mAppCreateConstraint.freq, 0.0f);
+
+			ImGui::DragFloat("Damping Ratio", &mAppCreateConstraint.damping, 0.01f);
+		}
+		else if (mAppCreateConstraint.type == vx::EConstraintType::Point)
+		{
+			ImGui::Checkbox("Enable Velocity Bias", &mAppCreateConstraint.enableVelocityBias);
+			ImGui::DragFloat("Error Threshold", &mAppCreateConstraint.errorTreshold, 0.01f);
+		}
+
+		if (ImGui::Button("Create Constraint"))
+		{
+			mCurrScenario->CreateConstraint(mAppCreateConstraint, nullptr);
+			
+			//mAppCreateConstraint = AppCreateConstraint();
+			//omly reset bodies
+			mAppCreateConstraint.body_a = vx::BodyID();
+			mAppCreateConstraint.body_b = vx::BodyID();
+		}
+
+		ImGui::SeparatorText("Inspect");
+		ImGui::Checkbox("Debug Line", &mAppCreateConstraint.debugLine);
+		ImGui::SliderFloat("Debug Sphere", &mAppCreateConstraint.sphereSize, 0.01f, 1.0f);
+		ImGui::Checkbox("Highlight Bodies", &mAppCreateConstraint.highlightBodies);
+	}
+	ImGui::End();
+}
+
+void Application::ApplyForceToSelectedBody()
+{
+
+	if (ImGui::Begin("Apply Force To Selected Body"))
+	{
+
+		ImGui::Text("Using mouse hover to capture bodies, witch Ctrl + A");
+
+
+		static vx::BodyID selected_body;
+		if (mCurrScenario && mCurrScenario->mMouseHoveringBody.IsValid())
+		{
+			ImGui::Text("Current Hovered Body: %d", mCurrScenario->mMouseHoveringBody.ID());
+
+			bool ctr_pressed = Input::GetKey(IKeyCode::RightControl) || Input::GetKey(IKeyCode::LeftControl);
+			if (ctr_pressed && Input::GetKey(IKeyCode::A))
+				selected_body = mCurrScenario->mMouseHoveringBody;
+		}
+		
+		static IKeyCode key_code = IKeyCode::KP_2;
+		int v = (int)InputSystem::KeyCodeToIndex(key_code);
+		if (ImGui::Combo("Keycodes", &v, InputSystem::IKeyCodeNamesChar.data(), InputSystem::IKeyCodeNamesChar.size()))
+			key_code = InputSystem::KeyIndexToCode(IKeyIndex(v));
+	
+		ImGui::Text("Use Ctrl + %s, to apply force", InputSystem::IKeyCodeNames[v].data());
+
+		ImGui::Text("Use Ctrl + ");
+		ImGui::SameLine();
+		int apply_impulse_keyidx = (int)InputSystem::KeyCodeToIndex(IKeyCode::B);
+		ImGui::Combo("for Impulse", &apply_impulse_keyidx, InputSystem::IKeyCodeNamesChar.data(), InputSystem::IKeyCodeNamesChar.size());
+		ImGui::Text("Use Ctrl + ");
+		ImGui::SameLine();
+		int apply_force_keyidx = (int)InputSystem::KeyCodeToIndex(IKeyCode::M);
+		ImGui::Combo("for Force", &apply_force_keyidx, InputSystem::IKeyCodeNamesChar.data(), InputSystem::IKeyCodeNamesChar.size());
+	
+
+		ImGui::Separator();
+
+		ImGui::Text("Body A: %d", selected_body);
+
+		bool ctr_pressed = Input::GetKey(IKeyCode::RightControl) || Input::GetKey(IKeyCode::LeftControl);
+
+		if (selected_body.IsValid())
+		{
+			static vx::Vec3 apply_dir = -vx::Vec3::Forward();
+
+			ImGui::SliderFloat3("Dir", &apply_dir[0], -1.0f, 1.0f);
+			static bool use_body_frame_forward = false;
+			ImGui::Checkbox("Use Body Frame Forward", &use_body_frame_forward);
+			static bool invert_fwd = false;
+			ImGui::Checkbox("Invert forward", &invert_fwd);
+
+			ImGui::Spacing();
+
+			vx::Vec3 body_fwd;
+			if(use_body_frame_forward)
+			{
+				auto& body = mPhysicsWorld->GetBodyManager().GetBody(selected_body);
+				vx::Vec3 body_fwd = (invert_fwd) ? -body.Orientation().RotateAxisZ() : body.Orientation().RotateAxisZ();
+
+				apply_dir = body_fwd;
+
+				char buff[64];
+				body_fwd.ToChar(buff, 64);
+				ImGui::Text("Body Frame Forward: %s", buff);
+			}
+
+			mSelectedBodyToApplyForceFwd = apply_dir;
+
+
+			static float impulse = 1000.0f;
+			EditorImGui::HelpInformation("Good use case: bullet impact, explosions, jumping, jolt body, knockback");
+			ImGui::DragFloat("Impluse", &impulse);
+			if (ImGui::Button("Apply Linear Impluse"))
+				mPhysicsWorld->ApplyImpulse(selected_body, apply_dir * impulse);
+
+			ImGui::Separator();
+			static float force = 1000.0f * 40.0f;
+
+			ImGui::PushID(&force);
+			EditorImGui::HelpInformation("Good use case: thrusters, pushing etc");
+			ImGui::DragFloat("Force", &force);
+			if (ImGui::Button("Add force"))
+				mPhysicsWorld->AddForce(selected_body, apply_dir * force);
+			ImGui::PopID();
+
+
+			if (ctr_pressed)
+			{
+				if (Input::GetKey(InputSystem::KeyIndexToCode(IKeyIndex(apply_impulse_keyidx))))
+					mPhysicsWorld->ApplyImpulse(selected_body, apply_dir * impulse);
+
+
+				if (Input::GetKey(InputSystem::KeyIndexToCode(IKeyIndex(apply_force_keyidx))))
+					mPhysicsWorld->AddForce(selected_body, apply_dir * force);
+
+			}
+
+			ImGui::Spacing();
+			ImGui::SeparatorText("Modify Selected Body");
+			mUI.DrawBodyOverlayDetails(selected_body, mPhysicsWorld);
+		}
+		mSelectedBodyToApplyForce = selected_body;
+
+
+
+	}
+	ImGui::End();
 }
 

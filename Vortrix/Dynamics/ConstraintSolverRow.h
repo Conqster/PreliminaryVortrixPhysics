@@ -63,13 +63,13 @@ namespace vx {
 
 			if (body0.IsDynamic())
 			{
-				Vec3 x = lambda * body0.GetInverseMass() * axis;
+				Vec3 x = lambda * body0.InverseMass() * axis;
 				body0.ApplyLinearDisplacement(-x);
 				body0.ApplyAngularDisplacement(-lambda * Vec3::LoadFloat3Raw(invIrAXn));
 			}
 			if (body1.IsDynamic())
 			{
-				Vec3 x = lambda * body1.GetInverseMass() * axis;
+				Vec3 x = lambda * body1.InverseMass() * axis;
 				body1.ApplyLinearDisplacement(x);
 				body1.ApplyAngularDisplacement(lambda * Vec3::LoadFloat3Raw(invIrBXn));
 			}

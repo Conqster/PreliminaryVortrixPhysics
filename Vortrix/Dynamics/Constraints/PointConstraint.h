@@ -61,8 +61,8 @@ namespace vx {
 		void SetLocalAnchorA(const Vec3& position) { mLocalAnchorA = position; }
 		void SetLocalAnchorB(const Vec3& position) { mLocalAnchorB = position; }
 
-		Vec3 GetLocalAnchorA() const { return mLocalAnchorA; }
-		Vec3 GetLocalAnchorB() const { return mLocalAnchorB; }
+		Vec3 LocalAnchorA() const { return mLocalAnchorA; }
+		Vec3 LocalAnchorB() const { return mLocalAnchorB; }
 
 		Vec3 GetAccumulatedLambda() const { return mAccumulatedLambda; }
 

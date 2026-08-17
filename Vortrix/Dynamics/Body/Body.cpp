@@ -13,24 +13,24 @@ namespace vx
 		mMotionState({}),
 		mFriction(0.4f), mRestitution(0.4f)
 	{}
-	void Body::ApplyImpulse(const Vec3& impluse)
+	void Body::ApplyImpulse(const Vec3& impulse)
 	{
-		if (IsDynamic())
-			mLinearVelocity += impluse * mInverseMass;
+		VX_ASSERT(IsDynamic());
+		
+		mLinearVelocity += impulse * mInverseMass;
 	}
-	void Body::ApplyImpulse(const Vec3& impluse, const Vec3& pointA)
+	void Body::ApplyImpulse(const Vec3& impulse, const Vec3& pointA)
 	{
-		if (!IsDynamic()) return;
+		VX_ASSERT(IsDynamic());
 
 		const Vec3 r = pointA - mPosition;
-		ApplyImpulseLocal(impluse, r);
+		ApplyImpulseLocal(impulse, r);
 	}
 
-	void Body::ApplyImpulseLocal(const Vec3& impluse, const Vec3& pointA)
+	void Body::ApplyImpulseLocal(const Vec3& impulse, const Vec3& pointA)
 	{
-		if (!IsDynamic()) return;
-
-		mLinearVelocity += impluse * mInverseMass;
+		VX_ASSERT(IsDynamic());
+		mLinearVelocity += impulse * mInverseMass;
 
 		//the torque vector (r x F) points along the axis 
 		// which the body tends to rotate
@@ -39,14 +39,15 @@ namespace vx
 		// magnitude -> torque proportional to the 
 		// perpendicular distnce from the axis (body centr mass).
 		// and direction -> axis of rotation.
-		const Vec3 torque_world = pointA.Cross(impluse);
+		const Vec3 torque_world = pointA.Cross(impulse);
 
 		//Vec3 test = ApplyInvInertiaTensorWorld(torque_world);
 		//Vec3 test2 = GetInvInteriaWorld().Multiply3x3(torque_world);
 		mAngularVelocity += ApplyInvInertiaTensorWorld(torque_world);
 	}
-	void Body::ApplyAngularImpulse(const Vec3& impluse, const Vec3& pointA)
+	void Body::ApplyAngularImpulse(const Vec3& impulse, const Vec3& pointA)
 	{
+		VX_ASSERT(IsDynamic());
 		const Vec3 r = pointA - mPosition;
 		//the torque vector (r x F) points along the axis 
 		// which the body tends to rotate
@@ -55,7 +56,7 @@ namespace vx
 		// magnitude -> torque proportional to the 
 		// perpendicular distnce from the axis (body centr mass).
 		// and direction -> axis of rotation.
-		const Vec3 torque_world = r.Cross(impluse);
+		const Vec3 torque_world = r.Cross(impulse);
 		mAngularVelocity += ApplyInvInertiaTensorWorld(torque_world);
 	}
 	void Body::ApplyPositionCorrection(const Vec3& nudge, const Vec3& r)
@@ -83,6 +84,8 @@ namespace vx
 	}
 	void Body::AddForce(const Vec3& force)
 	{
+		VX_ASSERT(IsDynamic());
+
 		(Vec3::LoadFloat3Raw(mForceAccumulated) + force).Store(mForceAccumulated);
 	}
 	void Body::AddForce(const Vec3& force, const Vec3& pointA)
@@ -115,8 +118,8 @@ namespace vx
 	{
 		if (!IsDynamic()) return;
 
-		(Vec3::LoadFloat3Raw(mForceAccumulated) + gravity * GetMass()).Store(mForceAccumulated);
-		//mForceAccumulated += gravity * GetMass();
+		(Vec3::LoadFloat3Raw(mForceAccumulated) + gravity * Mass()).Store(mForceAccumulated);
+		//mForceAccumulated += gravity * Mass();
 	}
 
 
@@ -411,7 +414,7 @@ namespace vx
 	{
 		mPosition = pos;
 		ComputeWorldSpaceBoundsInternal();
-		mMotionState.lastUpdateStep = PhysicsWorld::GetCurrentSimStep();
+		mMotionState.lastUpdateStep = PhysicsWorld::CurrentSimStepIndex();
 	}
 
 	void Body::SetLinearVelocity(const Vec3& velocity)
@@ -429,7 +432,7 @@ namespace vx
 	{
 		mOrientation = quat;
 		ComputeWorldSpaceBoundsInternal();
-		mMotionState.lastUpdateStep = PhysicsWorld::GetCurrentSimStep();
+		mMotionState.lastUpdateStep = PhysicsWorld::CurrentSimStepIndex();
 	}
 
 	Mat44 Body::ComputeInvInteriaWorld() const
@@ -442,7 +445,7 @@ namespace vx
 
 	void Body::ComputeWorldSpaceBoundsInternal()
 	{
-		mMotionState.lastUpdateStep = PhysicsWorld::GetCurrentSimStep();
+		mMotionState.lastUpdateStep = PhysicsWorld::CurrentSimStepIndex();
 		mBounds = mShape->ComputeWorldBounds(Mat44::RotationTranslation(mOrientation, mPosition), Vec3::One());
 	}
 

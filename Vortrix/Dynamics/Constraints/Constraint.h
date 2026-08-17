@@ -47,6 +47,8 @@ namespace vx {
 		/// idx in coordinate constraint vector
 		static constexpr Idx kInvalidIdx = 0xffffffff;
 		Idx ConstraintIdx()const { return mConstraintIdx; }
+		void ConstraintIdx(uint32 idx) { mConstraintIdx = idx; }
+
 
 
 		virtual void GetRowCounts(/*const PhysicsStepContext& ctx, */uint32& o_1D_rows, uint32& o_3D_rows) = 0;

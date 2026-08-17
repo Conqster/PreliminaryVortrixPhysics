@@ -103,7 +103,7 @@ namespace vx
 
 		mTree.ComputeCollidingPairs(physics_ctx, io_pairs, io_count);
 
-		mLastStep = PhysicsWorld::GetCurrentSimStep();
+		mLastStep = physics_ctx.mStepIndex;
 	}
 
 	template<typename BoundType>

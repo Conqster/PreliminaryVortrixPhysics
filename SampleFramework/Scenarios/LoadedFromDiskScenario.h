@@ -12,7 +12,7 @@ public:
 
 		Camera dummy;
 		Camera& cam = (mAppCamera) ? *mAppCamera : dummy;
-		serialiser::Deserialise(i_world, mName, mInfo, cam, mFilePath.Data());
+		serialiser::Deserialise(i_world, this, mName, mInfo, cam, mFilePath.Data());
 	}
 	const char* Name() override { return  mName.c_str(); }
 	const char* Info() override

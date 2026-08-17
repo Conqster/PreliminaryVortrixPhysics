@@ -144,21 +144,21 @@ struct BodyEulerAngle
 
 };
 template<vx::EMotionType Type>
-void EditorImGui::DrawBodyOverlayDetails(vx::Body& body, vx::BodyDebug& body_debug_info)
+void EditorImGui::DrawBodyOverlayDetailsImpl(vx::Body& body, vx::BodyDebug& body_debug_info)
 {
 
 
 	
 	static std::vector<BodyEulerAngle> cache_body_euler;
 
-	if (body.GetID().Idx() >= cache_body_euler.size())
+	if (body.ID().Idx() >= cache_body_euler.size())
 	{
-		cache_body_euler.resize(body.GetID().Idx() + 1);
+		cache_body_euler.resize(body.ID().Idx() + 1);
 		vx::Vec3 angle = vx::RadToDeg(body.Orientation().GetEulerAngles());
-		cache_body_euler[body.GetID().Idx()].FromVec3(angle);
+		cache_body_euler[body.ID().Idx()].FromVec3(angle);
 	}
 
-	auto& euler = cache_body_euler[body.GetID().Idx()];
+	auto& euler = cache_body_euler[body.ID().Idx()];
 
 	Vec3 p = body.Position();
 	ImGui::Text("Island Idx: %d", body.GetIslandIndex());
@@ -269,7 +269,7 @@ void EditorImGui::DrawBodyOverlayDetails(vx::Body& body, vx::BodyDebug& body_deb
 		ImGui::Text("Max Angular Speed Squared: %f(rad/s)^2", body_stat.maxAttainedAngularVelocitySq);
 
 		ImGui::SeparatorText("Mass Properties");
-		ImGui::Text("Mass: %f kg.", body.GetMass());
+		ImGui::Text("Mass: %f kg.", body.Mass());
 		ImGui::Text("Diagonal Inverse Inertia: %s", body.GetLocalInvInertiaDiagonal().ToString().c_str());
 		ImGui::TreePop();
 	}
@@ -301,135 +301,38 @@ void EditorImGui::DrawBodyOverlayDetails(vx::Body& body, vx::BodyDebug& body_deb
 	}
 }
 
+void EditorImGui::DrawBodyOverlayDetails(vx::BodyID body_id, vx::PhysicsWorld* physics_world)
+{
+	using Draw_Body_Detail_Func = void(EditorImGui::*)(vx::Body&, vx::BodyDebug&);
+	static const Draw_Body_Detail_Func draw_body_table[3] =
+	{
+		&EditorImGui::DrawBodyOverlayDetailsImpl<EMotionType::Static>,
+		nullptr, //kinematic
+		&EditorImGui::DrawBodyOverlayDetailsImpl<EMotionType::Dynamic>
+	};
+
+	VX_ASSERT(body_id.IsValid());
+
+
+	auto& body = physics_world->GetBodyManager().GetBody(body_id);
+	(this->*draw_body_table[static_cast<int>(body.MotionType())])(
+		body, physics_world->GetBodyManager().GetBodyDebugInfo(body_id));
+
+	if (ImGui::Button("Delete"))
+		physics_world->RemoveBody(body_id);
+}
+
 void EditorImGui::DrawBodiesOverlayItems(vx::BodyManager& body_manager, vx::PhysicsWorld* physics_world)
 {
 	std::vector<vx::Body>& bodies = body_manager.GetBodies();
-
-	//auto draw_body_prop = [](vx::Body& body) {
-	//	Vec3 p = body.Position();
-	//	if (ImGui::DragFloat3("Position: ", &p[0], 0.01f))
-	//		body.SetPosition(p);
-	//	if (body.GetID().Value() >= cache_body_euler.size())
-	//	{
-	//		cache_body_euler.resize(body.GetID().Value() + 1);
-	//		vx::Vec3 angle = vx::RadToDeg(body.Orientation().GetEulerAngles());
-	//		cache_body_euler[body.GetID().Value()].FromVec3(angle);
-	//	}
-	//	auto& euler = cache_body_euler[body.GetID().Value()];
-
-	//	bool body_dyn = body.IsDynamic();
-	//	if (body_dyn && body.IsAwake())
-	//	{
-	//		vx::Vec3 angle = vx::RadToDeg(body.Orientation().GetEulerAngles());
-	//		euler.FromVec3(angle);
-	//	}
-	//	if(body_dyn)
-	//	{
-	//		ImGui::Checkbox("Local Space", &euler.localSpace);
-	//		BodyEulerAngle old_angle = euler;
-	//		bool change = ImGui::DragFloat3("Euler", &euler[0], 0.25f);
-	//		if (change)
-	//		{
-	//			vx::Vec3 angle_dt = euler.ToVec3() - old_angle.ToVec3();
-
-	//			for (uint32_t i = 0; i < 3; ++i)
-	//				angle_dt[i] = fmod(angle_dt[i] + 180.0f, 360.0f) - 180.0f;
-
-	//			vx::Quat dq = vx::Quat::FromEulerAngle(vx::DegToRad(angle_dt));
-
-	//			//local - space 
-	//			if (euler.localSpace)
-	//				body.SetOrientation((body.Orientation() * dq).Normalised());
-	//			//world - space 
-	//			else
-	//				body.SetOrientation((dq * body.Orientation()).Normalised());
-	//		}
-	//		ImGui::SliderFloat("Linear Damping", &body.mLinearDamping, 0.0f, 1.0f);
-	//		ImGui::SliderFloat("Angular Damping", &body.mAngularDamping, 0.0f, 1.0f);
-	//	}
-	//	ImGui::SliderFloat("Friction Coefficent", &body.mFriction, 0.0f, 1.0f);
-	//	ImGui::SliderFloat("Restitution Coefficent", &body.mRestitution, 0.0f, 1.0f);
-	//	if(body_dyn)
-	//	{
-	//		if (ImGui::Button("Clear Forces", ImVec2(100, 0)))
-	//			body.ClearAccumulatedForces();
-	//		ImGui::SameLine();
-	//		if (ImGui::Button("Clear Velocities", ImVec2(120, 0)))
-	//			body.ClearVelocities();
-	//		static vx::Vec3 wakeup_impluse = vx::Vec3::Forward() * 500;
-	//		ImGui::DragFloat3("Wakeup Impluse (Nm)", &wakeup_impluse[0], 0.1);
-	//		if (ImGui::Button("Wakeup", ImVec2(80, 0)))
-	//			body.WakeUp(wakeup_impluse);
-	//		EDynamicsDofs _dof = body.GetAllowedDynamicsDof();
-	//		DrawAllowedDofFlags(_dof);
-	//		body.SetAllowedDynamicsDof(_dof);
-	//	}
-	//	
-	//	//ImGui::SliderFloat("mMass", &body.mMass, 0.0f, 200.0f, "%.1f");
-	//	//ImGui::SliderFloat("mRadius", &body.mRadius, 0.0f, 1.0f);
-	//	if (ImGui::TreeNode("Step phase"))
-	//	{
-	//		EditorImGui::DrawBodyFlags(body.GetSimulationStats().phase);
-	//		ImGui::TreePop();
-	//	}
-	//	if (ImGui::TreeNode("Properties state"))
-	//	{
-	//		ImGui::Text("Body Type %s", (body.IsDynamic()) ? "Dynamic" : "Static");
-	//		ImGui::Text("Awake: %s", (body.bAwake) ? "true" : "false");
-	//		//ImGui::Text("Acceleration: %s", body.mAcceleration.ToString().c_str());
-	//		vx::Vec3 body_orientation_euler = body.Orientation().GetEulerAngles();
-	//		ImGui::Text("Euler Angles: %s degrees", vx::RadToDeg(body_orientation_euler).ToString().c_str());
-	//		ImGui::Text("UI Cache Euler Angles: %s degrees", euler.ToVec3().ToString().c_str());
-	//		ImGui::Text("Orientation Quat: %s ", body.Orientation().ToString().c_str());
-	//		ImGui::Text("Force Accumulated: %s", body.mForceAccumulated.ToString().c_str());
-	//		ImGui::Text("Torque Accumulated: %s", body.mTorqueAccumulated.ToString().c_str());
-	//		ImGui::Text("Linear Velocity: %s", body.mLinearVelocity.ToString().c_str());
-	//		ImGui::Text("Linear Speed: %s m/s", std::to_string(body.mLinearVelocity.Length()).c_str());
-	//		ImGui::Text("Angular Velocity: %s", body.mAngularVelocity.ToString().c_str());
-	//		ImGui::Text("Angular Speed: %s rad/s", std::to_string(body.mAngularVelocity.Length()).c_str());
-	//		ImGui::Text("Mass: %f kg.", body.GetMass());
-	//		auto& body_stat = body.GetSimulationStats();
-	//		ImGui::Text("Max Attained Linear Speed Squared: %f(m/s)^2", body_stat.maxAttainedLinearVelocitySq);
-	//		ImGui::Text("Max Angular Speed Squared: %f(rad/s)^2", body_stat.maxAttainedAngularVelocitySq);
-	//		//ImGui::Text("Meant Speed Threshold %s", (body.mMeantSpeedSleepThreshold) ? "True" : "False");
-	//		ImGui::Text("Sleep Timer: %f", body.mSleepTimer);
-	//		ImGui::TreePop();
-	//	}
-	//	if (ImGui::TreeNode("Debug GetShape Properies"))
-	//	{
-	//		auto shape = body.GetShape();
-	//		ImGui::Text("Type: %s", shape->ShapeTypeName());
-	//		ImGui::Text("Density: %f", shape->Density());
-	//		switch (shape->Type())
-	//		{
-	//		case EShapeType::Sphere: ImGui::Text("Radius %f", shape->HalfExtents().X());
-	//			break;
-	//		case EShapeType::Box: 
-	//		case EShapeType::Capsule:
-	//		case EShapeType::Plane:
-	//			ImGui::Text("Half Size %s", shape->HalfExtents().ToString().c_str());
-	//			break;
-	//		default:
-	//			break;
-	//		}
-    //
-	//		MassProperties mp = shape->GetMassProperties();
-	//		ImGui::Text("Mass: %f", mp.mass);
-	//		ImGui::Text("Inertia Tensor: %s", mp.inertialTensorDiagonal.ToString().c_str());
-	//		ImGui::Text("Inv Inertia Tensor: %s", (Vec3::LoadFloat3Raw(mp.inertialTensorDiagonal)).Reciprocal().ToString().c_str());
-
-	//		ImGui::TreePop();
-	//	}
-	//};
-
 
 	//funcion map 
 	using Draw_Body_Detail_Func = void(EditorImGui::*)(vx::Body&, vx::BodyDebug&);
 	static const Draw_Body_Detail_Func draw_body_table[3] =
 	{
-		&EditorImGui::DrawBodyOverlayDetails<EMotionType::Static>,
+		&EditorImGui::DrawBodyOverlayDetailsImpl<EMotionType::Static>,
 		nullptr, //kinematic
-		&EditorImGui::DrawBodyOverlayDetails<EMotionType::Dynamic>
+		&EditorImGui::DrawBodyOverlayDetailsImpl<EMotionType::Dynamic>
 	};
 
 	uint32 count = static_cast<uint32>(bodies.size());
@@ -437,7 +340,7 @@ void EditorImGui::DrawBodiesOverlayItems(vx::BodyManager& body_manager, vx::Phys
 	{
 		auto& p = bodies[i];
 
-		vx::BodyID id = p.GetID();
+		vx::BodyID id = p.ID();
 		if (!id.IsValid())
 			continue;
 
@@ -453,15 +356,15 @@ void EditorImGui::DrawBodiesOverlayItems(vx::BodyManager& body_manager, vx::Phys
 
 void EditorImGui::DrawDistanceConstraintOverlayUniqueProps(vx::DistanceConstraint& constraint)
 {
-	Vec3 _p = constraint.GetLocalAnchorA();
+	Vec3 _p = constraint.LocalAnchorA();
 	if (ImGui::DragFloat3("Local Anchor A", &_p[0], 0.01f))
 		constraint.SetLocalAnchorA(_p);
-	_p = constraint.GetLocalAnchorB();
+	_p = constraint.LocalAnchorB();
 	ImGui::DragFloat3("Local Anchor B", &_p[0], 0.01f);
 	constraint.SetLocalAnchorB(_p);
 
-	float min_dist = constraint.GetMinDistance();
-	float max_dist = constraint.GetMaxDistance();
+	float min_dist = constraint.MinDistance();
+	float max_dist = constraint.MaxDistance();
 	bool updated_dist = ImGui::DragFloat("Min Distance", &min_dist, 0.1f);
 	updated_dist |= ImGui::DragFloat("Max Distance", &max_dist, 0.1f);
 	if (updated_dist)
@@ -471,11 +374,11 @@ void EditorImGui::DrawDistanceConstraintOverlayUniqueProps(vx::DistanceConstrain
 
 	if(ImGui::TreeNode("Spring Setting"))
 	{
-		float v = constraint.GetSpringFrequency();
+		float v = constraint.SpringFrequency();
 		if (ImGui::SliderAngle("mFrequency [Hz:Rad/sec]", &v, 0.0f))
 			constraint.SetSpringFrequency(v);
 
-		v = constraint.GetSpringDampingRatio();
+		v = constraint.SpringDampingRatio();
 		if (ImGui::DragFloat("Damping Ratio", &v, 0.01f))
 			constraint.SetSpringDampingRatio(v);
 
@@ -485,10 +388,10 @@ void EditorImGui::DrawDistanceConstraintOverlayUniqueProps(vx::DistanceConstrain
 
 void EditorImGui::DrawPointConstraintOverlayUniqueProps(vx::PointConstraint& constraint)
 {
-	Vec3 _p = constraint.GetLocalAnchorA();
+	Vec3 _p = constraint.LocalAnchorA();
 	if (ImGui::DragFloat3("Local Anchor A", &_p[0], 0.01f))
 		constraint.SetLocalAnchorA(_p);
-	_p = constraint.GetLocalAnchorB();
+	_p = constraint.LocalAnchorB();
 	ImGui::DragFloat3("Local Anchor B", &_p[0], 0.01f);
 	constraint.SetLocalAnchorB(_p);
 
@@ -531,6 +434,18 @@ void EditorImGui::DrawConstraintsOverlayItems(vx::BodyManager& body_manager, std
 			break;
 		}
 		ImGui::PopID();
+	}
+}
+
+void EditorImGui::HelpInformation(const char* desc)
+{
+	ImGui::TextDisabled("(?)");
+	if (ImGui::BeginItemTooltip())
+	{
+		ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+		ImGui::TextUnformatted(desc);
+		ImGui::PopTextWrapPos();
+		ImGui::EndTooltip();
 	}
 }
 

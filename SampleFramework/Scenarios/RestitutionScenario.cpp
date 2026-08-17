@@ -32,7 +32,7 @@ void RestitutionScenario::Init(vx::PhysicsWorld* i_world)
 
 
 	//hack for now 
-	auto& phys_solver_settings = mPhysicsWorld->GetSettings().solver;
+	auto& phys_solver_settings = mPhysicsWorld->Settings()->solver;
 	//mCacheData.restitutionCombine = phys_solver_settings.restitutionCombineMode;
 	//mCacheData.velocityIterations = phys_solver_settings.velocityIterations;
 

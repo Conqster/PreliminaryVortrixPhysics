@@ -54,7 +54,7 @@ namespace vx
 #define VX_ASSERT_RET_IMPL(expr, msg, lvl, ...) \
 	do { if(!(expr)) { \
 			constexpr int actual_lvl = VX_ASSERT_VAL(lvl); \
-			if (VxAssertionFailedFunc) VxAssertionFailedFunc(#expr, msg, actual_lvl, __FILE__, __LINE__, __FUNCTION__); \
+			if (vx::VxAssertionFailedFunc) vx::VxAssertionFailedFunc(#expr, msg, actual_lvl, __FILE__, __LINE__, __FUNCTION__); \
 			else \
 			std::cerr << "[ASSERTION FAILED] (no output function hander): " << \
 			#expr << ".\n"; \

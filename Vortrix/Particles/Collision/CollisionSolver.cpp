@@ -23,8 +23,8 @@ namespace vx
 			auto& bodyA = contact_info.a;
 			auto& bodyB = contact_info.b;
 
-			const float invA = bodyA->GetInverseMass();
-			const float invB = ((bodyB) ? bodyB->GetInverseMass() : 0.0);
+			const float invA = bodyA->InverseMass();
+			const float invB = ((bodyB) ? bodyB->InverseMass() : 0.0);
 
 
 			const float total_inv_mass = invA + invB;

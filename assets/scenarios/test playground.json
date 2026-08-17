@@ -1,0 +1,1483 @@
+{
+    "Bodies": [
+        {
+            "angularDamping": 0.20000000298023224,
+            "friction": 0.4000000059604645,
+            "inBroadphase": true,
+            "linearDamping": 0.10000000149011612,
+            "maxAngularVelocity": 35.0,
+            "maxLinearVelocity": 100.0,
+            "motionType": 2,
+            "orientation": [
+                -0.006067887879908085,
+                0.026140809059143066,
+                -0.007178744301199913,
+                0.9996141791343689
+            ],
+            "position": [
+                -1.9277523756027222,
+                0.7295548319816589,
+                -0.2263716161251068
+            ],
+            "restitution": 0.20000000298023224,
+            "serialisedShapeIndex": 0
+        },
+        {
+            "angularDamping": 0.20000000298023224,
+            "friction": 0.4000000059604645,
+            "inBroadphase": true,
+            "linearDamping": 0.10000000149011612,
+            "maxAngularVelocity": 35.0,
+            "maxLinearVelocity": 100.0,
+            "motionType": 2,
+            "orientation": [
+                -0.003705003997310996,
+                0.004655724857002497,
+                -0.7074756622314453,
+                0.7067127227783203
+            ],
+            "position": [
+                2.7482500076293945,
+                0.1470174491405487,
+                -0.0045488267205655575
+            ],
+            "restitution": 0.20000000298023224,
+            "serialisedShapeIndex": 1
+        },
+        {
+            "angularDamping": 0.20000000298023224,
+            "friction": 0.4000000059604645,
+            "inBroadphase": true,
+            "linearDamping": 0.10000000149011612,
+            "maxAngularVelocity": 35.0,
+            "maxLinearVelocity": 100.0,
+            "motionType": 2,
+            "orientation": [
+                -0.0038694331888109446,
+                0.021746987476944923,
+                -0.3053027391433716,
+                0.9519991874694824
+            ],
+            "position": [
+                -3.1199631690979004,
+                0.6923633813858032,
+                -0.03750251233577728
+            ],
+            "restitution": 0.20000000298023224,
+            "serialisedShapeIndex": 2
+        },
+        {
+            "angularDamping": 0.20000000298023224,
+            "friction": 0.4000000059604645,
+            "inBroadphase": true,
+            "linearDamping": 0.10000000149011612,
+            "maxAngularVelocity": 35.0,
+            "maxLinearVelocity": 100.0,
+            "motionType": 2,
+            "orientation": [
+                0.027240509167313576,
+                -0.00039750157156959176,
+                0.9996137619018555,
+                0.005487292539328337
+            ],
+            "position": [
+                -1.5738815069198608,
+                1.4675829410552979,
+                -0.10048062354326248
+            ],
+            "restitution": 0.20000000298023224,
+            "serialisedShapeIndex": 3
+        },
+        {
+            "angularDamping": 0.20000000298023224,
+            "friction": 0.4000000059604645,
+            "inBroadphase": true,
+            "linearDamping": 0.10000000149011612,
+            "maxAngularVelocity": 35.0,
+            "maxLinearVelocity": 100.0,
+            "motionType": 2,
+            "orientation": [
+                -0.04894360899925232,
+                0.2465376853942871,
+                -0.7098942995071411,
+                0.6579315066337585
+            ],
+            "position": [
+                8.486763000488281,
+                0.615232527256012,
+                1.8606300354003906
+            ],
+            "restitution": 0.20000000298023224,
+            "serialisedShapeIndex": 4
+        },
+        {
+            "angularDamping": 0.20000000298023224,
+            "friction": 0.4000000059604645,
+            "inBroadphase": true,
+            "linearDamping": 0.10000000149011612,
+            "maxAngularVelocity": 35.0,
+            "maxLinearVelocity": 100.0,
+            "motionType": 2,
+            "orientation": [
+                0.3382016718387604,
+                -0.6226007342338562,
+                0.617760181427002,
+                0.341116338968277
+            ],
+            "position": [
+                -1.5738427639007568,
+                0.14289343357086182,
+                1.5771633386611938
+            ],
+            "restitution": 0.20000000298023224,
+            "serialisedShapeIndex": 5
+        },
+        {
+            "angularDamping": 1.0,
+            "friction": 0.4000000059604645,
+            "inBroadphase": true,
+            "linearDamping": 1.0,
+            "maxAngularVelocity": -107374176.0,
+            "maxLinearVelocity": -107374176.0,
+            "motionType": 0,
+            "orientation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "position": [
+                3.0,
+                5.5,
+                0.0
+            ],
+            "restitution": 0.20000000298023224,
+            "serialisedShapeIndex": 6
+        },
+        {
+            "angularDamping": 1.0,
+            "friction": 0.4000000059604645,
+            "inBroadphase": true,
+            "linearDamping": 1.0,
+            "maxAngularVelocity": -107374176.0,
+            "maxLinearVelocity": -107374176.0,
+            "motionType": 0,
+            "orientation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "position": [
+                3.0,
+                5.5,
+                0.0
+            ],
+            "restitution": 0.20000000298023224,
+            "serialisedShapeIndex": 7
+        },
+        {
+            "angularDamping": 1.0,
+            "friction": 0.4000000059604645,
+            "inBroadphase": true,
+            "linearDamping": 1.0,
+            "maxAngularVelocity": -107374176.0,
+            "maxLinearVelocity": -107374176.0,
+            "motionType": 0,
+            "orientation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "position": [
+                6.0,
+                5.5,
+                0.10000000149011612
+            ],
+            "restitution": 0.20000000298023224,
+            "serialisedShapeIndex": 8
+        },
+        {
+            "angularDamping": 1.0,
+            "friction": 0.4000000059604645,
+            "inBroadphase": true,
+            "linearDamping": 1.0,
+            "maxAngularVelocity": -107374176.0,
+            "maxLinearVelocity": -107374176.0,
+            "motionType": 0,
+            "orientation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "position": [
+                4.5,
+                8.350000381469727,
+                0.0
+            ],
+            "restitution": 0.20000000298023224,
+            "serialisedShapeIndex": 9
+        },
+        {
+            "angularDamping": 1.0,
+            "friction": 0.4000000059604645,
+            "inBroadphase": true,
+            "linearDamping": 1.0,
+            "maxAngularVelocity": -107374176.0,
+            "maxLinearVelocity": -107374176.0,
+            "motionType": 0,
+            "orientation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "position": [
+                4.5,
+                3.299999952316284,
+                -0.10000000149011612
+            ],
+            "restitution": 0.20000000298023224,
+            "serialisedShapeIndex": 10
+        },
+        {
+            "angularDamping": 1.0,
+            "friction": 0.4000000059604645,
+            "inBroadphase": true,
+            "linearDamping": 1.0,
+            "maxAngularVelocity": -107374176.0,
+            "maxLinearVelocity": -107374176.0,
+            "motionType": 0,
+            "orientation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "restitution": 0.20000000298023224,
+            "serialisedShapeIndex": 11
+        },
+        {
+            "angularDamping": 1.0,
+            "friction": 0.4000000059604645,
+            "inBroadphase": true,
+            "linearDamping": 1.0,
+            "maxAngularVelocity": -107374176.0,
+            "maxLinearVelocity": -107374176.0,
+            "motionType": 0,
+            "orientation": [
+                -0.7071067690849304,
+                -0.0,
+                -0.0,
+                0.7071067690849304
+            ],
+            "position": [
+                0.0,
+                0.0,
+                100.0
+            ],
+            "restitution": 0.20000000298023224,
+            "serialisedShapeIndex": 12
+        },
+        {
+            "angularDamping": 1.0,
+            "friction": 0.4000000059604645,
+            "inBroadphase": true,
+            "linearDamping": 1.0,
+            "maxAngularVelocity": -107374176.0,
+            "maxLinearVelocity": -107374176.0,
+            "motionType": 0,
+            "orientation": [
+                0.7071067690849304,
+                0.0,
+                0.0,
+                0.7071067690849304
+            ],
+            "position": [
+                0.0,
+                0.0,
+                -100.0
+            ],
+            "restitution": 0.20000000298023224,
+            "serialisedShapeIndex": 13
+        },
+        {
+            "angularDamping": 1.0,
+            "friction": 0.4000000059604645,
+            "inBroadphase": true,
+            "linearDamping": 1.0,
+            "maxAngularVelocity": -107374176.0,
+            "maxLinearVelocity": -107374176.0,
+            "motionType": 0,
+            "orientation": [
+                0.0,
+                0.0,
+                0.7071067690849304,
+                0.7071067690849304
+            ],
+            "position": [
+                100.0,
+                0.0,
+                0.0
+            ],
+            "restitution": 0.20000000298023224,
+            "serialisedShapeIndex": 14
+        },
+        {
+            "angularDamping": 1.0,
+            "friction": 0.4000000059604645,
+            "inBroadphase": true,
+            "linearDamping": 1.0,
+            "maxAngularVelocity": -107374176.0,
+            "maxLinearVelocity": -107374176.0,
+            "motionType": 0,
+            "orientation": [
+                -0.0,
+                -0.0,
+                -0.7071067690849304,
+                0.7071067690849304
+            ],
+            "position": [
+                -100.0,
+                0.0,
+                0.0
+            ],
+            "restitution": 0.20000000298023224,
+            "serialisedShapeIndex": 15
+        },
+        {
+            "angularDamping": 0.20000000298023224,
+            "friction": 0.4000000059604645,
+            "inBroadphase": true,
+            "linearDamping": 0.10000000149011612,
+            "maxAngularVelocity": 35.0,
+            "maxLinearVelocity": 100.0,
+            "motionType": 2,
+            "orientation": [
+                0.3848547041416168,
+                0.6634496450424194,
+                0.5943625569343567,
+                -0.2417737990617752
+            ],
+            "position": [
+                0.05597230792045593,
+                0.4977986812591553,
+                -1.423262119293213
+            ],
+            "restitution": 0.20000000298023224,
+            "serialisedShapeIndex": 16
+        },
+        {
+            "angularDamping": 0.20000000298023224,
+            "friction": 0.4000000059604645,
+            "inBroadphase": true,
+            "linearDamping": 0.10000000149011612,
+            "maxAngularVelocity": 35.0,
+            "maxLinearVelocity": 100.0,
+            "motionType": 2,
+            "orientation": [
+                0.38491907715797424,
+                0.30746960639953613,
+                -0.28323429822921753,
+                -0.8228476047515869
+            ],
+            "position": [
+                8.960525512695313,
+                0.7583708167076111,
+                3.3269550800323486
+            ],
+            "restitution": 0.20000000298023224,
+            "serialisedShapeIndex": 17
+        },
+        {
+            "angularDamping": 0.20000000298023224,
+            "friction": 0.4000000059604645,
+            "inBroadphase": true,
+            "linearDamping": 0.10000000149011612,
+            "maxAngularVelocity": 35.0,
+            "maxLinearVelocity": 100.0,
+            "motionType": 2,
+            "orientation": [
+                0.008071876130998135,
+                0.049875225871801376,
+                -0.4704204797744751,
+                0.8809948563575745
+            ],
+            "position": [
+                -4.485711574554443,
+                0.7680758237838745,
+                0.010254480876028538
+            ],
+            "restitution": 0.20000000298023224,
+            "serialisedShapeIndex": 18
+        },
+        {
+            "angularDamping": 0.20000000298023224,
+            "friction": 0.4000000059604645,
+            "inBroadphase": true,
+            "linearDamping": 0.10000000149011612,
+            "maxAngularVelocity": 35.0,
+            "maxLinearVelocity": 100.0,
+            "motionType": 2,
+            "orientation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "position": [
+                -7.5,
+                0.9984684586524963,
+                0.0
+            ],
+            "restitution": 0.20000000298023224,
+            "serialisedShapeIndex": 19
+        },
+        {
+            "angularDamping": 0.20000000298023224,
+            "friction": 0.4000000059604645,
+            "inBroadphase": true,
+            "linearDamping": 0.10000000149011612,
+            "maxAngularVelocity": 35.0,
+            "maxLinearVelocity": 100.0,
+            "motionType": 2,
+            "orientation": [
+                -0.6964238882064819,
+                0.11922188103199005,
+                0.12631987035274506,
+                -0.696292519569397
+            ],
+            "position": [
+                0.8521798253059387,
+                0.4953076243400574,
+                -5.941547393798828
+            ],
+            "restitution": 0.20000000298023224,
+            "serialisedShapeIndex": 20
+        },
+        {
+            "angularDamping": 0.20000000298023224,
+            "friction": 0.4000000059604645,
+            "inBroadphase": true,
+            "linearDamping": 0.10000000149011612,
+            "maxAngularVelocity": 35.0,
+            "maxLinearVelocity": 100.0,
+            "motionType": 2,
+            "orientation": [
+                -0.0023666650522500277,
+                -0.004949248395860195,
+                0.0007004023063927889,
+                0.9999847412109375
+            ],
+            "position": [
+                -2.00465726852417,
+                0.24172621965408325,
+                -0.012003269046545029
+            ],
+            "restitution": 0.20000000298023224,
+            "serialisedShapeIndex": 21
+        },
+        {
+            "angularDamping": 0.20000000298023224,
+            "friction": 0.4000000059604645,
+            "inBroadphase": true,
+            "linearDamping": 0.10000000149011612,
+            "maxAngularVelocity": 35.0,
+            "maxLinearVelocity": 100.0,
+            "motionType": 2,
+            "orientation": [
+                0.11625592410564423,
+                -0.07402655482292175,
+                -0.5549817681312561,
+                0.8203657865524292
+            ],
+            "position": [
+                1.9774399995803833,
+                0.38794586062431335,
+                0.07460743933916092
+            ],
+            "restitution": 0.20000000298023224,
+            "serialisedShapeIndex": 22
+        },
+        {
+            "angularDamping": 0.20000000298023224,
+            "friction": 0.4000000059604645,
+            "inBroadphase": true,
+            "linearDamping": 0.10000000149011612,
+            "maxAngularVelocity": 35.0,
+            "maxLinearVelocity": 100.0,
+            "motionType": 2,
+            "orientation": [
+                -0.9588049054145813,
+                -0.00133262958843261,
+                0.2840164303779602,
+                -0.005115206819027662
+            ],
+            "position": [
+                0.5191501975059509,
+                0.11394409835338593,
+                0.7308281064033508
+            ],
+            "restitution": 0.20000000298023224,
+            "serialisedShapeIndex": 23
+        },
+        {
+            "angularDamping": 0.20000000298023224,
+            "friction": 0.4000000059604645,
+            "inBroadphase": true,
+            "linearDamping": 0.10000000149011612,
+            "maxAngularVelocity": 35.0,
+            "maxLinearVelocity": 100.0,
+            "motionType": 2,
+            "orientation": [
+                -0.46060630679130554,
+                0.6487356424331665,
+                0.5655429363250732,
+                0.21712927520275116
+            ],
+            "position": [
+                1.5851870775222778,
+                0.5982518196105957,
+                -0.7223218679428101
+            ],
+            "restitution": 0.20000000298023224,
+            "serialisedShapeIndex": 24
+        },
+        {
+            "angularDamping": 0.20000000298023224,
+            "friction": 0.4000000059604645,
+            "inBroadphase": true,
+            "linearDamping": 0.10000000149011612,
+            "maxAngularVelocity": 35.0,
+            "maxLinearVelocity": 100.0,
+            "motionType": 2,
+            "orientation": [
+                -0.6987103819847107,
+                -0.1119711846113205,
+                0.1146247461438179,
+                -0.6972284317016602
+            ],
+            "position": [
+                1.8088220357894897,
+                0.14254671335220337,
+                1.1126171350479126
+            ],
+            "restitution": 0.20000000298023224,
+            "serialisedShapeIndex": 25
+        },
+        {
+            "angularDamping": 0.20000000298023224,
+            "friction": 0.4000000059604645,
+            "inBroadphase": true,
+            "linearDamping": 0.10000000149011612,
+            "maxAngularVelocity": 35.0,
+            "maxLinearVelocity": 100.0,
+            "motionType": 2,
+            "orientation": [
+                0.027369849383831024,
+                0.02746281400322914,
+                0.7063056826591492,
+                0.7068443894386292
+            ],
+            "position": [
+                -0.35693633556365967,
+                0.9996066093444824,
+                0.0453038327395916
+            ],
+            "restitution": 0.20000000298023224,
+            "serialisedShapeIndex": 26
+        },
+        {
+            "angularDamping": 0.20000000298023224,
+            "friction": 0.4000000059604645,
+            "inBroadphase": true,
+            "linearDamping": 0.10000000149011612,
+            "maxAngularVelocity": 35.0,
+            "maxLinearVelocity": 100.0,
+            "motionType": 2,
+            "orientation": [
+                -0.0017010171432048082,
+                -0.829558253288269,
+                -0.003705697599798441,
+                0.5584052801132202
+            ],
+            "position": [
+                4.488046169281006,
+                7.170145511627197,
+                -0.01363877858966589
+            ],
+            "restitution": 0.20000000298023224,
+            "serialisedShapeIndex": 27
+        },
+        {
+            "angularDamping": 0.25,
+            "friction": 0.4000000059604645,
+            "inBroadphase": true,
+            "linearDamping": 0.10000000149011612,
+            "maxAngularVelocity": 35.0,
+            "maxLinearVelocity": 100.0,
+            "motionType": 2,
+            "orientation": [
+                0.531840443611145,
+                0.46623364090919495,
+                -0.4731411635875702,
+                0.525270938873291
+            ],
+            "position": [
+                -1.110512375831604,
+                0.49360212683677673,
+                17.12442970275879
+            ],
+            "restitution": 0.20000000298023224,
+            "serialisedShapeIndex": 28
+        },
+        {
+            "angularDamping": 0.25,
+            "friction": 0.4000000059604645,
+            "inBroadphase": true,
+            "linearDamping": 0.10000000149011612,
+            "maxAngularVelocity": 35.0,
+            "maxLinearVelocity": 100.0,
+            "motionType": 2,
+            "orientation": [
+                -0.00040487892692908645,
+                -0.7472465634346008,
+                -0.0005555861280299723,
+                0.6645466089248657
+            ],
+            "position": [
+                3.3945891857147217,
+                0.24863898754119873,
+                17.9053955078125
+            ],
+            "restitution": 0.20000000298023224,
+            "serialisedShapeIndex": 29
+        },
+        {
+            "angularDamping": 0.25,
+            "friction": 0.4000000059604645,
+            "inBroadphase": true,
+            "linearDamping": 0.10000000149011612,
+            "maxAngularVelocity": 35.0,
+            "maxLinearVelocity": 100.0,
+            "motionType": 2,
+            "orientation": [
+                0.7025296092033386,
+                -6.645221583312377e-05,
+                0.711654543876648,
+                2.7394358767196536e-05
+            ],
+            "position": [
+                7.026756286621094,
+                0.24936655163764954,
+                17.619197845458984
+            ],
+            "restitution": 0.20000000298023224,
+            "serialisedShapeIndex": 30
+        },
+        {
+            "angularDamping": 0.25,
+            "friction": 0.4000000059604645,
+            "inBroadphase": true,
+            "linearDamping": 0.10000000149011612,
+            "maxAngularVelocity": 35.0,
+            "maxLinearVelocity": 100.0,
+            "motionType": 2,
+            "orientation": [
+                0.00012098690058337525,
+                -0.7472456097602844,
+                3.226307308068499e-05,
+                0.6645479798316956
+            ],
+            "position": [
+                1.904836893081665,
+                0.24950669705867767,
+                17.730274200439453
+            ],
+            "restitution": 0.20000000298023224,
+            "serialisedShapeIndex": 31
+        },
+        {
+            "angularDamping": 0.25,
+            "friction": 0.4000000059604645,
+            "inBroadphase": true,
+            "linearDamping": 0.10000000149011612,
+            "maxAngularVelocity": 35.0,
+            "maxLinearVelocity": 100.0,
+            "motionType": 2,
+            "orientation": [
+                0.0002638978767208755,
+                0.6645472645759583,
+                -0.00014176432159729302,
+                0.7472462058067322
+            ],
+            "position": [
+                0.4150811731815338,
+                0.24977096915245056,
+                17.555164337158203
+            ],
+            "restitution": 0.20000000298023224,
+            "serialisedShapeIndex": 32
+        },
+        {
+            "angularDamping": 0.25,
+            "friction": 0.4000000059604645,
+            "inBroadphase": true,
+            "linearDamping": 0.10000000149011612,
+            "maxAngularVelocity": 35.0,
+            "maxLinearVelocity": 100.0,
+            "motionType": 2,
+            "orientation": [
+                -0.003436827566474676,
+                -0.7443830966949463,
+                -0.0038509496953338385,
+                0.6677329540252686
+            ],
+            "position": [
+                4.961810111999512,
+                0.23567061126232147,
+                17.912883758544922
+            ],
+            "restitution": 0.20000000298023224,
+            "serialisedShapeIndex": 33
+        }
+    ],
+    "Camera": {
+        "forward": [
+            0.21219253540039063,
+            -0.5292617678642273,
+            -0.821496307849884
+        ],
+        "position": [
+            3.635505199432373,
+            5.89625358581543,
+            27.774154663085938
+        ],
+        "up": [
+            0.1275920271873474,
+            0.8484482765197754,
+            -0.513668954372406
+        ]
+    },
+    "Distance Constraint": [
+        {
+            "dampingRatio": 0.0,
+            "frequency": 0.0,
+            "localAnchorA": [
+                0.0,
+                0.18000000715255737,
+                0.0
+            ],
+            "localAnchorB": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "maxDist": 1.0,
+            "minDist": 1.0,
+            "serialisedBodyA": 27,
+            "serialisedBodyB": 9
+        },
+        {
+            "dampingRatio": 0.0,
+            "frequency": 0.0,
+            "localAnchorA": [
+                2.200000047683716,
+                0.0,
+                0.75
+            ],
+            "localAnchorB": [
+                2.200000047683716,
+                0.0,
+                -0.75
+            ],
+            "maxDist": 1.0,
+            "minDist": 1.0,
+            "serialisedBodyA": 28,
+            "serialisedBodyB": 32
+        },
+        {
+            "dampingRatio": 0.0,
+            "frequency": 0.0,
+            "localAnchorA": [
+                -2.200000047683716,
+                0.0,
+                0.75
+            ],
+            "localAnchorB": [
+                -2.200000047683716,
+                0.0,
+                -0.75
+            ],
+            "maxDist": 1.0,
+            "minDist": 1.0,
+            "serialisedBodyA": 28,
+            "serialisedBodyB": 32
+        }
+    ],
+    "Info": "information",
+    "Name": "test playground",
+    "Point Constraint": [
+        {
+            "enableVelocityBias": true,
+            "errorTreshold": 9.999999974752427e-07,
+            "localAnchorA": [
+                -1.0,
+                0.0,
+                0.0
+            ],
+            "localAnchorB": [
+                0.0,
+                1.5,
+                0.0
+            ],
+            "serialisedBodyA": 4,
+            "serialisedBodyB": 17
+        },
+        {
+            "enableVelocityBias": true,
+            "errorTreshold": 9.999999974752427e-07,
+            "localAnchorA": [
+                2.200000047683716,
+                0.0,
+                0.75
+            ],
+            "localAnchorB": [
+                -2.200000047683716,
+                0.0,
+                0.75
+            ],
+            "serialisedBodyA": 31,
+            "serialisedBodyB": 32
+        },
+        {
+            "enableVelocityBias": true,
+            "errorTreshold": 9.999999974752427e-07,
+            "localAnchorA": [
+                -2.200000047683716,
+                0.0,
+                0.75
+            ],
+            "localAnchorB": [
+                2.200000047683716,
+                0.0,
+                0.75
+            ],
+            "serialisedBodyA": 31,
+            "serialisedBodyB": 32
+        },
+        {
+            "enableVelocityBias": true,
+            "errorTreshold": 9.999999974752427e-07,
+            "localAnchorA": [
+                2.200000047683716,
+                0.0,
+                -0.75
+            ],
+            "localAnchorB": [
+                2.200000047683716,
+                0.0,
+                0.75
+            ],
+            "serialisedBodyA": 31,
+            "serialisedBodyB": 29
+        },
+        {
+            "enableVelocityBias": true,
+            "errorTreshold": 9.999999974752427e-07,
+            "localAnchorA": [
+                -2.200000047683716,
+                0.0,
+                -0.75
+            ],
+            "localAnchorB": [
+                -2.200000047683716,
+                0.0,
+                0.75
+            ],
+            "serialisedBodyA": 31,
+            "serialisedBodyB": 29
+        },
+        {
+            "enableVelocityBias": true,
+            "errorTreshold": 9.999999974752427e-07,
+            "localAnchorA": [
+                2.200000047683716,
+                0.0,
+                -0.75
+            ],
+            "localAnchorB": [
+                2.200000047683716,
+                0.0,
+                0.75
+            ],
+            "serialisedBodyA": 29,
+            "serialisedBodyB": 33
+        },
+        {
+            "enableVelocityBias": true,
+            "errorTreshold": 9.999999974752427e-07,
+            "localAnchorA": [
+                -2.200000047683716,
+                0.0,
+                -0.75
+            ],
+            "localAnchorB": [
+                -2.200000047683716,
+                0.0,
+                0.75
+            ],
+            "serialisedBodyA": 29,
+            "serialisedBodyB": 33
+        },
+        {
+            "enableVelocityBias": true,
+            "errorTreshold": 9.999999974752427e-07,
+            "localAnchorA": [
+                2.200000047683716,
+                0.0,
+                -0.75
+            ],
+            "localAnchorB": [
+                2.200000047683716,
+                0.0,
+                -0.75
+            ],
+            "serialisedBodyA": 33,
+            "serialisedBodyB": 30
+        },
+        {
+            "enableVelocityBias": true,
+            "errorTreshold": 9.999999974752427e-07,
+            "localAnchorA": [
+                -2.200000047683716,
+                0.0,
+                -0.75
+            ],
+            "localAnchorB": [
+                -2.200000047683716,
+                0.0,
+                -0.75
+            ],
+            "serialisedBodyA": 33,
+            "serialisedBodyB": 30
+        }
+    ],
+    "Ragdolls": [
+        {
+            "limbsOffset": 0.15000000596046448,
+            "position": [
+                5.152601718902588,
+                0.14714467525482178,
+                1.3587251901626587
+            ],
+            "shapesType": 1,
+            "splitTorso": true
+        },
+        {
+            "limbsOffset": 0.15000000596046448,
+            "position": [
+                6.034948348999023,
+                0.270538866519928,
+                0.5947125554084778
+            ],
+            "shapesType": 1,
+            "splitTorso": true
+        },
+        {
+            "limbsOffset": 0.15000000596046448,
+            "position": [
+                4.378213882446289,
+                0.17502300441265106,
+                1.4124997854232788
+            ],
+            "shapesType": 1,
+            "splitTorso": true
+        }
+    ],
+    "Shapes": [
+        {
+            "density": 1000.0,
+            "halfExtext": [
+                0.5,
+                0.25,
+                0.5
+            ],
+            "planeNormal": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "type": 1
+        },
+        {
+            "density": 1000.0,
+            "halfExtext": [
+                0.15000000596046448,
+                0.6000000238418579,
+                0.3499999940395355
+            ],
+            "planeNormal": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "type": 1
+        },
+        {
+            "density": 1000.0,
+            "halfExtext": [
+                0.5,
+                0.5,
+                0.5
+            ],
+            "planeNormal": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "type": 1
+        },
+        {
+            "density": 1000.0,
+            "halfExtext": [
+                0.5,
+                0.5,
+                0.5
+            ],
+            "planeNormal": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "type": 1
+        },
+        {
+            "density": 1000.0,
+            "halfExtext": [
+                0.5,
+                0.5,
+                0.5
+            ],
+            "planeNormal": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "type": 1
+        },
+        {
+            "density": 1000.0,
+            "halfExtext": [
+                1.5,
+                0.15000000596046448,
+                0.15000000596046448
+            ],
+            "planeNormal": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "type": 1
+        },
+        {
+            "density": 0.0,
+            "halfExtext": [
+                0.5,
+                0.5,
+                0.5
+            ],
+            "planeNormal": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "type": 0
+        },
+        {
+            "density": 0.0,
+            "halfExtext": [
+                0.5,
+                0.5,
+                0.5
+            ],
+            "planeNormal": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "type": 0
+        },
+        {
+            "density": 0.0,
+            "halfExtext": [
+                0.5,
+                0.5,
+                0.5
+            ],
+            "planeNormal": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "type": 0
+        },
+        {
+            "density": 0.0,
+            "halfExtext": [
+                0.5,
+                0.5,
+                0.5
+            ],
+            "planeNormal": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "type": 0
+        },
+        {
+            "density": 0.0,
+            "halfExtext": [
+                0.5,
+                0.5,
+                0.5
+            ],
+            "planeNormal": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "type": 0
+        },
+        {
+            "density": 0.0,
+            "halfExtext": [
+                100.0,
+                100.0,
+                100.0
+            ],
+            "planeNormal": [
+                0.0,
+                1.0,
+                0.0
+            ],
+            "type": 3
+        },
+        {
+            "density": 0.0,
+            "halfExtext": [
+                100.0,
+                100.0,
+                100.0
+            ],
+            "planeNormal": [
+                0.0,
+                1.0,
+                0.0
+            ],
+            "type": 3
+        },
+        {
+            "density": 0.0,
+            "halfExtext": [
+                100.0,
+                100.0,
+                100.0
+            ],
+            "planeNormal": [
+                0.0,
+                1.0,
+                0.0
+            ],
+            "type": 3
+        },
+        {
+            "density": 0.0,
+            "halfExtext": [
+                100.0,
+                100.0,
+                100.0
+            ],
+            "planeNormal": [
+                0.0,
+                1.0,
+                0.0
+            ],
+            "type": 3
+        },
+        {
+            "density": 0.0,
+            "halfExtext": [
+                100.0,
+                100.0,
+                100.0
+            ],
+            "planeNormal": [
+                0.0,
+                1.0,
+                0.0
+            ],
+            "type": 3
+        },
+        {
+            "density": 1000.0,
+            "halfExtext": [
+                0.5,
+                1.0,
+                0.5
+            ],
+            "planeNormal": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "type": 2
+        },
+        {
+            "density": 1000.0,
+            "halfExtext": [
+                0.5,
+                1.0,
+                0.5
+            ],
+            "planeNormal": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "type": 2
+        },
+        {
+            "density": 1000.0,
+            "halfExtext": [
+                0.5,
+                1.0,
+                0.5
+            ],
+            "planeNormal": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "type": 2
+        },
+        {
+            "density": 1000.0,
+            "halfExtext": [
+                0.5,
+                1.0,
+                0.5
+            ],
+            "planeNormal": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "type": 2
+        },
+        {
+            "density": 1000.0,
+            "halfExtext": [
+                0.5,
+                1.0,
+                0.5
+            ],
+            "planeNormal": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "type": 2
+        },
+        {
+            "density": 1000.0,
+            "halfExtext": [
+                0.5,
+                0.25,
+                0.5
+            ],
+            "planeNormal": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "type": 1
+        },
+        {
+            "density": 1000.0,
+            "halfExtext": [
+                0.15000000596046448,
+                0.6000000238418579,
+                0.3499999940395355
+            ],
+            "planeNormal": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "type": 1
+        },
+        {
+            "density": 1000.0,
+            "halfExtext": [
+                0.25,
+                0.125,
+                0.25
+            ],
+            "planeNormal": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "type": 1
+        },
+        {
+            "density": 1000.0,
+            "halfExtext": [
+                1.0,
+                0.25,
+                0.25
+            ],
+            "planeNormal": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "type": 1
+        },
+        {
+            "density": 1000.0,
+            "halfExtext": [
+                1.5,
+                0.15000000596046448,
+                0.15000000596046448
+            ],
+            "planeNormal": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "type": 1
+        },
+        {
+            "density": 1000.0,
+            "halfExtext": [
+                1.0,
+                0.25,
+                1.0
+            ],
+            "planeNormal": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "type": 1
+        },
+        {
+            "density": 60000.0,
+            "halfExtext": [
+                0.17000000178813934,
+                0.17000000178813934,
+                0.17000000178813934
+            ],
+            "planeNormal": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "type": 1
+        },
+        {
+            "density": 1000.0,
+            "halfExtext": [
+                2.5,
+                0.25,
+                0.5
+            ],
+            "planeNormal": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "type": 1
+        },
+        {
+            "density": 1000.0,
+            "halfExtext": [
+                2.5,
+                0.25,
+                0.5
+            ],
+            "planeNormal": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "type": 1
+        },
+        {
+            "density": 1000.0,
+            "halfExtext": [
+                2.5,
+                0.25,
+                0.5
+            ],
+            "planeNormal": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "type": 1
+        },
+        {
+            "density": 1000.0,
+            "halfExtext": [
+                2.5,
+                0.25,
+                0.5
+            ],
+            "planeNormal": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "type": 1
+        },
+        {
+            "density": 1000.0,
+            "halfExtext": [
+                2.5,
+                0.25,
+                0.5
+            ],
+            "planeNormal": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "type": 1
+        },
+        {
+            "density": 1000.0,
+            "halfExtext": [
+                2.5,
+                0.25,
+                0.5
+            ],
+            "planeNormal": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "type": 1
+        }
+    ]
+}

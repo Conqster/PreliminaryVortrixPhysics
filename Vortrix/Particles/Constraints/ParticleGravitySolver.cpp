@@ -12,7 +12,7 @@ namespace vx::Particles
 			if (&p && p.HasFiniteMass())
 			{
 				//f(N->kgms^-2) = ma = mg 
-				p.AddForce(p.GetMass() * mGravity);
+				p.AddForce(p.Mass() * mGravity);
 			}
 		}
 	}

@@ -59,7 +59,7 @@ namespace vx
 				}
 			}
 
-			mLastStep = PhysicsWorld::GetCurrentSimStep();
+			mLastStep = physics_ctx.mStepIndex;
 		}
 
 		void DebugDraw(DebugGizmosRenderer* debug_renderer, const DrawSettings& settings) override

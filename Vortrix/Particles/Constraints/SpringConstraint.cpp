@@ -9,7 +9,7 @@ namespace vx::Particles
 		mParticleA(particle_a), mParticleB(particle_b), mRestLength(rest_length), mStiffness(stiffness), mDampingRatio(critical_damp_ratio)
 	{
 		//if (critical_damp_ratio < -1.0)
-		//	mDampingRatio = VxSqrt((mParticleA->GetMass() + mParticleB->GetMass()) * mStiffness);
+		//	mDampingRatio = VxSqrt((mParticleA->Mass() + mParticleB->Mass()) * mStiffness);
 
 		mDampingRatio = VxClamp01(critical_damp_ratio);
 	}
@@ -47,8 +47,8 @@ namespace vx::Particles
 
 		//effective mass along axis 
 		// massA x massB / massA + mass B
-		const float mA = bodyA.GetMass();
-		const float mB = bodyB.GetMass();
+		const float mA = bodyA.Mass();
+		const float mB = bodyB.Mass();
 		const float mass_eff = (mA * mB) / (mA + mB);
 		//critical dampling 
 		const float crit_damping = 4.0f * VxSqrt(mStiffness * mass_eff);
@@ -83,9 +83,9 @@ namespace vx::Particles
 			debug_renderer->DrawLine(mParticleA->GetPosition(), mParticleB->GetPosition(), Colour(0.3f, 0.3f, 0.3f));
 
 			//split rest length based on mass contribution 
-			float total_mass = mParticleA->GetMass() + mParticleB->GetMass();
+			float total_mass = mParticleA->Mass() + mParticleB->Mass();
 			//distribute force if total mass is not too small else split
-			float ratio = (total_mass > kEpsilon) ? (mParticleB->GetMass() / total_mass) : 0.5;
+			float ratio = (total_mass > kEpsilon) ? (mParticleB->Mass() / total_mass) : 0.5;
 
 			Vec3 dir = (mParticleB->GetPosition() - mParticleA->GetPosition()).Normalised();
 			debug_renderer->DrawLine(mParticleA->GetPosition(), (mParticleA->GetPosition() + (dir * static_cast<float>(mRestLength * ratio))), Colour(1.0f, 1.0f, 0.0f));

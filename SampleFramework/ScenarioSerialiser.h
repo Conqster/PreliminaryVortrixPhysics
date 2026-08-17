@@ -42,6 +42,20 @@ struct SerialisedBody
 };
 
 
+struct SerialisedRagdollSettings
+{
+	vx::Vec3 position = vx::Vec3(0.0f);
+	float limbsOffset = 0.15f;
+
+	bool splitTorso = true;
+	vx::EShapeType shapesType = vx::EShapeType::Box;
+
+	/// used to approximate ragdoll position to save	
+	int firstBodyOffsetInScene = -1;
+	vx::uint32 limbsCount = vx::uint32(-1);
+};
+
+
 struct SerialisedSceneDesc
 {
 	vx::StackString<32> mName;
@@ -55,7 +69,33 @@ struct SerialisedSceneCameraState
 	vx::Float3 up;
 };
 
+struct SerialisedDistanceConstraint
+{
+	vx::uint32 serialisedBodyA;
+	vx::uint32 serialisedBodyB;
+	vx::Vec3 localAnchorA;
+	vx::Vec3 localAnchorB;
+	float minDist;
+	float maxDist;
+	float frequency;
+	float dampingRatio;
+};
+
+struct SerialisedPointConstraint
+{
+	vx::uint32 serialisedBodyA;
+	vx::uint32 serialisedBodyB;
+
+	vx::Vec3 localAnchorA;
+	vx::Vec3 localAnchorB;
+
+	bool enableVelocityBias = true;
+	float errorTreshold = vx::kEpsilon;
+};
+
+
 class Camera;
+class Scenario;
 namespace vx {
 	class BodyManager;
 	class PhysicsWorld;
@@ -74,11 +114,11 @@ namespace serialiser
 
 	static vx::StackString<128> directory("scenarios/");
 	static constexpr const char* defaulfDirectory = APP_ASSERT_DIR"/scenarios/";
-	bool Serialise(const vx::BodyManager* body_manager, const Camera& app_cam, const char* name, const char* directory, const char* info);
-	bool Deserialise(vx::PhysicsWorld* io_physicsworld, std::string& scene_name, std::string& scene_info, Camera& app_cam, const char* file_path);
+	bool Serialise(const vx::BodyManager* body_manager, const Camera& app_cam, const char* name, const char* directory, const char* info, Scenario* scenario);
+	bool Deserialise(vx::PhysicsWorld* io_physicsworld, Scenario* scenario, std::string& scene_name, std::string& scene_info, Camera& app_cam, const char* file_path);
 
-	VX_INLINE bool Deserialise(vx::PhysicsWorld* io_physicsworld, std::string& scene_name, std::string& scene_info, Camera& app_cam, const char* name, const char* directory)
-	{ return Deserialise(io_physicsworld, scene_name, scene_info, app_cam, (std::string(directory) + name).c_str()); }
+	VX_INLINE bool Deserialise(vx::PhysicsWorld* io_physicsworld, Scenario* scenario, std::string& scene_name, std::string& scene_info, Camera& app_cam, const char* name, const char* directory)
+	{ return Deserialise(io_physicsworld, scenario, scene_name, scene_info, app_cam, (std::string(directory) + name).c_str()); }
 };
 
 
@@ -160,11 +200,6 @@ namespace nlohmann {
 	{
 		static void to_json(Json& j, const vx::Quat& q)
 		{
-			j = Json
-			{ 
-				{"stgr", q.X()},
-				{"stgr", q.Y()},
-			};
 			j = Json{ q.X(), q.Y(), q.Z(), q.W()};
 		}
 		static void from_json(const Json& j, vx::Quat& q)
@@ -260,5 +295,97 @@ namespace nlohmann {
 	};
 
 	
+	template<>
+	struct adl_serializer<SerialisedRagdollSettings>
+	{
+		static void to_json(Json& j, const SerialisedRagdollSettings& s)
+		{
+			j = Json
+			{
+				{"position", s.position},
+				{"limbsOffset", s.limbsOffset},
+				{"splitTorso", s.splitTorso},
+				{"shapesType", s.shapesType},
+			};
+		}
+
+		static void from_json(const Json& j, SerialisedRagdollSettings& s)
+		{
+			j.at("position").get_to(s.position);
+			j.at("limbsOffset").get_to(s.limbsOffset);
+			j.at("splitTorso").get_to(s.splitTorso);
+			j.at("shapesType").get_to(s.shapesType);
+		}
+	};
+
+
+	template<>
+	struct adl_serializer<SerialisedDistanceConstraint>
+	{
+		static void to_json(Json& j, const SerialisedDistanceConstraint& s)
+		{
+			j = Json
+			{
+				{"serialisedBodyA", s.serialisedBodyA},
+				{"serialisedBodyB", s.serialisedBodyB},
+				{"localAnchorA", s.localAnchorA},
+				{"localAnchorB", s.localAnchorB},
+				{"minDist", s.minDist},
+				{"maxDist", s.maxDist},
+				{"frequency", s.frequency},
+				{"dampingRatio", s.dampingRatio},
+			};
+		}
+
+		static void from_json(const Json& j, SerialisedDistanceConstraint& s)
+		{
+			j.at("serialisedBodyA").get_to(s.serialisedBodyA);
+			j.at("serialisedBodyB").get_to(s.serialisedBodyB);
+			j.at("localAnchorA").get_to(s.localAnchorA);
+			j.at("localAnchorB").get_to(s.localAnchorB);
+			j.at("minDist").get_to(s.minDist);
+			j.at("maxDist").get_to(s.maxDist);
+			j.at("frequency").get_to(s.frequency);
+			j.at("dampingRatio").get_to(s.dampingRatio);
+		}
+	};
+
+	template<>
+	struct adl_serializer<SerialisedPointConstraint>
+	{
+		vx::uint32 serialisedBodyA;
+		vx::uint32 serialisedBodyB;
+
+		vx::Vec3 localAnchorA;
+		vx::Vec3 localAnchorB;
+
+		bool enableVelocityBias = true;
+		float errorTreshold = vx::kEpsilon;
+
+
+		static void to_json(Json& j, const SerialisedPointConstraint& s)
+		{
+			j = Json
+			{
+				{"serialisedBodyA", s.serialisedBodyA},
+				{"serialisedBodyB", s.serialisedBodyB},
+				{"localAnchorA", s.localAnchorA},
+				{"localAnchorB", s.localAnchorB},
+				{"enableVelocityBias", s.enableVelocityBias},
+				{"errorTreshold", s.errorTreshold},
+			};
+		}
+
+		static void from_json(const Json& j, SerialisedPointConstraint& s)
+		{
+			j.at("serialisedBodyA").get_to(s.serialisedBodyA);
+			j.at("serialisedBodyB").get_to(s.serialisedBodyB);
+			j.at("localAnchorA").get_to(s.localAnchorA);
+			j.at("localAnchorB").get_to(s.localAnchorB);
+			j.at("enableVelocityBias").get_to(s.enableVelocityBias);
+			j.at("errorTreshold").get_to(s.errorTreshold);
+		}
+	};
+
 
 }

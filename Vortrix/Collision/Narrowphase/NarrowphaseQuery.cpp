@@ -45,16 +45,11 @@ namespace vx {
 		mDispatcher.Register(EShapeType::Capsule, EShapeType::Box, &CollisionDispatcher::SwappedRef<Narrowphase::BoxVsCapsule>);
 	}
 
-	void NarrowphaseQuery::Init(BodyManager* in_body_manager)
-	{
-		mBodyManager = in_body_manager;
-	}
-
-	void NarrowphaseQuery::ProcessPairAndTrySetupContactConstraint(const Body* a, const Body* b, ContactConstraintSolver& contact_solver, const CollisionContext& ctx)
+	bool NarrowphaseQuery::ProcessPairAndTrySetupContactConstraint(const Body* a, const Body* b, ContactConstraintSolver& contact_solver, const CollisionContext& ctx)
 	{
 		//VX_PROFILE_FUNCTION();
-		BodySimStats& body_a_stat = mBodyManager->GetBodySimStats(*a);
-		BodySimStats& body_b_stat = mBodyManager->GetBodySimStats(*b);
+		BodySimStats& body_a_stat = ctx.bodyManager->GetBodySimStats(*a);
+		BodySimStats& body_b_stat = ctx.bodyManager->GetBodySimStats(*b);
 
 		body_a_stat.phase |= EBodySimphaseFlags::InNarrowphase;
 		body_b_stat.phase |= EBodySimphaseFlags::InNarrowphase;
@@ -81,100 +76,27 @@ namespace vx {
 				BodySimStats* colliding_static_stat = (b->IsStatic()) ? &body_a_stat : (a->IsStatic()) ? &body_b_stat : nullptr;
 
 				(colliding_static_stat != nullptr) ? (colliding_static_stat->phase |= EBodySimphaseFlags::IsTouchingStatic) : EBodySimphaseFlags::None;
-			}
-			else
-			{
-				///// hack to for 
-				///// 
-				///// failed but narrow collision test, might need to active
-				///// this helps sleeping stack of bodies 
-				///// 
-				//
-				//if((shape_a->Type() == EShapeType::Capsule || shape_a->Type() == EShapeType::Sphere) &&
-				//	(shape_b->Type() == EShapeType::Capsule || shape_b->Type() == EShapeType::Sphere))
-				//{
 
-				//	Vec3 body0_up = a->Orientation().RotateAxisY();
-				//	Vec3 body1_up = b->Orientation().RotateAxisY();
-
-				//	if(VxAbs(body0_up.Dot(body1_up)) > 0.9f)
-				//	{
-				//		const bool b0_dyn_active = a->IsDynamic() && a->IsAwake();
-				//		const bool b1_dyn_active = b->IsDynamic() && b->IsAwake();
-
-				//		/// a body is active while the other is inactive(static nondynamic/dynamic and sleeping)
-				//		const bool b0_dyn_inactive = a->IsDynamic() && a->IsSleeping();
-				//		const bool b1_dyn_inactive = b->IsDynamic() && b->IsSleeping();
-
-				//		//one of the bodies needs to be able to simulable and active 
-				//		if (b0_dyn_active && b1_dyn_inactive)
-				//			ctx.physicsWorld->ActivateBodies(&b->GetID(), 1);
-				//		else if (b1_dyn_active && b0_dyn_inactive)
-				//			ctx.physicsWorld->ActivateBodies(&a->GetID(), 1);
-				//	}
-				//}
+				return true;
 			}
 		}
+		return false;
 	}
 
 
-	void NarrowphaseQuery::ProcessPairs(BroadphasePair* in_pairs, std::vector<ContactManifold>& out_manifolds, ContactConstraintSolver& contact_solver, const CollisionContext& ctx)
+	void NarrowphaseQuery::ProcessPairs(BroadphasePair* in_pairs, ContactConstraintSolver& contact_solver, const CollisionContext& ctx)
 	{
 		VX_PROFILE_FUNCTION();
 
-#define NEED_REMOVE 0
-#if NEED_REMOVE
-		out_manifolds.clear();
-		out_manifolds.reserve(pairs.size());
-#endif // NEED_REMOVE
-
 		mStats.numPairReceived = ctx.broadphasePairCount;
 
-		for (BroadphasePair* bp = in_pairs, *bp_end = in_pairs+ctx.broadphasePairCount; 
+		uint32 pair_count = 0;
+		for (BroadphasePair* bp = in_pairs, *bp_end = in_pairs + ctx.broadphasePairCount;
 			bp < bp_end; ++bp)
-		{
-			ProcessPairAndTrySetupContactConstraint((*bp).a, (*bp).b, contact_solver, ctx);
+			if (ProcessPairAndTrySetupContactConstraint((*bp).a, (*bp).b, contact_solver, ctx))
+				pair_count++;
 
-//			Body* a = (*bp).a;
-//			Body* b = (*bp).b;
-//
-//			BodySimStats& body_a_stat = mBodyManager->GetBodySimStats(*a); 
-//			BodySimStats& body_b_stat = mBodyManager->GetBodySimStats(*b); 
-//
-//			body_a_stat.phase |= EBodySimphaseFlags::InNarrowphase;
-//			body_b_stat.phase |= EBodySimphaseFlags::InNarrowphase;
-//
-//			if (a != nullptr && b != nullptr)
-//			{
-//				//GetShape* shape_a = a->GetShape();
-//
-//				const auto& shape_a = a->GetShape();
-//				const auto& shape_b = b->GetShape();
-//				const auto& collision_fn = mDispatcher.Get(shape_a->Type(), shape_b->Type());
-//
-//				ContactManifold manifold{ (*bp).a, (*bp).b };
-//				if (collision_fn(shape_a, a->Position(), a->Orientation(),
-//					shape_b, b->Position(), b->Orientation(),
-//					manifold))
-//				{
-//					//use opptunity to add to contact constaint
-//					contact_solver.SetupContactConstraint(manifold, ctx);
-//
-//					//later move in collision fn when check if static
-//					body_a_stat.phase|= EBodySimphaseFlags::IsColliding;
-//					body_b_stat.phase|= EBodySimphaseFlags::IsColliding;
-//
-//					BodySimStats* colliding_static_stat = (b->IsStatic()) ? &body_a_stat : (a->IsStatic()) ? &body_b_stat : nullptr;
-//
-//					(colliding_static_stat != nullptr) ? (colliding_static_stat->phase |= EBodySimphaseFlags::IsTouchingStatic) : EBodySimphaseFlags::None;
-//#if NEED_REMOVE
-//					out_manifolds.push_back(manifold);
-//#endif // NEED_REMOVE
-//				}
-//			}
-		}
-
-		mStats.numContactPair = out_manifolds.size();
+		mStats.numContactPair = pair_count;
 		mStats.maxAttainedContactPair = VxMax(mStats.maxAttainedContactPair, mStats.numContactPair);
 
 

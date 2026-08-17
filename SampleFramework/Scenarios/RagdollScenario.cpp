@@ -22,14 +22,31 @@ void RagdollScenario::Init(vx::PhysicsWorld* i_world)
 	vx::RagdollBuilder ragdoll_builder(mPhysicsWorld);
 
 	mRagdolls.clear();
+	mRagdolls.resize(6);
 
-	mRagdolls.push_back(ragdoll_builder.Build({ vx::Vec3(-5.0f, 2.0f, 0.0f), 0.1f }));
-	mRagdolls.push_back(ragdoll_builder.Build({ vx::Vec3(5.0f, 2.0f, 0.0f), 0.1f, false, vx::EShapeType::Capsule }));
-	mRagdolls.push_back(ragdoll_builder.Build({ vx::Vec3(0.0f, 2.0f, 0.0f), 0.1f }));
+	vx::RagdollSettings rag_settings;
+	rag_settings.position = vx::Vec3(-5.0f, 2.0f, 0.0f);
+	rag_settings.limbsOffset = 0.1f;
+	CreateRagdoll(rag_settings, &mRagdolls[0]);
 
-	mRagdolls.push_back(ragdoll_builder.Build({ vx::Vec3(-5.0f, 2.0f, -4.0f) }));
-	mRagdolls.push_back(ragdoll_builder.Build({ vx::Vec3(5.0f, 2.0f, -4.0f) }));
-	mRagdolls.push_back(ragdoll_builder.Build({ vx::Vec3(0.0f, 2.0f, -4.0f) }));
+	rag_settings.position = vx::Vec3(0.0f, 2.0f, 0.0f);
+	CreateRagdoll(rag_settings, &mRagdolls[1]);
+
+	rag_settings.position = vx::Vec3(5.0f, 2.0f, 0.0f);
+	rag_settings.splitTorso = false;
+	rag_settings.mShapesType = vx::EShapeType::Capsule;
+	CreateRagdoll(rag_settings, &mRagdolls[2]);
+
+	rag_settings = vx::RagdollSettings();
+	rag_settings.position = vx::Vec3(-5.0f, 2.0f, -4.0f);
+	CreateRagdoll(rag_settings, &mRagdolls[3]);
+
+	rag_settings.position = vx::Vec3(5.0f, 2.0f, -4.0f);
+	CreateRagdoll(rag_settings, &mRagdolls[4]);
+
+	rag_settings.position = vx::Vec3(0.0f, 2.0f, -4.0f);
+	CreateRagdoll(rag_settings, &mRagdolls[5]);
+
 
 	CreateGroundPlane(100.0f);
 }

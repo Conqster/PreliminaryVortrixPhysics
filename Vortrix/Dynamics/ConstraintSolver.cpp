@@ -56,7 +56,7 @@ namespace vx {
 		{
 			solver_body.v = body.GetLinearVelocity();
 			solver_body.w = body.GetAngularVelocity();
-			solver_body.invMass = body.GetInverseMass();
+			solver_body.invMass = body.InverseMass();
 		}
 
 		uint32 new_idx = uint32(mBodies.size());
@@ -73,7 +73,7 @@ namespace vx {
 		//VX_PROFILE_FUNCTION();
 		/// retriving need to be thread protected 
 		/// after is fine 
-		SolverBodyIndex& solver_idx = mBodyToSolverBody[body.GetID().Idx()];
+		SolverBodyIndex& solver_idx = mBodyToSolverBody[body.ID().Idx()];
 
 		//if (solver_idx.Value() >= 0)
 		if (solver_idx.IsValid())
@@ -90,7 +90,7 @@ namespace vx {
 
 
 		SolverBody solver_body;
-		solver_body.bodyID = body.GetID();
+		solver_body.bodyID = body.ID();
 
 		if (body.IsStatic())
 		{
@@ -102,7 +102,7 @@ namespace vx {
 		{
 			solver_body.v = body.GetLinearVelocity();
 			solver_body.w = body.GetAngularVelocity();
-			solver_body.invMass = body.GetInverseMass();
+			solver_body.invMass = body.InverseMass();
 		}
 
 		uint32 new_idx = uint32(mBodies.size());
@@ -174,6 +174,7 @@ namespace vx {
 
 	void ConstraintSolver::SolverVelocityLinear1DRow(Linear1DRow& row, SolverBody* bodies)
 	{
+
 		SolverBody& sbA = bodies[row.bodyAidx.Value()];
 		SolverBody& sbB = bodies[row.bodyBidx.Value()];
 
@@ -227,6 +228,8 @@ namespace vx {
 		VX_PROFILE_FUNCTION();
 		for (const uint32* idx = rows_indices, *idx_end = rows_indices + count; idx < idx_end; ++idx)
 		{
+			VX_ASSERT((*idx) < mLinear1DRowsCounts);
+
 			Linear1DRow& row = mLinear1DRows[(*idx)];
 			SolverVelocityLinear1DRow(row, mBodies.data());
 		}

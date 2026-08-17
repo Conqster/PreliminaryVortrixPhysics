@@ -137,12 +137,16 @@ namespace vx
 		//Motion dynamics
 
 
-		/// External impluses/forces
-		void ApplyImpulse(const Vec3& impluse);
-		void ApplyImpulse(const Vec3& impluse, const Vec3& pointA);
-		void ApplyImpulseLocal(const Vec3& impluse, const Vec3& pointA);
-		void ApplyAngularImpulse(const Vec3& impluse, const Vec3& pointA);
+		/// External impulse/forces
+		/// Apply instiatiatious velocity 
+		void ApplyImpulse(const Vec3& impulse);
+		void ApplyImpulse(const Vec3& impulse, const Vec3& pointA);
+		void ApplyImpulseLocal(const Vec3& impulse, const Vec3& pointA);
+		void ApplyAngularImpulse(const Vec3& impulse, const Vec3& pointA);
+
 		void ApplyPositionCorrection(const Vec3& nudge, const Vec3& r);
+
+		/// Accumulate forces
 		/// Add force, apply's force to the body
 		/// as behave like a point masss
 		/// force is applied to the center of mass
@@ -228,14 +232,15 @@ namespace vx
 
 		///to participate in simulation id needs to be valid
 		bool IsIDValid() const { return mID.IsValid(); }
-		float GetInverseMass() const { return mInverseMass; }
+		float InverseMass() const { return mInverseMass; }
+		constexpr float Mass() const { return (mInverseMass == 0.0) ? 0.0 : (1.0 / mInverseMass); }
 
 		bool IsDynamic() const { return mMotionType == EMotionType::Dynamic; }
 		bool IsStatic() const { return mMotionType == EMotionType::Static; }
 
 		EMotionType MotionType() const { return mMotionType; }
 
-		Float3 GetAccumulatedForce() const { return mForceAccumulated; }
+		Float3 AccumulatedForce() const { return mForceAccumulated; }
 
 		
 
@@ -319,7 +324,7 @@ namespace vx
 
 
 
-		BodyID GetID() const { return mID; }
+		BodyID ID() const { return mID; }
 		TransformState GetTransformedState() const { return mMotionState; }
 		EDynamicsDofs GetAllowedDynamicsDof() const { return mAllowedDynamicsDof; }
 		void SetAllowedDynamicsDof(EDynamicsDofs dof) { mAllowedDynamicsDof = dof; }
@@ -465,7 +470,7 @@ namespace vx
 		/// 
 
 
-		constexpr float GetMass() const { return (mInverseMass == 0.0) ?  0.0 : (1.0 / mInverseMass); }
+		
 		friend class BodyManager;
 		friend EditorImGui;
 	};

@@ -33,11 +33,11 @@ void JengaScenario::Init(vx::PhysicsWorld* i_world)
 	//float block_height = 0.3f;
 	//float block_width = 0.7f;
 	vx::BodySettings jenga_body_settings = body_setting; //cpy
-	CreateJenga(jenga_body_settings, vx::Vec3(0.5f, 0.3f, 1.5f), 3, vx::Vec3(0.0f, 0.5f, -5.0f));
-	CreateJenga(jenga_body_settings, vx::Vec3(0.5f, 0.3f, 1.5f), 5, vx::Vec3(0.0f, 1.5f, 0.0f));
-	CreateJenga(jenga_body_settings, vx::Vec3(0.5f, 0.3f, 1.5f), 8, vx::Vec3(0.0f, 0.5f, 5.0f));
-	CreateJenga(jenga_body_settings, vx::Vec3(0.5f, 0.3f, 1.5f), 12, vx::Vec3(0.0f, 0.5f, 10.0f));
-	CreateJenga(jenga_body_settings, vx::Vec3(0.5f, 0.3f, 1.5f), 16, vx::Vec3(-7.0f, 0.5f, 5.0f));
+	CreateJengaImp(jenga_body_settings, vx::Vec3(0.5f, 0.3f, 1.5f), 3, vx::Vec3(0.0f, 0.5f, -5.0f));
+	CreateJengaImp(jenga_body_settings, vx::Vec3(0.5f, 0.3f, 1.5f), 5, vx::Vec3(0.0f, 1.5f, 0.0f));
+	CreateJengaImp(jenga_body_settings, vx::Vec3(0.5f, 0.3f, 1.5f), 8, vx::Vec3(0.0f, 0.5f, 5.0f));
+	CreateJengaImp(jenga_body_settings, vx::Vec3(0.5f, 0.3f, 1.5f), 12, vx::Vec3(0.0f, 0.5f, 10.0f));
+	CreateJengaImp(jenga_body_settings, vx::Vec3(0.5f, 0.3f, 1.5f), 16, vx::Vec3(-7.0f, 0.5f, 5.0f));
 
 	CreateGroundPlane(100.0f);
 }

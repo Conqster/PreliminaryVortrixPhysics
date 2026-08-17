@@ -12,7 +12,7 @@
 
 #define VX_DEBUG_DRAW 1
 
-#define VX_PROFILING 1
+#define VX_PROFILING 0
 #if VX_PROFILING
 	#if defined(TRACY_ENABLE)
 		#define VX_USE_TRACY 1
@@ -31,6 +31,11 @@
 #endif // TEST_CONTACT_CONSTRAINT_MT
 
 #define VX_STRINGIFY(x) #x
+
+
+
+//#define VX_DEBUG_ALLOCATOR
+#define VX_DEBUG_ISLAND_SPLITTER 0
 
 ///Detect machine compiler 
 //#if defined(_MSC_VER)

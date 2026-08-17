@@ -68,7 +68,7 @@ void JointScenario::Init(vx::PhysicsWorld* i_world)
 	//hard bar 
 	RopeSetting(rope_constraint_settings);
 
-	vx::DistanceConstraint joint = vx::DistanceConstraint(&mPhysicsWorld->GetBodies()[0], &mPhysicsWorld->GetBodies()[1], rope_constraint_settings);
+	vx::DistanceConstraint joint = vx::DistanceConstraint(&mPhysicsWorld->Bodies()[0], &mPhysicsWorld->Bodies()[1], rope_constraint_settings);
 	joint.SetLocalAnchorA(vx::Vec3(0.0f, 0.5f, 0.0f));
 	joint.SetLocalAnchorB(vx::Vec3(0.0f, 0.5f, 0.0f));
 
@@ -86,8 +86,8 @@ void JointScenario::Init(vx::PhysicsWorld* i_world)
 
 
 	vx::DistanceConstraint* new_j = mPhysicsWorld->CreateConstraintT(
-		vx::DistanceConstraint(&mPhysicsWorld->GetBodies()[1], 
-							   &mPhysicsWorld->GetBodies()[2], 
+		vx::DistanceConstraint(&mPhysicsWorld->Bodies()[1], 
+							   &mPhysicsWorld->Bodies()[2], 
 								rope_constraint_settings));
 	new_j->SetLocalAnchorA(vx::Vec3(0.0f, -0.5f, 0.0f));
 	new_j->SetLocalAnchorB(vx::Vec3(0.0f, 1.0f, 0.0f));
@@ -100,8 +100,8 @@ void JointScenario::Init(vx::PhysicsWorld* i_world)
 
 
 	auto& new_joint2 = *mPhysicsWorld->CreateConstraintT(
-		vx::DistanceConstraint(&mPhysicsWorld->GetBodies()[2], 
-							   &mPhysicsWorld->GetBodies()[3],
+		vx::DistanceConstraint(&mPhysicsWorld->Bodies()[2], 
+							   &mPhysicsWorld->Bodies()[3],
 								rope_constraint_settings));
 	new_joint2.SetLocalAnchorA(vx::Vec3(0.0f, -1.0f, 0.0f)); //quick offset
 	new_joint2.SetLocalAnchorB(vx::Vec3(0.5f)); //quick offset
@@ -121,10 +121,10 @@ void JointScenario::Init(vx::PhysicsWorld* i_world)
 	dyn_bodies_settings.position = vx::Vec3(3.5f, 3.5f, 0.0f);
 	mPhysicsWorld->CreateBody(dyn_bodies_settings);
 
-	vx::Body* body_a = &mPhysicsWorld->GetBodies()[4];
-	vx::Body* body_b = &mPhysicsWorld->GetBodies()[5];
-	vx::Body* body_c = &mPhysicsWorld->GetBodies()[6];
-	vx::Body* body_d = &mPhysicsWorld->GetBodies()[7];
+	vx::Body* body_a = &mPhysicsWorld->Bodies()[4];
+	vx::Body* body_b = &mPhysicsWorld->Bodies()[5];
+	vx::Body* body_c = &mPhysicsWorld->Bodies()[6];
+	vx::Body* body_d = &mPhysicsWorld->Bodies()[7];
 
 
 	vx::DistanceConstraint joints[] =
@@ -147,7 +147,7 @@ void JointScenario::Init(vx::PhysicsWorld* i_world)
 	shape_settings.SetDensity(0.0f);
 	static_bodies_settings.shape = vx::MakeRef<vx::BoxShape>(shape_settings);
 	static_bodies_settings.intialVelocity = vx::Vec3(1.0f);
-	vx::uint32 static_body_idx = mPhysicsWorld->GetBodies().size();
+	vx::uint32 static_body_idx = mPhysicsWorld->Bodies().size();
 	mPhysicsWorld->CreateBody(static_bodies_settings);
 
 	RopeSetting(rope_constraint_settings);
@@ -156,8 +156,8 @@ void JointScenario::Init(vx::PhysicsWorld* i_world)
 	dyn_bodies_settings.shape = vx::MakeRef<vx::CapsuleShape>(0.5f, 0.5f);;
 	mPhysicsWorld->CreateBody(dyn_bodies_settings);
 	auto& new_joint3 = *mPhysicsWorld->CreateConstraintT(
-		vx::DistanceConstraint(&mPhysicsWorld->GetBodies()[static_body_idx],
-			&mPhysicsWorld->GetBodies().back(),
+		vx::DistanceConstraint(&mPhysicsWorld->Bodies()[static_body_idx],
+			&mPhysicsWorld->Bodies().back(),
 			rope_constraint_settings));
 
 	new_joint3.SetDistance(0.75f, 1.5f);
@@ -167,7 +167,7 @@ void JointScenario::Init(vx::PhysicsWorld* i_world)
 	//quickk reverse, B already set
 	auto& new_joint4 = *mPhysicsWorld->CreateConstraintT(
 		vx::DistanceConstraint(body_d,
-			&mPhysicsWorld->GetBodies().back(),
+			&mPhysicsWorld->Bodies().back(),
 			rope_constraint_settings));
 	new_joint4.SetLocalAnchorB(vx::Vec3(0.0f, -1.0f, 0.0f));
 	new_joint4.SetLocalAnchorA(vx::Vec3(0.0f, 0.5f, 0.0f));
@@ -193,18 +193,18 @@ void JointScenario::ConstaintPanel(vx::DistanceConstraint& constraint)
 
 	const auto& body_manager = mPhysicsWorld->GetBodyManager();
 	ImGui::Text("Body A: [%s], id: %d \nBody B: [%s], id: %d", 
-		body_manager.GetBodyDebugName(bA), bA.GetID(),
-		body_manager.GetBodyDebugName(bB), bB.GetID() );
+		body_manager.GetBodyDebugName(bA), bA.ID(),
+		body_manager.GetBodyDebugName(bB), bB.ID() );
 
-	vx::Vec3 _p = constraint.GetLocalAnchorA();
+	vx::Vec3 _p = constraint.LocalAnchorA();
 	if (ImGui::DragFloat3("Local Anchor A", &_p[0], 0.01f))
 		constraint.SetLocalAnchorA(_p);
-	_p = constraint.GetLocalAnchorB();
+	_p = constraint.LocalAnchorB();
 	ImGui::DragFloat3("Local Anchor B", &_p[0], 0.01f);
 		constraint.SetLocalAnchorB(_p);
 	
-	float min_dist = constraint.GetMinDistance();
-	float max_dist = constraint.GetMaxDistance();
+	float min_dist = constraint.MinDistance();
+	float max_dist = constraint.MaxDistance();
 	bool updated_dist = ImGui::DragFloat("Min Distance", &min_dist, 0.1f);
 	updated_dist |= ImGui::DragFloat("Max Distance", &max_dist, 0.1f);
 	if (updated_dist)
@@ -214,11 +214,11 @@ void JointScenario::ConstaintPanel(vx::DistanceConstraint& constraint)
 	
 	ImGui::SeparatorText("Spring Setting");
 
-	float v = constraint.GetSpringFrequency();
+	float v = constraint.SpringFrequency();
 	if (ImGui::SliderAngle("mFrequency [Hz:Rad/sec]", &v, 0.0f))
 		constraint.SetSpringFrequency(v);
 
-	v = constraint.GetSpringDampingRatio();
+	v = constraint.SpringDampingRatio();
 	if (ImGui::DragFloat("Damping Ratio", &v, 0.01f))
 		constraint.SetSpringDampingRatio(v);
 
@@ -233,7 +233,7 @@ void JointScenario::OnUI()
 	if (mPhysicsWorld == nullptr)
 		return;
 
-	if (mPhysicsWorld->GetConstraints().empty())
+	if (mPhysicsWorld->NonContactConstraints().empty())
 		return;
 
 	if (ImGui::Begin("Joint Window"))
@@ -250,7 +250,7 @@ void JointScenario::OnUI()
 		//}
 
 		int _idx = 1;
-		for (auto& joint : mPhysicsWorld->GetConstraints())
+		for (auto& joint : mPhysicsWorld->NonContactConstraints())
 		{
 			ImGui::Separator();
 			ImGui::Spacing();
@@ -274,7 +274,7 @@ void JointScenario::OnUI()
 void JointScenario::CreateLattice()
 {
 	float depth = -4.0f;
-	vx::uint32 first_body = mPhysicsWorld->GetBodies().size();
+	vx::uint32 first_body = mPhysicsWorld->Bodies().size();
 
 	vx::BodySettings dyn_bodies_settings = vx::BodySettings::DefaultDynamicConstruct();
 
@@ -310,17 +310,17 @@ void JointScenario::CreateLattice()
 	mPhysicsWorld->CreateBody(dyn_bodies_settings);
 
 
-	vx::Body* capsule0 = &mPhysicsWorld->GetBodies()[first_body++];
-	vx::Body* capsule1 = &mPhysicsWorld->GetBodies()[first_body++];
-	vx::Body* box = &mPhysicsWorld->GetBodies()[first_body++];
-	vx::Body* body_a = &mPhysicsWorld->GetBodies()[first_body++];
-	vx::Body* body_b = &mPhysicsWorld->GetBodies()[first_body++];
-	vx::Body* body_c = &mPhysicsWorld->GetBodies()[first_body++];
-	vx::Body* body_d = &mPhysicsWorld->GetBodies()[first_body++];
-	vx::Body* body_a1 = &mPhysicsWorld->GetBodies()[first_body++];
-	vx::Body* body_b1 = &mPhysicsWorld->GetBodies()[first_body++];
-	vx::Body* body_c1 = &mPhysicsWorld->GetBodies()[first_body++];
-	vx::Body* body_d1 = &mPhysicsWorld->GetBodies()[first_body++];
+	vx::Body* capsule0 = &mPhysicsWorld->Bodies()[first_body++];
+	vx::Body* capsule1 = &mPhysicsWorld->Bodies()[first_body++];
+	vx::Body* box = &mPhysicsWorld->Bodies()[first_body++];
+	vx::Body* body_a = &mPhysicsWorld->Bodies()[first_body++];
+	vx::Body* body_b = &mPhysicsWorld->Bodies()[first_body++];
+	vx::Body* body_c = &mPhysicsWorld->Bodies()[first_body++];
+	vx::Body* body_d = &mPhysicsWorld->Bodies()[first_body++];
+	vx::Body* body_a1 = &mPhysicsWorld->Bodies()[first_body++];
+	vx::Body* body_b1 = &mPhysicsWorld->Bodies()[first_body++];
+	vx::Body* body_c1 = &mPhysicsWorld->Bodies()[first_body++];
+	vx::Body* body_d1 = &mPhysicsWorld->Bodies()[first_body++];
 
 	vx::DistanceConstraintSettings rope_constraint_settings;
 	RopeSetting(rope_constraint_settings);

@@ -34,6 +34,7 @@ bool DebugGizmosRendererImpl::Init(ApplicationWindow* window)
 	mCameraUBO.Bind(0);
 
 
+
 	
 		//New Line Segment
 	std::vector<GPUVertexAttribute> line_vertex_attributes = {

@@ -72,7 +72,7 @@ void PersistentContactScenario::Init(vx::PhysicsWorld* i_world)
 
 	//maybe every frame update worldanhor
 	//mPhysicsWorld->mBallJoint = new vx::PointConstraint(&mPhysicsWorld->GetBodies()[0], &mPhysicsWorld->GetBodies()[1], point_constraint_setting);
-	mTestConstraint = new vx::PointConstraint(&mPhysicsWorld->GetBodies()[0], &mPhysicsWorld->GetBodies()[1], point_constraint_setting);
+	mTestConstraint = new vx::PointConstraint(&mPhysicsWorld->Bodies()[0], &mPhysicsWorld->Bodies()[1], point_constraint_setting);
 	mPhysicsWorld->AddConstraint(mTestConstraint);
 
 	point_constraint_setting.anchorA = vx::Vec3(0.0f, 1.0f, 0.0f);
@@ -87,10 +87,10 @@ void PersistentContactScenario::Init(vx::PhysicsWorld* i_world)
 
 
 	mPhysicsWorld->CreateBody(dyn_bodies_settings);
-	vx::PointConstraint pt_constraint2 = vx::PointConstraint(&mPhysicsWorld->GetBodies()[2], &mPhysicsWorld->GetBodies()[3], point_constraint_setting);
+	vx::PointConstraint pt_constraint2 = vx::PointConstraint(&mPhysicsWorld->Bodies()[2], &mPhysicsWorld->Bodies()[3], point_constraint_setting);
 
 	mPhysicsWorld->CreateBody(dyn_bodies_settings);
-	vx::PointConstraint pt_constraint3 = vx::PointConstraint(&mPhysicsWorld->GetBodies()[1], &mPhysicsWorld->GetBodies()[4], point_constraint_setting);
+	vx::PointConstraint pt_constraint3 = vx::PointConstraint(&mPhysicsWorld->Bodies()[1], &mPhysicsWorld->Bodies()[4], point_constraint_setting);
 
 	//constraint between a cube and sphere 
 	dyn_bodies_settings.position += offset;
@@ -108,7 +108,7 @@ void PersistentContactScenario::Init(vx::PhysicsWorld* i_world)
 	vx::PointConstraint pt_joints[3] = {
 		pt_constraint2,
 		pt_constraint3,
-		vx::PointConstraint((&mPhysicsWorld->GetBodies().back())-1, &mPhysicsWorld->GetBodies().back(), point_constraint_setting)
+		vx::PointConstraint((&mPhysicsWorld->Bodies().back())-1, &mPhysicsWorld->Bodies().back(), point_constraint_setting)
 	};
 	mPhysicsWorld->CreateConstraintsT(pt_joints, 3);
 
@@ -146,7 +146,7 @@ void PersistentContactScenario::OnUI()
 
 
 	//contact contraints
-	auto& contact_constraint_stat = mPhysicsWorld->GetContactConstraintSolverStats();
+	auto& contact_constraint_stat = mPhysicsWorld->ContactConstraintSolverStats();
 
 	if (ImGui::Begin("PersistentContactScenario Window"))
 	{

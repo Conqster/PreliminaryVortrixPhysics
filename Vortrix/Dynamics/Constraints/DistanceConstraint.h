@@ -41,8 +41,8 @@ namespace vx {
 		void SetLocalAnchorA(const Vec3& position) { mLocalAnchorA = position; }
 		void SetLocalAnchorB(const Vec3& position) { mLocalAnchorB = position; }
 
-		Vec3 GetLocalAnchorA() const { return mLocalAnchorA; }
-		Vec3 GetLocalAnchorB() const { return mLocalAnchorB; }
+		Vec3 LocalAnchorA() const { return mLocalAnchorA; }
+		Vec3 LocalAnchorB() const { return mLocalAnchorB; }
 
 		float GetAccumulatedLambda() const { return mAccumulatedLambda; }
 
@@ -54,8 +54,8 @@ namespace vx {
 			mMaxDistance = max_dist;
 		}
 
-		float GetMinDistance() const { return mMinDistance; }
-		float GetMaxDistance() const { return mMaxDistance; }
+		float MinDistance() const { return mMinDistance; }
+		float MaxDistance() const { return mMaxDistance; }
 
 
 		void SetSpringFrequency(float freq)
@@ -78,8 +78,8 @@ namespace vx {
 			mSpring.mDampingRatio = ratio;
 		}
 
-		float GetSpringFrequency() const { return mSpring.mFrequency; }
-		float GetSpringDampingRatio() const { return mSpring.mDampingRatio; }
+		float SpringFrequency() const { return mSpring.mFrequency; }
+		float SpringDampingRatio() const { return mSpring.mDampingRatio; }
 
 		virtual uint32 PrepSolver(ConstraintSolver* solver, const PhysicsStepContext& ctx) override;
 		/// essentailly used for commiting back accumulated lambda

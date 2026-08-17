@@ -30,7 +30,7 @@ namespace vx
 		void SetBodyShape(Body& body, RefConst<Shape> shape, bool update_mass_inertia);
 
 		//it bettre to remove body via Physocs world as to manage broadphase handles etc
-		void RemoveBody(const Body& body) { RemoveBody(body.GetID()); }
+		void RemoveBody(const Body& body) { RemoveBody(body.ID()); }
 		void RemoveBody(const BodyID& id);
 
 		BodyVector& GetBodies() { return mBodies; }
@@ -57,18 +57,20 @@ namespace vx
 
 		VX_INLINE uint32 MaxBodies() const { return mMaxBodies; }
 
-		VX_INLINE uint32 BodyCount() const { return mBodies.size() - mFreedIdxs.size(); }
+		VX_INLINE uint32 BodyCount() const { return mBodies.size() - mFreedIndices.size(); }
+		/// 
+		VX_INLINE uint32 CurrentFreeIndicesCount() const { return mFreedIndices.size(); }
 
 		/// mainly only active bodies could go to sleep 
 		void UpdateBodiesActiveState(float dt, const SleepingSettings& sleeping_setting);
 
-		BodyID* GetActiveBodies() const { return mActiveBodies; }
+		BodyID* ActiveBodies() const { return mActiveBodies; }
 		BodyID GetActiveBodyID(uint32 idx) const
 		{
 			VX_ASSERT(idx < mNumActiveBodies);
 			return mActiveBodies[idx];
 		}
-		uint32 GetNumActiveBodies() const { return mNumActiveBodies; }
+		uint32 NumActiveBodies() const { return mNumActiveBodies; }
 
 		/// where possible its optimal to activate bodies as a group 
 		/// to reduce mutex locking
@@ -97,7 +99,7 @@ namespace vx
 		std::mutex mBodiesActivationMutex;
 #endif // TEST_CONTACT_CONSTRAINT_MT
 
-		std::vector<uint32> mFreedIdxs;
+		std::vector<uint32> mFreedIndices;
 		std::vector<uint8> mBodyIdxGenerations;
 
 		VX_INLINE uint8 GetBodyIdxNextGeneration(uint32 idx)

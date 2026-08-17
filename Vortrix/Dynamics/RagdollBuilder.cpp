@@ -345,31 +345,31 @@ vx::PointConstraint(
 		for (auto& b : bodies)
 			b->SetPosition(b->Position() + settings.position);
 
-		uint32 count = mPhysicsWorld->GetConstraints().size();
+		uint32 count = mPhysicsWorld->NonContactConstraints().size();
 		mPhysicsWorld->CreateConstraintsT(joints, 9);
 
 		if(ragdoll)
 		{
-			ragdoll->AddBodyPart(lower_legR->GetID(), "Right Upper Leg");
-			ragdoll->AddBodyPart(lower_legL->GetID(), "Left Upper Leg");
-			ragdoll->AddBodyPart(upper_legR->GetID(), "Right Upper Leg");
-			ragdoll->AddBodyPart(upper_legL->GetID(), "Left Upper Leg");
-			ragdoll->AddBodyPart(lower_armR->GetID(), "Right Lower Arm");
-			ragdoll->AddBodyPart(upper_armL->GetID(), "Left Upper Arm");
-			ragdoll->AddBodyPart(_head->GetID(), "Head");
-			ragdoll->AddBodyPart(torso->GetID(), "Torso");
-			ragdoll->AddBodyPart(upper_armR->GetID(), "Right Upper Arm");
-			ragdoll->AddBodyPart(lower_armL->GetID(), "Left Lower Arm");
+			ragdoll->AddBodyPart(lower_legR->ID(), "Right Upper Leg");
+			ragdoll->AddBodyPart(lower_legL->ID(), "Left Upper Leg");
+			ragdoll->AddBodyPart(upper_legR->ID(), "Right Upper Leg");
+			ragdoll->AddBodyPart(upper_legL->ID(), "Left Upper Leg");
+			ragdoll->AddBodyPart(lower_armR->ID(), "Right Lower Arm");
+			ragdoll->AddBodyPart(upper_armL->ID(), "Left Upper Arm");
+			ragdoll->AddBodyPart(_head->ID(), "Head");
+			ragdoll->AddBodyPart(torso->ID(), "Torso");
+			ragdoll->AddBodyPart(upper_armR->ID(), "Right Upper Arm");
+			ragdoll->AddBodyPart(lower_armL->ID(), "Left Lower Arm");
 
-			ragdoll->AddConstraint(mPhysicsWorld->GetConstraints()[count + 0], "Neck");
-			ragdoll->AddConstraint(mPhysicsWorld->GetConstraints()[count + 1], "Left Shoulder");
-			ragdoll->AddConstraint(mPhysicsWorld->GetConstraints()[count + 2], "Right Shoulder");
-			ragdoll->AddConstraint(mPhysicsWorld->GetConstraints()[count + 3], "Left Elbow");
-			ragdoll->AddConstraint(mPhysicsWorld->GetConstraints()[count + 4], "Right Elbow");
-			ragdoll->AddConstraint(mPhysicsWorld->GetConstraints()[count + 5], "Left Hip");
-			ragdoll->AddConstraint(mPhysicsWorld->GetConstraints()[count + 6], "Right Hip");
-			ragdoll->AddConstraint(mPhysicsWorld->GetConstraints()[count + 7], "Left Knee");
-			ragdoll->AddConstraint(mPhysicsWorld->GetConstraints()[count + 8], "Right Knee");
+			ragdoll->AddConstraint(mPhysicsWorld->NonContactConstraints()[count + 0], "Neck");
+			ragdoll->AddConstraint(mPhysicsWorld->NonContactConstraints()[count + 1], "Left Shoulder");
+			ragdoll->AddConstraint(mPhysicsWorld->NonContactConstraints()[count + 2], "Right Shoulder");
+			ragdoll->AddConstraint(mPhysicsWorld->NonContactConstraints()[count + 3], "Left Elbow");
+			ragdoll->AddConstraint(mPhysicsWorld->NonContactConstraints()[count + 4], "Right Elbow");
+			ragdoll->AddConstraint(mPhysicsWorld->NonContactConstraints()[count + 5], "Left Hip");
+			ragdoll->AddConstraint(mPhysicsWorld->NonContactConstraints()[count + 6], "Right Hip");
+			ragdoll->AddConstraint(mPhysicsWorld->NonContactConstraints()[count + 7], "Left Knee");
+			ragdoll->AddConstraint(mPhysicsWorld->NonContactConstraints()[count + 8], "Right Knee");
 		}
 	}
 
@@ -594,34 +594,34 @@ vx::PointConstraint(
 		//move body upward world frame
 		for (auto& b : bodies)
 			b->SetPosition(b->Position() + settings.position);
-		uint32 count = mPhysicsWorld->GetConstraints().size();
+		uint32 count = mPhysicsWorld->NonContactConstraints().size();
 		mPhysicsWorld->CreateConstraintsT(joints, 9);
 
 
 
 		if(ragdoll)
 		{
-			ragdoll->AddBodyPart(lower_legR->GetID(), "Right Upper Leg");
-			ragdoll->AddBodyPart(lower_legL->GetID(), "Left Upper Leg");
-			ragdoll->AddBodyPart(upper_legR->GetID(), "Right Upper Leg");
-			ragdoll->AddBodyPart(upper_legL->GetID(), "Left Upper Leg");
-			ragdoll->AddBodyPart(lower_armR->GetID(), "Right Lower Arm");
-			ragdoll->AddBodyPart(lower_armL->GetID(), "Left Lower Arm");
-			ragdoll->AddBodyPart(_head->GetID(), "Head");
-			ragdoll->AddBodyPart(torso->GetID(), "Torso");
-			ragdoll->AddBodyPart(upper_armL->GetID(), "Left Upper Arm");
-			ragdoll->AddBodyPart(upper_armR->GetID(), "Right Upper Arm");
+			ragdoll->AddBodyPart(lower_legR->ID(), "Right Upper Leg");
+			ragdoll->AddBodyPart(lower_legL->ID(), "Left Upper Leg");
+			ragdoll->AddBodyPart(upper_legR->ID(), "Right Upper Leg");
+			ragdoll->AddBodyPart(upper_legL->ID(), "Left Upper Leg");
+			ragdoll->AddBodyPart(lower_armR->ID(), "Right Lower Arm");
+			ragdoll->AddBodyPart(lower_armL->ID(), "Left Lower Arm");
+			ragdoll->AddBodyPart(_head->ID(), "Head");
+			ragdoll->AddBodyPart(torso->ID(), "Torso");
+			ragdoll->AddBodyPart(upper_armL->ID(), "Left Upper Arm");
+			ragdoll->AddBodyPart(upper_armR->ID(), "Right Upper Arm");
 
 
-			ragdoll->AddConstraint(mPhysicsWorld->GetConstraints()[count + 0], "Neck");
-			ragdoll->AddConstraint(mPhysicsWorld->GetConstraints()[count + 1], "Left Shoulder");
-			ragdoll->AddConstraint(mPhysicsWorld->GetConstraints()[count + 2], "Right Shoulder");
-			ragdoll->AddConstraint(mPhysicsWorld->GetConstraints()[count + 3], "Left Elbow");
-			ragdoll->AddConstraint(mPhysicsWorld->GetConstraints()[count + 4], "Right Elbow");
-			ragdoll->AddConstraint(mPhysicsWorld->GetConstraints()[count + 5], "Left Hip");
-			ragdoll->AddConstraint(mPhysicsWorld->GetConstraints()[count + 6], "Right Hip");
-			ragdoll->AddConstraint(mPhysicsWorld->GetConstraints()[count + 7], "Left Knee");
-			ragdoll->AddConstraint(mPhysicsWorld->GetConstraints()[count + 8], "Right Knee");
+			ragdoll->AddConstraint(mPhysicsWorld->NonContactConstraints()[count + 0], "Neck");
+			ragdoll->AddConstraint(mPhysicsWorld->NonContactConstraints()[count + 1], "Left Shoulder");
+			ragdoll->AddConstraint(mPhysicsWorld->NonContactConstraints()[count + 2], "Right Shoulder");
+			ragdoll->AddConstraint(mPhysicsWorld->NonContactConstraints()[count + 3], "Left Elbow");
+			ragdoll->AddConstraint(mPhysicsWorld->NonContactConstraints()[count + 4], "Right Elbow");
+			ragdoll->AddConstraint(mPhysicsWorld->NonContactConstraints()[count + 5], "Left Hip");
+			ragdoll->AddConstraint(mPhysicsWorld->NonContactConstraints()[count + 6], "Right Hip");
+			ragdoll->AddConstraint(mPhysicsWorld->NonContactConstraints()[count + 7], "Left Knee");
+			ragdoll->AddConstraint(mPhysicsWorld->NonContactConstraints()[count + 8], "Right Knee");
 		}
 	}
 	void RagdollBuilder::BuildBoxLimbsSplitTorso(Ragdoll& ragdoll, const RagdollSettings& settings)
@@ -700,7 +700,7 @@ vx::PointConstraint(
 		body_settings.inertia = body_settings.shape->ComputeInertiaTensorDiagonal(each_masses);
 		Body* _head = mPhysicsWorld->CreateBody(body_settings);
 		bodies.push_back(_head);
-		ragdoll.AddBodyPart(_head->GetID(), "Head");
+		ragdoll.AddBodyPart(_head->ID(), "Head");
 
 		/// body
 		body_settings.shape = chest;
@@ -710,7 +710,7 @@ vx::PointConstraint(
 		body_settings.inertia = body_settings.shape->ComputeInertiaTensorDiagonal(each_masses);
 		Body* chest_body = mPhysicsWorld->CreateBody(body_settings);
 		bodies.push_back(chest_body);
-		ragdoll.AddBodyPart(chest_body->GetID(), "Chest");
+		ragdoll.AddBodyPart(chest_body->ID(), "Chest");
 
 		body_settings.shape = pelvis;
 		body_settings.debug_name = "Pelvis";
@@ -719,7 +719,7 @@ vx::PointConstraint(
 		body_settings.inertia = body_settings.shape->ComputeInertiaTensorDiagonal(each_masses);
 		Body* pelvis_body = mPhysicsWorld->CreateBody(body_settings);
 		bodies.push_back(pelvis_body);
-		ragdoll.AddBodyPart(pelvis_body->GetID(), "Pelvis");
+		ragdoll.AddBodyPart(pelvis_body->ID(), "Pelvis");
 
 		/// upper left arm 
 		body_settings.shape = upper_arm;
@@ -729,7 +729,7 @@ vx::PointConstraint(
 		body_settings.orientation.SetAxisAngle(vx::Vec3::Forward(), vx::DegToRad(90.0f));
 		Body* upper_armL = mPhysicsWorld->CreateBody(body_settings);
 		bodies.push_back(upper_armL);
-		ragdoll.AddBodyPart(upper_armL->GetID(), "Left Upper Arm");
+		ragdoll.AddBodyPart(upper_armL->ID(), "Left Upper Arm");
 
 		/// upper right arm 
 		body_settings.shape = upper_arm;
@@ -739,7 +739,7 @@ vx::PointConstraint(
 		body_settings.orientation.SetAxisAngle(vx::Vec3::Forward(), vx::DegToRad(-90.0f));
 		Body* upper_armR = mPhysicsWorld->CreateBody(body_settings);
 		bodies.push_back(upper_armR);
-		ragdoll.AddBodyPart(upper_armR->GetID(), "Right Upper Arm");
+		ragdoll.AddBodyPart(upper_armR->ID(), "Right Upper Arm");
 
 		/// lower left arm 
 		body_settings.shape = lower_arm;
@@ -749,7 +749,7 @@ vx::PointConstraint(
 		body_settings.orientation.SetAxisAngle(vx::Vec3::Forward(), vx::DegToRad(90.0f));
 		Body* lower_armL = mPhysicsWorld->CreateBody(body_settings);
 		bodies.push_back(lower_armL);
-		ragdoll.AddBodyPart(lower_armL->GetID(), "Left Lower Arm");
+		ragdoll.AddBodyPart(lower_armL->ID(), "Left Lower Arm");
 
 		/// lower right arm 
 		body_settings.shape = lower_arm;
@@ -759,7 +759,7 @@ vx::PointConstraint(
 		body_settings.orientation.SetAxisAngle(vx::Vec3::Forward(), vx::DegToRad(-90.0f));
 		Body* lower_armR = mPhysicsWorld->CreateBody(body_settings);
 		bodies.push_back(lower_armR);
-		ragdoll.AddBodyPart(lower_armR->GetID(), "Right Lower Arm");
+		ragdoll.AddBodyPart(lower_armR->ID(), "Right Lower Arm");
 
 
 		/// upper left leg 
@@ -770,7 +770,7 @@ vx::PointConstraint(
 		body_settings.orientation = vx::Quat::Identity();
 		Body* upper_legL = mPhysicsWorld->CreateBody(body_settings);
 		bodies.push_back(upper_legL);
-		ragdoll.AddBodyPart(upper_legL->GetID(), "Left Upper Leg");
+		ragdoll.AddBodyPart(upper_legL->ID(), "Left Upper Leg");
 
 		/// upper right leg 
 		body_settings.shape = upper_leg;
@@ -780,7 +780,7 @@ vx::PointConstraint(
 		body_settings.orientation = vx::Quat::Identity();
 		Body* upper_legR = mPhysicsWorld->CreateBody(body_settings);
 		bodies.push_back(upper_legR);
-		ragdoll.AddBodyPart(upper_legR->GetID(), "Right Upper Leg");
+		ragdoll.AddBodyPart(upper_legR->ID(), "Right Upper Leg");
 
 
 		/// lowe left leg 
@@ -791,7 +791,7 @@ vx::PointConstraint(
 		body_settings.orientation = vx::Quat::Identity();
 		Body* lower_legL = mPhysicsWorld->CreateBody(body_settings);
 		bodies.push_back(lower_legL);
-		ragdoll.AddBodyPart(lower_legL->GetID(), "Left Lower Leg");
+		ragdoll.AddBodyPart(lower_legL->ID(), "Left Lower Leg");
 
 		/// lower right leg 
 		body_settings.shape = lower_leg;
@@ -801,7 +801,7 @@ vx::PointConstraint(
 		body_settings.orientation = vx::Quat::Identity();
 		Body* lower_legR = mPhysicsWorld->CreateBody(body_settings);
 		bodies.push_back(lower_legR);
-		ragdoll.AddBodyPart(lower_legL->GetID(), "Right Lower Leg");
+		ragdoll.AddBodyPart(lower_legR->ID(), "Right Lower Leg");
 
 
 		float half_limb_offset = limb_offset * 0.5f;
@@ -899,19 +899,19 @@ vx::PointConstraint(
 
 		};
 
-		uint32 count = mPhysicsWorld->GetConstraints().size();
+		uint32 count = mPhysicsWorld->NonContactConstraints().size();
 		mPhysicsWorld->CreateConstraintsT(joints, 10);
 
-		ragdoll.AddConstraint(mPhysicsWorld->GetConstraints()[count + 0], "Neck");
-		ragdoll.AddConstraint(mPhysicsWorld->GetConstraints()[count + 1], "Spine");
-		ragdoll.AddConstraint(mPhysicsWorld->GetConstraints()[count + 2], "Left Shoulder");
-		ragdoll.AddConstraint(mPhysicsWorld->GetConstraints()[count + 3], "Right Shoulder");
-		ragdoll.AddConstraint(mPhysicsWorld->GetConstraints()[count + 4], "Left Elbow");
-		ragdoll.AddConstraint(mPhysicsWorld->GetConstraints()[count + 5], "Right Elbow");
-		ragdoll.AddConstraint(mPhysicsWorld->GetConstraints()[count + 6], "Left Hip");
-		ragdoll.AddConstraint(mPhysicsWorld->GetConstraints()[count + 7], "Right Hip");
-		ragdoll.AddConstraint(mPhysicsWorld->GetConstraints()[count + 8], "Left Knee");
-		ragdoll.AddConstraint(mPhysicsWorld->GetConstraints()[count + 9], "Right Knee");
+		ragdoll.AddConstraint(mPhysicsWorld->NonContactConstraints()[count + 0], "Neck");
+		ragdoll.AddConstraint(mPhysicsWorld->NonContactConstraints()[count + 1], "Spine");
+		ragdoll.AddConstraint(mPhysicsWorld->NonContactConstraints()[count + 2], "Left Shoulder");
+		ragdoll.AddConstraint(mPhysicsWorld->NonContactConstraints()[count + 3], "Right Shoulder");
+		ragdoll.AddConstraint(mPhysicsWorld->NonContactConstraints()[count + 4], "Left Elbow");
+		ragdoll.AddConstraint(mPhysicsWorld->NonContactConstraints()[count + 5], "Right Elbow");
+		ragdoll.AddConstraint(mPhysicsWorld->NonContactConstraints()[count + 6], "Left Hip");
+		ragdoll.AddConstraint(mPhysicsWorld->NonContactConstraints()[count + 7], "Right Hip");
+		ragdoll.AddConstraint(mPhysicsWorld->NonContactConstraints()[count + 8], "Left Knee");
+		ragdoll.AddConstraint(mPhysicsWorld->NonContactConstraints()[count + 9], "Right Knee");
 
 		//move body upward world frame
 		for (auto& b : bodies)

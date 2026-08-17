@@ -30,11 +30,12 @@ void Camera::Translate(vx::Vec3 dir, float dt)
 	mState.position += dir * mProperties.moveSpeed * dt;
 }
 
-void Camera::Rotate(float dx, float dy, float dt)
+void Camera::Rotate(float dx, float dy)
 {
-	float d_yaw = dx * mProperties.rotSpeed * dt;
-	float d_pitch = dy * mProperties.rotSpeed * dt;
+	float d_yaw = dx * mProperties.rotSensitivity;
+	float d_pitch = dy * mProperties.rotSensitivity;
 	float pitch = vx::VxClamp(mState.pitch + d_pitch, -89.0f, 89.0f);
+
 	d_pitch = pitch - mState.pitch;
 	mState.pitch = pitch;
 

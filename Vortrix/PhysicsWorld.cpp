@@ -41,10 +41,9 @@
 
 namespace vx
 {
+	uint32 PhysicsWorld::mStepIndex = 0;
 
-	uint64 PhysicsWorld::mFrameIdx = 0;
-
-	PhysicsWorld::PhysicsWorld(const PhysicsWorldSettings& in_settings) :
+	PhysicsWorld::PhysicsWorld(PhysicsWorldSettings* in_settings) :
 		mSettings(in_settings)
 	{
 	}
@@ -57,8 +56,10 @@ namespace vx
 
 		delete mIslandCoordinator;
 
+#if defined(VX_DEBUG_ALLOCATOR)
 		mScratchAllocator->Free(testAllocation, testAllocationSize);
 		delete mScratchAllocator;
+#endif // defined(VX_DEBUG_ALLOCATOR)
 
 		mTaskCoordinator->Quit();
 		delete mTaskCoordinator;
@@ -236,19 +237,17 @@ namespace vx
 		//at the moment so let reseve 
 		mBodyManager.Init(max_bodies);
 		mContext.bodyManager = &mBodyManager;
+		mContext.mStepIndex = 0;
 
 		BroadphaseInitInfo broad_init;
 		broad_init.maxDirtyBodies = mBodyManager.MaxBodies() * 0.6f;
 		mBroadphase = new BVHBroadphase<AABB>();
-		mBroadphase->SetBoundThreshold(mSettings.collision.boundsMargin);
+		mBroadphase->SetBoundThreshold(mSettings->collision.boundsMargin);
 		mBroadphase->Init(&mBodyManager, broad_init);
 
 		//mBroadphasePairs.reserve(max_body_pairs);
 		//mBroadphaseBuffer.data = new BroadphasePair[max_body_pairs];
 		mBroadphaseBuffer.maxPairs = max_body_pairs;
-
-		///later pass body manager as via ctx
-		mNarrowphaseQuery.Init(&mBodyManager);
 
 		mContactConstraintSolver.Init(max_contact_constraint);
 		mContactConstraintSolver.SetPhysicsContext(&mContext);
@@ -260,15 +259,18 @@ namespace vx
 
 		mScratchAllocator = new ScratchAllocator(1 * 1024 * 1024);
 
+
+#if defined(VX_DEBUG_ALLOCATOR)
 		testAllocationSize =
 			sizeof(Linear1DRow) * 2000 +
 			//sizeof(BroadphasePair) * max_body_pairs +
 			sizeof(Constraint*) * 250;
 		testAllocation = mScratchAllocator->Allocate(testAllocationSize);
+#endif // defined(VX_DEBUG_ALLOCATOR)
 
 		int num_threads = 0;
 		num_threads = std::thread::hardware_concurrency() - 1;
-		mTaskCoordinator = new TaskCoordinatorMt(-1);
+		mTaskCoordinator = new TaskCoordinatorMt(VxMin(mSettings->maxConcurrency, num_threads));
 
 
 		mIslandCoordinator = new IslandCoordinator;
@@ -305,29 +307,37 @@ namespace vx
 		mBodyManager.RemoveBody(id);
 	}
 
+	void PhysicsWorld::RemoveBodies(const BodyID* ids, uint32 count)
+	{
+		VX_ASSERT(count > 0);
+
+		for (const BodyID* id = ids, *ids_end = ids + count;
+			id < ids_end; ++id)
+			RemoveBody((*id));
+	}
+
 
 	void PhysicsWorld::StepSimulation(float dt)
 	{
 		VX_PROFILE_FUNCTION();
-		Vec3 sample_gravity_vel = mSettings.gravity * mSettings.gravityScale;
+		Vec3 sample_gravity_vel = mSettings->gravity * mSettings->gravityScale;
 		sample_gravity_vel *= dt;
-		mSettings.frameGravityVelocity = sample_gravity_vel.ToFloat3();
+		mSettings->frameGravityVelocity = sample_gravity_vel.ToFloat3();
 		mContext.stepDeltaTime = dt;
-		mContext.gravity = mSettings.gravity;
-		mContext.gravityScale = mSettings.gravityScale;
-		mContext.forceBVHRebuild = mSettings.forceBVHRebuild;
-		mContext.BVH_rebuild_SAH = mSettings.collision.BVH_rebuild_SAH;
-		mContext.rebuildBVH_ImbalanceRatioTreshold = mSettings.collision.rebuildBVH_ImbalanceRatioTreshold;
+		mContext.gravity = mSettings->gravity;
+		mContext.gravityScale = mSettings->gravityScale;
+		mContext.forceBVHRebuild = mSettings->forceBVHRebuild;
+		mContext.BVH_rebuild_SAH = mSettings->collision.BVH_rebuild_SAH;
+		mContext.rebuildBVH_ImbalanceRatioTreshold = mSettings->collision.rebuildBVH_ImbalanceRatioTreshold;
 		mContext.mScratchAllocator = mScratchAllocator;
 		mContext.mIslandCoordinator = mIslandCoordinator;
 		mContext.maxBroadphasePair = mBroadphaseBuffer.maxPairs;
 
-		mWorldQuery.SetDebugRender(mHackDebugRenderer);
-		mWorldQuery.SetDrawBroadphaseNodesWalked(mSettings.drawSettings.drawWalkedTreeQuery);
+		mWorldQuery.SetDrawBroadphaseNodesWalked(mSettings->drawSettings->drawWalkedTreeQuery);
 
-#if VX_DEBUG_ALLOCATOR
+#if defined(VX_DEBUG_ALLOCATOR)
 		mScratchAllocator->ResetDebugAlloc();
-#endif // VX_DEBUG_ALLOCATOR
+#endif // defined VX_DEBUG_ALLOCATOR
 
 		{
 			VX_PROFILE_SCOPE("Reset Simulation State");
@@ -339,13 +349,13 @@ namespace vx
 		{
 			VX_PROFILE_SCOPE("Integrate bodies acceleration");
 
-			uint32 num_active_bodies = GetNumActiveBodies();
-			BodyID* active_bodies = GetActiveBodies();
+			uint32 num_active_bodies = NumActiveBodies();
+			BodyID* active_bodies = ActiveBodies();
 
 			for (int i = 0; i < num_active_bodies; ++i)
 			{
 				Body& body = mBodyManager.GetBody(active_bodies[i]);
-				body.IntegrateAcceleration(dt, mSettings.gravity * mSettings.gravityScale);
+				body.IntegrateAcceleration(dt, mSettings->gravity * mSettings->gravityScale);
 				body.ClearAccumulatedForces();
 			}
 		}
@@ -359,7 +369,7 @@ namespace vx
 		if (mBroadphase != nullptr)
 			mBroadphase->ComputeCollidingPair(mContext, mBroadphaseBuffer.data, mBroadpairCount);
 
-		mContactConstraintSolver.PreFrameSetup(mSettings); //for per frame transient allcation for now
+		mContactConstraintSolver.PreFrameSetup(); //for per frame transient allcation for now
 
 
 		/// for now need to invalidate previous frame local bodies 
@@ -371,14 +381,14 @@ namespace vx
 		}
 		CollisionContext collision_ctx
 		{
-			mSettings.collision, mHackDebugRenderer,
-			mSettings.drawSettings.drawContactConstraintSolverTBNs,
-			mFrameIdx, mBroadpairCount, mConstraintSolver,
+			mSettings->collision, mContext.mDebugRenderer,
+			mSettings->drawSettings->drawContactConstraintSolverTBNs,
+			mContext.mStepIndex, mBroadpairCount, mConstraintSolver,
 			mIslandCoordinator, &mBodyManager
 		};
 		//Narrowphase: collision detection & contact generations
 		
-		//mNarrowphaseQuery.ProcessPairs(mBroadphaseBuffer.data, mStepManifolds, mContactConstraintSolver, collision_ctx);
+		//mNarrowphaseQuery.ProcessPairs(mBroadphaseBuffer.data, mContactConstraintSolver, collision_ctx);
 
 
 		mIslandCoordinator->PrepareIslands((uint32)mBodyManager.GetBodies().size());
@@ -444,7 +454,7 @@ namespace vx
 			mTaskCoordinator->WaitForTasks();
 		}
 #else
-		mNarrowphaseQuery.ProcessPairs(mBroadphaseBuffer.data, mStepManifolds, mContactConstraintSolver, collision_ctx);
+		mNarrowphaseQuery.ProcessPairs(mBroadphaseBuffer.data, mContactConstraintSolver, collision_ctx);
 #endif // USE_MULTITHREAD
 
 #if TEST_CONTACT_CONSTRAINT_MT
@@ -470,22 +480,29 @@ namespace vx
 
 
 	
+		if(mSettings->splitLargeIsland)
 		{
 			VX_PROFILE_SCOPE("Splitting Islands");
-			mIslandCoordinator->mSplitter.Prepare(mBodyManager.GetNumActiveBodies(), *mIslandCoordinator, mScratchAllocator);
+			mIslandCoordinator->GetSplitter().Prepare(mBodyManager.NumActiveBodies(), *mIslandCoordinator, mScratchAllocator);
 
-			for (uint32 i = 0; i < mBodyManager.GetNumActiveBodies(); ++i)
+			for (uint32 i = 0; i < mBodyManager.NumActiveBodies(); ++i)
 			{
 				auto& body = mBodyManager.GetBody(mBodyManager.GetActiveBodyID(i));
 				body.mIslandConstraintGroupMask = 0;
 			}
 
 			for (uint32 i = 0; i < mIslandCoordinator->IslandCount(); ++i)
-				mIslandCoordinator->mSplitter.SplitIsland(i, *mIslandCoordinator, &mContactConstraintSolver, mConstraintSolver, &mBodyManager);
+			{
+				/// split larger island ffirst
+				uint32 island = mIslandCoordinator->SortedIslandIndices()[i];
+				mIslandCoordinator->GetSplitter().SplitIsland(island, *mIslandCoordinator, 
+					&mContactConstraintSolver, mConstraintSolver, 
+					&mBodyManager, mScratchAllocator);
+			}
 		}
 
 
-		if (mSettings.solver.enable)
+		if (mSettings->solver.enable)
 		{
 
 			/// Requirements 
@@ -527,12 +544,12 @@ namespace vx
 			uint32 constraint_solver_row_count = mConstraintSolver->LinearRowCount(); 
 			SolverBody* solver_bodies = mConstraintSolver->GetBodiesPtr();
 
-			if (mSettings.solver.warmstart)
+			if (mSettings->solver.warmstart)
 			{
 				/// perform warm starts
 				ConstraintSolver::WarmStart(constraint_solver_rows, 0, constraint_solver_row_count, solver_bodies);
 				//fix this bad nested if branches
-				if (mSettings.solver.enableContact)
+				if (mSettings->solver.enableContact)
 					ContactConstraintSolver::WarmStart(mContactConstraintSolver.ContactConstraintsPtr(), mContactConstraintSolver.NumContactConstraints(), solver_bodies);
 			}
 
@@ -544,40 +561,7 @@ namespace vx
 
 #define TEST_SOLVER_CONSTRAINT_MT 1
 #if TEST_SOLVER_CONSTRAINT_MT
-				//for (int i = 0; i < mSettings.solver.velocityIterations; ++i)
-				//{
-				//	///later use sorted island to solver bigger island first
-				//	for (uint32 island = 0; island < island_count; ++island)
-				//	{
-				//		IslandCoordinator::IslandRange<uint32> constraint_island_indices_range = mIslandCoordinator->IslandNonContactConstraintRowIndicesRange(island);
-				//		IslandCoordinator::IslandRange<uint32> contact_constraint_island_indices_range = mIslandCoordinator->ContactConstraintIndicesIslandRange(island);
-				//		mTaskCoordinator->ConstructTask([constraint_range = constraint_island_indices_range, constact_constraint_range = contact_constraint_island_indices_range, 
-				//		solver_bodies, constraint_solver = mConstraintSolver, contact_constraint_solver = &mContactConstraintSolver, enable_contact = mSettings.solver.enableContact]() {
-				//			///solve non constraint first
-				//			{
-				//				if (constraint_range.begin != nullptr)
-				//				{
-				//					const uint32 count = constraint_range.end - constraint_range.begin;
-				//					VX_ASSERT(count >= 0);
-				//					constraint_solver->SolverVelocityLinear1DRowsIndices(constraint_range.begin, count);
-				//				}
-				//			}
-
-
-				//			if (enable_contact && constact_constraint_range.begin != nullptr)
-				//			{
-				//				const uint32 count = constact_constraint_range.end - constact_constraint_range.begin;
-				//				VX_ASSERT(count >= 0);
-				//				contact_constraint_solver->SolveVelocityConstraint(constact_constraint_range.begin, count, solver_bodies);
-				//			}
-				//			},0);
-
-				//	}
-				//	mTaskCoordinator->WaitForTasks();
-
-				//}
-
-				std::atomic<uint32> next_island = { 0 };
+				std::atomic<uint32> next_island_indices = { 0 };
 
 				struct SolvingIslandContext
 				{
@@ -586,18 +570,20 @@ namespace vx
 					IslandCoordinator* islandCoordinator;
 					const uint32 velocityIterations;
 					const bool enableContact;
+					const bool splitLargeIsland;
 				};
 				SolvingIslandContext solving_island_ctx{ 
 					*mConstraintSolver,
 					mContactConstraintSolver,
 					mIslandCoordinator,
-					mSettings.solver.velocityIterations,
-					mSettings.solver.enableContact };
+					mSettings->solver.velocityIterations,
+					mSettings->solver.enableContact, 
+					mSettings->splitLargeIsland};
 
 				/// create task as the count; thread workers
 				for(uint32 i = 0; i < mTaskCoordinator->MaxConcurrency(); ++i)
 				{
-					mTaskCoordinator->ConstructTask([&solving_island_ctx, &next_island, island_count = mIslandCoordinator->IslandCount()]()
+					mTaskCoordinator->ConstructTask([&solving_island_ctx, &next_island_indices, island_count = mIslandCoordinator->IslandCount()]()
 						{
 
 #define VX_SPLIT_ISLAND 1
@@ -606,7 +592,7 @@ namespace vx
 
 #if VX_SPLIT_ISLAND
 							bool normal_island_complete = false;
-							bool large_island_complete = false;
+							bool large_island_complete = !solving_island_ctx.splitLargeIsland;
 							///NEW+
 							for (;;)
 							{
@@ -618,44 +604,49 @@ namespace vx
 
 								auto* solver_bodies = solving_island_ctx.constraintSolver.GetBodiesPtr();
 
-								///try splitting island 
-								IslandCoordinator::IslandRange<uint32> island_contact_range(nullptr, nullptr), island_noncontact_range(nullptr, nullptr);
-								uint32 solving_split_island_idx;
-								uint32 debug_bin = uint32(-1);
-								IslandCoordinator::Splitter::EStatus status = solving_island_ctx.islandCoordinator->mSplitter.NextConstactConstraintBatchRange(solving_split_island_idx, island_count, island_contact_range, island_noncontact_range, debug_bin);
-
-								switch (status)
+								if(solving_island_ctx.splitLargeIsland)
 								{
-								case vx::IslandCoordinator::Splitter::EStatus::Complete:
-									large_island_complete = true;
+									///try splitting island 
+									IslandCoordinator::IslandRange<uint32> island_contact_range(nullptr, nullptr), island_noncontact_range(nullptr, nullptr);
+									uint32 solving_split_island_idx;
+									uint32 debug_bin = uint32(-1);
+									IslandCoordinator::Splitter::EStatus status = solving_island_ctx.islandCoordinator->GetSplitter().NextConstactConstraintBatchRange(solving_split_island_idx,
+										island_count, island_contact_range, island_noncontact_range, debug_bin, solving_island_ctx.islandCoordinator->SortedIslandIndices());
+
+									switch (status)
+									{
+									case vx::IslandCoordinator::Splitter::EStatus::Complete:
+										large_island_complete = true;
+										break;
+									case vx::IslandCoordinator::Splitter::EStatus::WaitingForBatches:
+										break;
+									case vx::IslandCoordinator::Splitter::EStatus::RetrievedBatch:
+									{
+										VX_PROFILE_SCOPE("Solving Large Island Batch");
+										worked = true;
+										//solve batch
+										if (island_noncontact_range.Valid())
+											solving_island_ctx.constraintSolver.SolverVelocityLinear1DRowsIndices(island_noncontact_range.begin, island_noncontact_range.Size());
+
+
+										if (solving_island_ctx.enableContact && island_contact_range.Valid())
+											solving_island_ctx.contactConstraintSolver.SolveVelocityConstraint(island_contact_range.begin, island_contact_range.Size(), solver_bodies);
+
+
+										/// couple of issues 
+										/// 1. range of value, null return 2 as size instead of 1
+										/// 2. submitting/marking batch but bin as already processed
+
+										///mark batch as processed 
+										uint32 processed_count = island_contact_range.Size() + island_noncontact_range.Size();
+										solving_island_ctx.islandCoordinator->GetSplitter().MarkConstactConstraintBatchRangeComplete(solving_split_island_idx, processed_count, velocity_iteration_count, debug_bin);
+
+										continue;
+									}
 									break;
-								case vx::IslandCoordinator::Splitter::EStatus::WaitingForBatches:
-									break;
-								case vx::IslandCoordinator::Splitter::EStatus::RetrievedBatch:
-								{
-									worked = true;
-									//solve batch
-									if (island_noncontact_range.Valid())
-										solving_island_ctx.constraintSolver.SolverVelocityLinear1DRowsIndices(island_noncontact_range.begin, island_noncontact_range.Size());
-
-
-									if (solving_island_ctx.enableContact && island_contact_range.Valid())
-										solving_island_ctx.contactConstraintSolver.SolveVelocityConstraint(island_contact_range.begin, island_contact_range.Size(), solver_bodies);
-
-
-									/// couple of issues 
-									/// 1. range of value, null return 2 as size instead of 1
-									/// 2. submitting/marking batch but bin as already processed
-
-									///mark batch as processed 
-									uint32 processed_count = island_contact_range.Size();// +island_noncontact_range.Size();
-									solving_island_ctx.islandCoordinator->mSplitter.MarkConstactConstraintBatchRangeComplete(solving_split_island_idx, processed_count, velocity_iteration_count, debug_bin);
-
-									continue;
-								}
-								break;
-								default:
-									break;
+									default:
+										break;
+									}
 								}
 
 
@@ -664,17 +655,19 @@ namespace vx
 								///solve island as small island
 								/// find the first not large island to solve
 								/// 
-								uint32 normal_island_idx = next_island.load(std::memory_order_relaxed);
-								if (normal_island_idx >= island_count)
+								uint32 normal_island_indices_idx = next_island_indices.load(std::memory_order_relaxed);
+								if (normal_island_indices_idx >= island_count)
 								{
 									normal_island_complete = true;
 									continue;
 								}
 
-								if (!solving_island_ctx.islandCoordinator->mSplitter.IsIslandLarge(normal_island_idx))
+								const uint32 normal_island_idx = solving_island_ctx.islandCoordinator->SortedIslandIndices()[normal_island_indices_idx];
+								if (!solving_island_ctx.splitLargeIsland || !solving_island_ctx.islandCoordinator->GetSplitter().IsIslandLarge(normal_island_idx))
 								{
+									VX_PROFILE_SCOPE("Solving Island");
 									/// race condition
-									if (next_island.compare_exchange_strong(normal_island_idx, normal_island_idx + 1))
+									if (next_island_indices.compare_exchange_strong(normal_island_indices_idx, normal_island_indices_idx + 1))
 									{
 										worked = true;
 										IslandCoordinator::IslandRange<uint32> constraint_island_indices_range = solving_island_ctx.islandCoordinator->IslandNonContactConstraintRowIndicesRange(normal_island_idx);
@@ -696,7 +689,7 @@ namespace vx
 								{
 									///increment for next iteration
 									/// only increment is some else as not 
-									next_island.compare_exchange_strong(normal_island_idx, normal_island_idx + 1);
+									next_island_indices.compare_exchange_strong(normal_island_indices_idx, normal_island_indices_idx + 1);
 								}
 
 
@@ -705,7 +698,7 @@ namespace vx
 
 								if (!worked)
 								{
-
+									std::this_thread::yield();
 								}
 							}
 
@@ -745,7 +738,9 @@ namespace vx
 				
 				mTaskCoordinator->WaitForTasks();
 
-				mIslandCoordinator->mSplitter.ReleaseMemAllocation(mScratchAllocator, mBodyManager.GetNumActiveBodies(), mIslandCoordinator->IslandCount());
+
+				if(mSettings->splitLargeIsland)
+					mIslandCoordinator->GetSplitter().ReleaseMemAllocation(mScratchAllocator, mBodyManager.NumActiveBodies(), mIslandCoordinator->IslandCount());
 #else
 				//for (int i = 0; i < mSettings.solver.velocityIterations; ++i)
 				//{
@@ -812,7 +807,7 @@ namespace vx
 
 
 			//commit solver state to constraint
-			if (mSettings.solver.warmstart)
+			if (mSettings->solver.warmstart)
 				mConstraintSolver->CommitStateConstraint();
 
 			//write back bodies 
@@ -856,8 +851,8 @@ namespace vx
 		{
 			VX_PROFILE_SCOPE("Integrate bodies velocities and clear accumulated force");
 
-			uint32 num_active_bodies = GetNumActiveBodies();
-			BodyID* active_bodies = GetActiveBodies();
+			uint32 num_active_bodies = NumActiveBodies();
+			BodyID* active_bodies = ActiveBodies();
 
 			for (int i = 0; i < num_active_bodies; ++i)
 			{
@@ -869,25 +864,25 @@ namespace vx
 			}
 		}
 
-		if (mSettings.solver.enable)
+		if (mSettings->solver.enable)
 		{
 			VX_PROFILE_SCOPE("Resolve Position Correction");
-			float baumgarte = mSettings.solver.baumgarte;
+			float baumgarte = mSettings->solver.baumgarte;
 			Constraint** solve_constraint_position = mConstraintSolver->GetConstraintResolvePositionQueuePtr();
 			uint32 num_position_constraint = mConstraintSolver->ConstraintResolvePositionQueueCount();
-			for (int i = 0; i < mSettings.solver.positionIterations; ++i)
+			for (int i = 0; i < mSettings->solver.positionIterations; ++i)
 			{
 				ConstraintSolver::SolveConstraintsPosition(solve_constraint_position, num_position_constraint, dt, baumgarte);
 
 #if CONTACT_USE_SOLVERBODY
 				//fix this bad nested if branches
-				if (mSettings.solver.enableContact)
+				if (mSettings->solver.enableContact)
 				{
 					mContactConstraintSolver.SolvePositionCorrections(
 						mConstraintSolver->GetBodiesPtr(), mBodyManager,
-						mSettings.solver.baumgarte, mSettings.solver.positionCorrectionSlop,
-						mSettings.solver.positionCorrectionGlobalLimits[0], mSettings.solver.positionCorrectionGlobalLimits[1],
-						mSettings.solver.positionCorrectionBodyLimitScale);
+						mSettings->solver.baumgarte, mSettings->solver.positionCorrectionSlop,
+						mSettings->solver.positionCorrectionGlobalLimits[0], mSettings->solver.positionCorrectionGlobalLimits[1],
+						mSettings->solver.positionCorrectionBodyLimitScale);
 				}
 #endif // CONTACT_USE_SOLVERBODY
 			}
@@ -902,7 +897,8 @@ namespace vx
 
 		mContactConstraintSolver.FinaliseStepManifoldCache(mBodyManager);
 
-		PhysicsWorld::mFrameIdx++;
+		mContext.mStepIndex++;
+		PhysicsWorld::mStepIndex = static_cast<uint32>(mContext.mStepIndex);
 	}
 
 
@@ -922,7 +918,7 @@ namespace vx
 			M = M.MultiplyAffine(Mat44::Scale(scale));
 
 			draw_renderer->SubmitSpherePrimitive(
-				{nullptr, M, mSettings.drawSettings.drawBodiesAsSolid ,
+				{nullptr, M, mSettings->drawSettings->drawBodiesAsSolid ,
 				true, c,  (int(flags & ERenderInstanceFlags::UseTexture) == 0)}, flags);
 		}
 		else if constexpr (Type == EShapeType::Box)
@@ -934,7 +930,7 @@ namespace vx
 			draw_renderer->SubmitCubePrimitive(
 				{ nullptr,
 				M,
-				mSettings.drawSettings.drawBodiesAsSolid , true,
+				mSettings->drawSettings->drawBodiesAsSolid , true,
 				c, (int(flags & ERenderInstanceFlags::UseTexture) == 0) }, flags);
 
 			//draw_renderer->DrawText3D("Mass", body.Position() + scale, settings.textScale, vx::Colour::sWhite, settings.textAlignment);
@@ -950,7 +946,7 @@ namespace vx
 
 			draw_renderer->SubmitCapsulePrimitive(
 				{ nullptr,M, 
-				mSettings.drawSettings.drawBodiesAsSolid , true,
+				mSettings->drawSettings->drawBodiesAsSolid , true,
 				c,  (int(flags & ERenderInstanceFlags::UseTexture) == 0)}, flags);
 
 			//draw_renderer->DrawText3D("Mass", body.Position() + scale, settings.textScale, vx::Colour::sWhite, settings.textAlignment);
@@ -964,7 +960,7 @@ namespace vx
 			draw_renderer->SubmitQuadXZPrimitive(
 				{ nullptr,
 				M,
-				mSettings.drawSettings.drawBodiesAsSolid , false/*true*/,
+				mSettings->drawSettings->drawBodiesAsSolid , false/*true*/,
 				c,  (int(flags & ERenderInstanceFlags::UseTexture) == 0) }, flags);
 
 			//draw_renderer->DrawText3D("Mass", body.Position() + scale, settings.textScale, vx::Colour::sWhite, settings.textAlignment);
@@ -1001,11 +997,11 @@ namespace vx
 		};
 
 
-		const DrawSettings draw_settings = mSettings.drawSettings;
+		const DrawSettings& draw_settings = *mSettings->drawSettings;
 		//return;
-		for (auto it = GetBodies().begin(); it != GetBodies().end(); ++it)
+		for (auto it = Bodies().begin(); it != Bodies().end(); ++it)
 		{
-			if (!it->GetID().IsValid())
+			if (!it->ID().IsValid())
 				continue;
 
 			/// support to colour bodies by 
@@ -1017,7 +1013,7 @@ namespace vx
 			Colour c = Colour::sMagenta;
 
 			if (draw_settings.bodyColourMode == vx::EBodyColourMode::Instances)
-				c = Colour::RandomColour(it->GetID().ID());
+				c = Colour::RandomColour(it->ID().ID());
 			else if (draw_settings.bodyColourMode == vx::EBodyColourMode::MotionType)
 				c = it->IsDynamic() ? draw_settings.dynamicColour : draw_settings.staticColour;
 			else if (draw_settings.bodyColourMode == vx::EBodyColourMode::MotionState)
@@ -1029,7 +1025,7 @@ namespace vx
 			else if (draw_settings.bodyColourMode == vx::EBodyColourMode::ShapeType)
 				c = shape_col_type[(int)it->GetShape()->Type()];
 			else if (draw_settings.bodyColourMode == vx::EBodyColourMode::Phase)
-				c = GetBodySimphaseDebugColour(*it);
+				c = BodySimphaseDebugColour(*it);
 			else if (draw_settings.bodyColourMode == vx::EBodyColourMode::IslandIdx)
 			{
 				uint32 island_idx = it->GetIslandIndex();
@@ -1084,7 +1080,7 @@ namespace vx
 			if (draw_settings.drawBodiesMassText)
 			{
 				//StackString<8> test = ToStackString<>("%.2f", 2.12345f);
-				float inv_mass = it->GetInverseMass();
+				float inv_mass = it->InverseMass();
 				StackString<32> mass_text;
 				mass_text << "Mass: " << ToStackString("%.2f", (inv_mass) ? (1.0f / inv_mass) : 0.0f).Data() << "kg";// << ToStackString<>("%.2f", 2.12345f).Data();
 				//std::string mass_text = "Mass: " + std::to_string((inv_mass) ? (1.0f / inv_mass) : 0.0f) + "kg";
@@ -1101,24 +1097,19 @@ namespace vx
 	{
 		VX_PROFILE_FUNCTION();
 		VX_ASSERT(debug_renderer, "Debug Renderer is null");
-#if VX_DEBUG_DRAW
-		mHackDebugRenderer = debug_renderer;
-#endif // VX_DEBUG_DRAW
 
-
-
-		if (mSettings.drawSettings.nonContactConstraintDrawSettings.drawConstraints)
-			mConstraintCoordinator.DebugGizmos(debug_renderer, mSettings.drawSettings.nonContactConstraintDrawSettings);
+		if (mSettings->drawSettings->nonContactConstraintDrawSettings.drawConstraints)
+			mConstraintCoordinator.DebugGizmos(debug_renderer, mSettings->drawSettings->nonContactConstraintDrawSettings);
 
 		//debug_renderer->DrawLine(mExperimentRay.origin, mExperimentRay.End(), Colour::sGreen);
 
-		DrawSettings draw_settings = mSettings.drawSettings;
+		const DrawSettings& draw_settings = *mSettings->drawSettings;
 		if(mBroadphase)
 			mBroadphase->DebugDraw(debug_renderer, draw_settings);
 
 		mContactConstraintSolver.DebugDraw(debug_renderer, mConstraintSolver, &mBodyManager, draw_settings);
 
-		if(mSettings.drawSettings.drawDebugInertia)
+		if(mSettings->drawSettings->drawDebugInertia)
 			QuickDebugDrawInertia(debug_renderer);
 		//////DEBUG BOX BOX SAT 
 		if(draw_settings.drawAABBContactManifoldInFrame)
@@ -1221,7 +1212,7 @@ namespace vx
 			draw_settings.drawBodiesPrincipalAxes ||
 			draw_settings.drawShapeOrientedBoundCorners || draw_settings.drawBodiesVelocities)
 		{
-			for (const auto& body : GetBodies())
+			for (const auto& body : Bodies())
 			{
 				if (!body.IsIDValid())
 					continue;
@@ -1320,10 +1311,10 @@ namespace vx
 		VX_PROFILE_FUNCTION();
 		for(const auto& body : mBodyManager.GetBodies())
 		{
-			if (body.GetInverseMass() <= 0.0f)
+			if (body.InverseMass() <= 0.0f)
 				continue;
 
-			float mass = 1.0f / body.GetInverseMass();
+			float mass = 1.0f / body.InverseMass();
 			Vec3 com = body.Position();
 			Quat q = body.Orientation();
 
@@ -1356,7 +1347,7 @@ namespace vx
 
 			OBB obb = OBB(AABB(-0.5f * _size, 0.5f * _size), q);
 			//debug_renderer->DrawBox(aabb.GetOBB(Mat44::RotationTranslation(q, com)), Colour::sYellow);
-			debug_renderer->DrawBox(obb.ComputeCorners(com), mSettings.drawSettings.drawDebugInertiaColour);
+			debug_renderer->DrawBox(obb.ComputeCorners(com), mSettings->drawSettings->drawDebugInertiaColour);
 
 
 			////momentum
@@ -1373,7 +1364,7 @@ namespace vx
 		}
 	}
 
-	const CollisionResolutionStat PhysicsWorld::GetNarrowphaseStats() const
+	const CollisionResolutionStat PhysicsWorld::NarrowphaseStats() const
 	{
 		return mNarrowphaseQuery.Stats();
 	}
@@ -1394,7 +1385,7 @@ namespace vx
 		/// 1. check island state
 		/// 2. update bodies in islands
 		///
-		if(mSettings.sleeping.enable)
+		if(mSettings->sleeping.enable)
 		{
 			//auto& islands = mIslandCoordinator->islands;
 
@@ -1412,7 +1403,7 @@ namespace vx
 					Body& body = mBodyManager.GetBody(*body_id);
 					//if (mSettings.sleeping.enable)
 
-					body.UpdateSleepState(dt, mSettings.sleeping);
+					body.UpdateSleepState(dt, mSettings->sleeping);
 
 					if (body.IsAwake())
 					{
@@ -1446,7 +1437,7 @@ namespace vx
 		mBodyManager.AddBodiesToActivate(false);
 	}
 
-	Colour PhysicsWorld::GetBodySimphaseDebugColour(const Body& body) const
+	Colour PhysicsWorld::BodySimphaseDebugColour(const Body& body) const
 	{
 		auto flags = mBodyManager.GetBodySimStats(body).phase;
 
@@ -1455,7 +1446,7 @@ namespace vx
 		const bool in_narrow = Contains(flags, EBodySimphaseFlags::InNarrowphase);
 		const bool in_broad = Contains(flags, EBodySimphaseFlags::InBroadphase);
 
-		const DrawSettings draw_settings = mSettings.drawSettings;
+		const DrawSettings& draw_settings = *mSettings->drawSettings;
 		if (is_colliding)
 		{
 			return Colour(1.0f, 0.5f, 0.0f);

@@ -21,7 +21,7 @@ namespace vx
 		mActiveBodies = new BodyID[mMaxActiveBodies];
 
 		uint32 min_free_list = 64;
-		mFreedIdxs.reserve(min_free_list);
+		mFreedIndices.reserve(min_free_list);
 		mBodyIdxGenerations.resize(mMaxBodies, 0);
 	}
 	BodyManager::~BodyManager()
@@ -41,7 +41,7 @@ namespace vx
 	}
 	const BodyID BodyManager::AddBody(const BodySettings& body_setting)
 	{
-		if(mBodies.size() >= mMaxBodies - 1 && mFreedIdxs.empty())
+		if(mBodies.size() >= mMaxBodies - 1 && mFreedIndices.empty())
 		{
 			VX_LOG_WARN("Body manager body limit attained");
 			return BodyID();
@@ -101,11 +101,11 @@ namespace vx
 		if (id.Generation() <= 1U)
 			mBodiesDebugInfo.emplace_back();
 
-		success &= body.GetID().Idx() < mBodiesDebugInfo.size();
+		success &= body.ID().Idx() < mBodiesDebugInfo.size();
 		VX_ASSERT_WARN(success, "Invalid Body creation or Miss-matching id for body & body debug");
 		StackString<40> _s(body_setting.debug_name);
-		_s << "_body_" << body.GetID().ID() << "_idx_" << body.GetID().Idx();
-		mBodiesDebugInfo[body.GetID().Idx()].name = _s;
+		_s << "_body_" << body.ID().ID() << "_idx_" << body.ID().Idx();
+		mBodiesDebugInfo[body.ID().Idx()].name = _s;
 
 		//if (success && body_setting.motionType == EMotionType::Dynamic)
 		//	ActivateBodies(&id, 1);
@@ -114,16 +114,16 @@ namespace vx
 	}
 	const BodyID BodyManager::AddBody(Body& _body)
 	{
-		if (_body.GetID().IsValid())
-			return _body.GetID();
+		if (_body.ID().IsValid())
+			return _body.ID();
 
 
 		BodyID id = BodyID();
-		if (!mFreedIdxs.empty())
+		if (!mFreedIndices.empty())
 		{
-			uint32 idx = mFreedIdxs[0];
-			std::swap(mFreedIdxs[0], mFreedIdxs.back());
-			mFreedIdxs.pop_back();
+			uint32 idx = mFreedIndices[0];
+			std::swap(mFreedIndices[0], mFreedIndices.back());
+			mFreedIndices.pop_back();
 			
 			uint8 gen = GetBodyIdxNextGeneration(idx);
 			id = BodyID(idx, gen);
@@ -179,12 +179,11 @@ namespace vx
 
 	void BodyManager::RemoveBody(const BodyID& id)
 	{
-		VX_ASSERT(id.IsValid(), "Attempting to remoev invalid body");
-
+		VX_ASSERT(id.IsValid(), "Attempting to remove invalid body");
+		VX_ASSERT_WARN_VOID(mBodies[id.Idx()].mID.IsValid(), "Attempting to remove invalid body");
 
 		//remove from broadphase 
-
-		mFreedIdxs.push_back(id.Idx());
+		mFreedIndices.push_back(id.Idx());
 		mBodies[id.Idx()].mID = BodyID();
 		//this would affect shape 
 
@@ -192,35 +191,35 @@ namespace vx
 
 	const BodyDebug& BodyManager::GetBodyDebugInfo(const Body& body) const
 	{
-		return GetBodyDebugInfo(body.GetID());
+		return GetBodyDebugInfo(body.ID());
 	}
 
 	BodyDebug& BodyManager::GetBodyDebugInfo(const Body& body)
 	{
-		return GetBodyDebugInfo(body.GetID());
+		return GetBodyDebugInfo(body.ID());
 	}
 
 	const char* BodyManager::GetBodyDebugName(const Body& body) const
 	{
-		return GetBodyDebugName(body.GetID());
+		return GetBodyDebugName(body.ID());
 	}
 
 	const BodySimStats& BodyManager::GetBodySimStats(const Body& body) const
 	{
-		return GetBodySimStats(body.GetID());
+		return GetBodySimStats(body.ID());
 	}
 
 	BodySimStats& BodyManager::GetBodySimStats(const Body& body)
 	{
-		return GetBodySimStats(body.GetID());
-		//return mBodiesDebugInfo[body.GetID().Value()].simulationStats;
+		return GetBodySimStats(body.ID());
+		//return mBodiesDebugInfo[body.ID().Value()].simulationStats;
 	}
 
 	void BodyManager::UpdateBodyVelocitySimStat(const Body& body)
 	{
-		//BodySimStats& sim_stat = mBodiesDebugInfo[body.GetID().Value()].simulationStats;
+		//BodySimStats& sim_stat = mBodiesDebugInfo[body.ID().Value()].simulationStats;
 		
-		BodySimStats& sim_stat = GetBodySimStats(body.GetID());
+		BodySimStats& sim_stat = GetBodySimStats(body.ID());
 
 		sim_stat.maxAttainedLinearVelocitySq = VxMax(sim_stat.maxAttainedLinearVelocitySq, body.GetLinearVelocity().LengthSq());
 		sim_stat.maxAttainedAngularVelocitySq = VxMax(sim_stat.maxAttainedAngularVelocitySq, body.GetAngularVelocity().LengthSq());
@@ -235,7 +234,7 @@ namespace vx
 			body.SetIndexInActiveBodies(Body::kInvalidActiveIdx);
 
 			//quick hack 
-			if (!body.GetID().IsValid())
+			if (!body.ID().IsValid())
 				continue;
 
 			if (sleeping_setting.enable)
@@ -246,7 +245,7 @@ namespace vx
 				VX_ASSERT_WARN(mNumActiveBodies < mMaxActiveBodies, "Reach max bodies limits");
 				if (mNumActiveBodies >= mMaxActiveBodies) continue;
 				body.SetIndexInActiveBodies(mNumActiveBodies);
-				mActiveBodies[mNumActiveBodies++] = body.GetID();
+				mActiveBodies[mNumActiveBodies++] = body.ID();
 			}
 			else
 				body.SetIndexInActiveBodies(Body::kInvalidActiveIdx);
@@ -320,7 +319,7 @@ namespace vx
 		for (auto& body : GetBodies())
 		{
 			//quick hack 
-			if (!body.GetID().IsValid())
+			if (!body.ID().IsValid())
 				continue;
 
 			VX_ASSERT_WARN(mNumActiveBodies < mMaxActiveBodies, "Reach max bodies limits");
@@ -329,12 +328,12 @@ namespace vx
 			if (body.IsAwake())
 			{
 				body.SetIndexInActiveBodies(mNumActiveBodies);
-				mActiveBodies[mNumActiveBodies++] = body.GetID();
+				mActiveBodies[mNumActiveBodies++] = body.ID();
 			}
 			else if (activate_sleeping)
 			{
 				body.SetIndexInActiveBodies(mNumActiveBodies);
-				mActiveBodies[mNumActiveBodies++] = body.GetID();
+				mActiveBodies[mNumActiveBodies++] = body.ID();
 
 				body.WakeUp();
 			}

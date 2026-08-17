@@ -44,9 +44,9 @@ namespace vx{
 		BodyID body_ids[2];
 
 		if (mBodyA->IsDynamic() && !mBodyA->IsAwake())
-			body_ids[bodies_activate_count++] = mBodyA->GetID();
+			body_ids[bodies_activate_count++] = mBodyA->ID();
 		if (mBodyB->IsDynamic() && !mBodyB->IsAwake())
-			body_ids[bodies_activate_count++] = mBodyB->GetID();
+			body_ids[bodies_activate_count++] = mBodyB->ID();
 
 		if (bodies_activate_count > 0)
 			ctx.bodyManager->ActivateBodies(body_ids, bodies_activate_count);
@@ -79,8 +79,8 @@ namespace vx{
 			return 0;
 		}
 
-		row->bodyAidx = solver->GetOrCreateSolverBody(mBodyA->GetID(), ctx);
-		row->bodyBidx = solver->GetOrCreateSolverBody(mBodyB->GetID(), ctx);
+		row->bodyAidx = solver->GetOrCreateSolverBody(mBodyA->ID(), ctx);
+		row->bodyBidx = solver->GetOrCreateSolverBody(mBodyB->ID(), ctx);
 
 		if(RequiresPositionCorrection())
 			solver->AppendPositionCorrectionQueue(this);// Queue
@@ -135,7 +135,7 @@ namespace vx{
 			rAXn.Store(o_row->rAXn);
 			invIrAXn.Store(o_row->invIrAXn);
 
-			inv_eff_mass += mBodyA->GetInverseMass() + invIrAXn.Dot(rAXn);
+			inv_eff_mass += mBodyA->InverseMass() + invIrAXn.Dot(rAXn);
 		}
 		else
 		{
@@ -151,7 +151,7 @@ namespace vx{
 			rBXn.Store(o_row->rBXn);
 			invIrBXn.Store(o_row->invIrBXn);
 
-			inv_eff_mass += mBodyB->GetInverseMass() + invIrBXn.Dot(rBXn);
+			inv_eff_mass += mBodyB->InverseMass() + invIrBXn.Dot(rBXn);
 		}
 		else
 		{
@@ -227,7 +227,7 @@ namespace vx{
 			Vec3 invIrAXn = mBodyA->ComputeInvInteriaWorld().Multiply3x3(rAXn);
 			invIrAXn.Store(rigid_constraint.invIrAXn);
 
-			inv_eff_mass += mBodyA->GetInverseMass() + invIrAXn.Dot(rAXn);
+			inv_eff_mass += mBodyA->InverseMass() + invIrAXn.Dot(rAXn);
 		}
 
 		if (bodyB_nonstatic)
@@ -236,7 +236,7 @@ namespace vx{
 			Vec3 invIrBXn = mBodyB->ComputeInvInteriaWorld().Multiply3x3(rBXn);
 
 			invIrBXn.Store(rigid_constraint.invIrBXn);
-			inv_eff_mass += mBodyB->GetInverseMass() + invIrBXn.Dot(rBXn);
+			inv_eff_mass += mBodyB->InverseMass() + invIrBXn.Dot(rBXn);
 		}
 
 		if (!bodyA_nonstatic && !bodyB_nonstatic)
@@ -291,8 +291,8 @@ namespace vx{
 		if (debug_renderer && mBodyA && mBodyB)
 		{
 
-			const float mA = 1.0f / mBodyA->GetInverseMass();
-			const float mB = 1.0f / mBodyB->GetInverseMass();
+			const float mA = 1.0f / mBodyA->InverseMass();
+			const float mB = 1.0f / mBodyB->InverseMass();
 			//split rest length based on mass contribution 
 			float total_mass = mA + mB;
 			//distribute force if total mass is not too small else split
@@ -417,8 +417,8 @@ namespace vx{
 		Vec3 lin_velB = bodyB.GetLinearVelocity();
 		Vec3 ang_velA = bodyA.GetAngularVelocity();
 		Vec3 ang_velB = bodyB.GetAngularVelocity();
-		float inv_massA = bodyA.GetInverseMass();
-		float inv_massB = bodyB.GetInverseMass();
+		float inv_massA = bodyA.InverseMass();
+		float inv_massB = bodyB.InverseMass();
 
 
 		//load data

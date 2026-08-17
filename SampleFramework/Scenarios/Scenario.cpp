@@ -14,8 +14,145 @@
 
 #include "SampleFramework/Input/InputSystem.h"
 #include "Vortrix/Dynamics/Constraints/DistanceConstraint.h"
+#include "Vortrix/Dynamics/Constraints/PointConstraint.h"
+
+#include "Vortrix/Dynamics/RagdollBuilder.h"
+
+#include "SampleFramework/ApplicationUtil.h"
+
 
 using namespace InputSystem;
+
+void Scenario::CreateRagdoll(const vx::RagdollSettings& settings, vx::Ragdoll* o_ragdoll)
+{
+	VX_ASSERT_WARN_VOID((mPhysicsWorld != nullptr), "Attempting to create ragdoll with no physics world");
+
+	if (!mRagdollBuilder)
+	{
+		VX_LOG_INFO("Create Ragdoll builder for scenario");
+		mRagdollBuilder = vx::MakeRef<vx::RagdollBuilder>(mPhysicsWorld);
+	}
+
+	vx::Ragdoll dummy;
+	vx::Ragdoll& ragdoll = (o_ragdoll) ? *o_ragdoll : dummy;
+	ragdoll = mRagdollBuilder->Build(settings);
+
+
+
+	SerialisedRagdollSettings serial_ragdoll;
+	serial_ragdoll.position = settings.position;
+	serial_ragdoll.limbsOffset = settings.limbsOffset;
+	serial_ragdoll.splitTorso = settings.splitTorso;
+	serial_ragdoll.shapesType = settings.mShapesType;
+
+	serial_ragdoll.firstBodyOffsetInScene = mRagdollBodies.size(); //size before insert
+	serial_ragdoll.limbsCount = ragdoll.mBodyIDs.size();
+	mRagdollSettings.push_back(serial_ragdoll);
+
+
+	mRagdollBodies.insert(mRagdollBodies.end(), ragdoll.mBodyIDs.begin(), ragdoll.mBodyIDs.end());
+	mRagdollConstraints.insert(mRagdollConstraints.end(), ragdoll.mConstraints.begin(), ragdoll.mConstraints.end());
+}
+
+void Scenario::CreateRagdoll(SerialisedRagdollSettings settings, vx::Ragdoll* o_ragdoll)
+{
+	VX_ASSERT_WARN_VOID((mPhysicsWorld != nullptr), "Attempting to create ragdoll with no physics world");
+
+	if (!mRagdollBuilder)
+	{
+		VX_LOG_INFO("Create Ragdoll builder for scenario");
+		mRagdollBuilder = vx::MakeRef<vx::RagdollBuilder>(mPhysicsWorld);
+	}
+
+
+
+	vx::RagdollSettings _ragdoll;
+	_ragdoll.position = settings.position;
+	_ragdoll.limbsOffset = settings.limbsOffset;
+	_ragdoll.splitTorso = settings.splitTorso;
+	_ragdoll.mShapesType = settings.shapesType;
+
+
+
+	vx::Ragdoll dummy;
+	vx::Ragdoll& ragdoll = (o_ragdoll) ? *o_ragdoll : dummy;
+	ragdoll = mRagdollBuilder->Build(_ragdoll);
+
+
+
+	settings.firstBodyOffsetInScene = mRagdollBodies.size(); //size before insert
+	settings.limbsCount = ragdoll.mBodyIDs.size();
+	mRagdollSettings.push_back(settings);
+
+
+	mRagdollBodies.insert(mRagdollBodies.end(), ragdoll.mBodyIDs.begin(), ragdoll.mBodyIDs.end());
+	mRagdollConstraints.insert(mRagdollConstraints.end(), ragdoll.mConstraints.begin(), ragdoll.mConstraints.end());
+}
+
+void Scenario::CreateConstraint(const AppCreateConstraint& app_constraint, vx::DistanceConstraint* o_constraint)
+{
+	VX_ASSERT_WARN_VOID((mPhysicsWorld != nullptr), "Attempting to create distance constraint with no physics world");
+	VX_ASSERT_WARN_VOID(app_constraint.body_a.IsValid() && app_constraint.body_b.IsValid(), "Attempting to create distance constraint with invalid body(ies)");
+
+	vx::Body* bodyA = &mPhysicsWorld->GetBodyManager().GetBody(app_constraint.body_a);
+	vx::Body* bodyB = &mPhysicsWorld->GetBodyManager().GetBody(app_constraint.body_b);
+
+
+	switch (app_constraint.type)
+	{
+	case vx::EConstraintType::Distance:
+	{
+		vx::DistanceConstraintSettings constraint_settings;
+		constraint_settings.localAnchorA = app_constraint.anchor_a;
+		constraint_settings.localAnchorB = app_constraint.anchor_b;
+		constraint_settings.minDist = app_constraint.min_dist;
+		constraint_settings.maxDist = app_constraint.max_dist;
+		constraint_settings.frequency = app_constraint.freq;
+		constraint_settings.dampingRatio = app_constraint.damping;
+
+		mPhysicsWorld->CreateConstraintsT(&vx::DistanceConstraint(bodyA, bodyB, constraint_settings), 1);
+		break;
+	}
+	case vx::EConstraintType::Point:
+	{
+		vx::PointConstraintSettings constraint_settings;
+		constraint_settings.anchorA = app_constraint.anchor_a;
+		constraint_settings.anchorB = app_constraint.anchor_b;
+		constraint_settings.anchorPointFrame = vx::EConstraintFrame::Local;
+		constraint_settings.enableVelocityBias = app_constraint.enableVelocityBias;
+		constraint_settings.errorTreshold = app_constraint.errorTreshold;
+
+		mPhysicsWorld->CreateConstraintsT(&vx::PointConstraint(bodyA, bodyB, constraint_settings), 1);
+		break;
+	}
+	default:
+		VX_ASSERT(false, "Constraint not supported");
+		break;
+	}
+}
+
+
+
+
+void Scenario::CreateJenga(const ScenarioJengaSetting& settings)
+{
+	VX_ASSERT_WARN_VOID((mPhysicsWorld != nullptr), "Attempting to create jenga with no physics world");
+	VX_ASSERT_WARN_VOID((!settings.half_extent.IsZero() && !settings.half_extent.IsNaN()), "Attempting to create jenga with invalid half extent (zero or nan)");
+
+	vx::BodySettings body_setting;
+
+	if (settings.dynamicBodies)
+	{
+		body_setting = vx::BodySettings::DefaultDynamicConstruct();
+		body_setting.friction = 0.8f;
+		body_setting.restitution = 0.05f;
+	}
+	else
+		body_setting = vx::BodySettings::DefaultStaticConstruct();
+
+
+	CreateJengaImp(body_setting,settings.half_extent, settings.layers, settings.basePosition, settings.gap);
+}
 
 bool Scenario::BlockedMouseCastRay()
 {
@@ -130,11 +267,8 @@ void Scenario::MouseCastRay(bool physics_simulated)
 		if (physics_simulated && !mBody.IsValid() && mMouseEvent != EClickEvent::None)
 		{
 			if (body.IsSleeping())
-			{
-				//body.WakeUp(-ray_cast.direction * 5.0f);
-				mPhysicsWorld->ActivateBodies(&body.GetID(), 1);
-				body.ApplyImpulse(-ray_cast.direction * 5.0f);
-			}
+				mPhysicsWorld->ApplyImpulse(body.ID(), -ray_cast.direction * 5.0f);
+
 			mBody = hit.body;
 			//transform point to body local
 			mPointBodyFrame = vx::Mat44::TransformInverse(
@@ -195,6 +329,16 @@ void Scenario::OnClose()
 		mMouseDragConstraint = nullptr;
 	}
 	mHasMouseConstraint = false;
+
+	mMouseHoveringBody = vx::BodyID();
+
+	mRagdollBodies.clear();
+	mRagdollConstraints.clear();
+	mRagdollSettings.clear();
+	//delete mRagdollBuilder;
+	//mRagdollBuilder = nullptr;
+
+	mRagdollBuilder.reset();
 }
 
 void Scenario::PostPhysicsStep(float dt)
@@ -247,7 +391,7 @@ void Scenario::PostPhysicsStep(float dt)
 		{
 			vx::Body& body = mPhysicsWorld->GetBodyManager().GetBody(mBody);
 			//might just release key jolt body 
-			//body.ApplyImpulse(vx::Vec3(0.0f, 1.0f, 0.0f) * 10.0f * (1.0f/body.GetInverseMass()));
+			//body.ApplyImpulse(vx::Vec3(0.0f, 1.0f, 0.0f) * 10.0f * (1.0f/body.InverseMass()));
 			//body.WakeUp(vx::Vec3(0.0f, 1.0f, 0.0f) * 1000.0f);
 			mBody = vx::BodyID();
 
@@ -255,7 +399,7 @@ void Scenario::PostPhysicsStep(float dt)
 			delete mMouseDragConstraint;
 			mMouseDragConstraint = nullptr;
 
-			mPhysicsWorld->RemoveBody(mMouseDragBody->GetID());
+			mPhysicsWorld->RemoveBody(mMouseDragBody->ID());
 			mMouseDragBody = nullptr;
 		}
 		else
@@ -268,7 +412,7 @@ void Scenario::PostPhysicsStep(float dt)
 				mMouseDragConstraint = nullptr;
 			}
 
-			mPhysicsWorld->RemoveBody(mMouseDragBody->GetID());
+			mPhysicsWorld->RemoveBody(mMouseDragBody->ID());
 			mMouseDragBody = nullptr;
 		}
 	}
@@ -329,9 +473,9 @@ void Scenario::PostPhysicsStep(float dt)
 		{
 			vx::Body& body = mPhysicsWorld->GetBodyManager().GetBody(mBody);
 			//might just release key jolt body 
-			//body.ApplyImpulse(vx::Vec3(0.0f, 1.0f, 0.0f) * 10.0f * (1.0f/body.GetInverseMass()));
+			//body.ApplyImpulse(vx::Vec3(0.0f, 1.0f, 0.0f) * 10.0f * (1.0f/body.InverseMass()));
 			//body.WakeUp(vx::Vec3(0.0f, 1.0f, 0.0f) * 1000.0f);
-			mPhysicsWorld->ActivateBodies(&body.GetID(), 1);
+			mPhysicsWorld->ActivateBodies(&body.ID(), 1);
 			body.ApplyImpulse(vx::Vec3(0.0f, 1.0f, 0.0f) * 1000.0f);
 			mBody = vx::BodyID();
 		}
@@ -459,7 +603,7 @@ void Scenario::Create1DBoxPyramidStack(const vx::BodySettings& body_settings, in
 	}
 }
 
-void Scenario::CreateJenga(vx::BodySettings body_setting, const vx::Vec3& half_extent, int layers, vx::Vec3 base_pos, float gap)
+void Scenario::CreateJengaImp(vx::BodySettings body_setting, const vx::Vec3& half_extent, int layers, vx::Vec3 base_pos, float gap)
 {
 
 	//InterleavePattern pattern = InterleavePattern::JengaPattern();
@@ -668,8 +812,10 @@ void Scenario::CreateInterleavedStructure(vx::BodySettings body_setting, const F
 	}
 }
 
-void Scenario::CreateStructure(const vx::BodySettings& body_settings, const StructureConfig& cfg)
+void Scenario::CreateStructure(const vx::BodySettings& body_settings, const StructureConfig& cfg, const vx::Quat& orientation)
 {
+	VX_ASSERT_WARN_VOID((mPhysicsWorld != nullptr), "Attempting to create struture with no physics world");
+
 	vx::Vec3 box_size = 2.0f * cfg.halfExtent;
 
 	int countY = int(cfg.count.Y());
@@ -679,41 +825,49 @@ void Scenario::CreateStructure(const vx::BodySettings& body_settings, const Stru
 
 	vx::BodySettings settings = body_settings; //cpy
 
-	////vectorise shrink rule 
-	//const vx::Vec2 shrink_mask = vx::Vec2(
-	//	(cfg.shrinkAxis == EShrinkAxis::X || cfg.shrinkAxis == EShrinkAxis::XZ) ? 1 : 0,
-	//	(cfg.shrinkAxis == EShrinkAxis::Z || cfg.shrinkAxis == EShrinkAxis::XZ) ? 1 : 0);
+	for (int y = 0; y < countY; ++y)
+	{
+		//apply rule 
+		vx::Vec2 currXZ = cfg.GetSize ? cfg.GetSize(y) : vx::Vec2(width, depth);
+		width = int(currXZ.X());
+		depth = int(currXZ.Y());
 
-	//const vx::Vec2 countXZ = vx::Vec2(width, depth);
+		if (width <= 0 || depth <= 0)
+			break;
 
-	//for (int y = 0; y < countY; ++y)
-	//{
-	//	//apply rule 
-	//	vx::Vec2 currXZ = countXZ - (shrink_mask * y);
-	//	width = currXZ.X();
-	//	depth = currXZ.Y();
+		vx::Vec3 layer_offset = cfg.GetOffset ? cfg.GetOffset(y) : vx::Vec3(0);
 
-	//	if (width <= 0 || depth <= 0)
-	//		break;
-
+		for (int x = 0; x < width; ++x)
+			for (int z = 0; z < depth; ++z)
+			{
+				if (cfg.PlaceRule && !cfg.PlaceRule(x, y, z, width, depth))
+					continue;
 
 
-	//	for(int x = 0; x < width; ++x)
-	//		for (int z = 0; z < depth; ++z)
-	//		{
-	//			float _x = cfg.basePos.X() +
-	//				(x - (width - 1) * 0.5f) * box_size.X();
+				vx::Vec3 local_pos = {
+					(x - (width - 1) * 0.5f) * box_size.X(),
+					y * box_size.Y(),
+					(z - (depth - 1) * 0.5f) * box_size.Z()
+				};
 
-	//			float _y = cfg.basePos.Y() + y * box_size.Y();
+				vx::Vec3 world_pos = cfg.basePos + orientation.Rotate(local_pos + layer_offset);// +layer_offset;
 
-	//			float _z = cfg.basePos.Z() + 
-	//				(z - (depth - 1) * 0.5f) * box_size.Z();
 
-	//			settings.position = vx::Vec3(_x, _y, _z);
-	//			mPhysicsWorld->CreateBody(settings);
-	//		}
-	//}
+				settings.position = world_pos;
+				settings.orientation = orientation;
+				mPhysicsWorld->CreateBody(settings);
+			}
+	}
+}
 
+void Scenario::SampleStructure(std::vector<vx::Vec3>& positions, const vx::Quat& orientation, const StructureConfig& cfg)
+{
+	vx::Vec3 box_size = 2.0f * cfg.halfExtent;
+
+	int countY = int(cfg.count.Y());
+
+	int width = int(cfg.count.X());
+	int depth = int(cfg.count.Z());
 
 
 	for (int y = 0; y < countY; ++y)
@@ -735,16 +889,23 @@ void Scenario::CreateStructure(const vx::BodySettings& body_settings, const Stru
 					continue;
 
 
-				float _x = cfg.basePos.X() +
-					(x - (width - 1) * 0.5f) * box_size.X();
+				//float _x = cfg.basePos.X() +
+				//	(x - (width - 1) * 0.5f) * box_size.X();
 
-				float _y = cfg.basePos.Y() + y * box_size.Y();
+				//float _y = cfg.basePos.Y() + y * box_size.Y();
 
-				float _z = cfg.basePos.Z() +
-					(z - (depth - 1) * 0.5f) * box_size.Z();
+				//float _z = cfg.basePos.Z() +
+				//	(z - (depth - 1) * 0.5f) * box_size.Z();
 
-				settings.position = vx::Vec3(_x, _y, _z) + layer_offset;
-				mPhysicsWorld->CreateBody(settings);
+				vx::Vec3 local_pos = {
+					(x - (width - 1) * 0.5f) * box_size.X(),
+					y * box_size.Y(),
+					(z - (depth - 1) * 0.5f) * box_size.Z()
+				};
+
+				vx::Vec3 world_pos = cfg.basePos + orientation.Rotate(local_pos + layer_offset);// +layer_offset;
+
+				positions.push_back(world_pos);
 			}
 	}
 }

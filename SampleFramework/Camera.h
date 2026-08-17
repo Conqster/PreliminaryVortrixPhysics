@@ -14,7 +14,7 @@ public:
 	vx::Mat44 ProjMat(float aspect_ratio);
 
 	void Translate(vx::Vec3 dir, float dt);
-	void Rotate(float dx, float dy, float dt);
+	void Rotate(float dx, float dy);
 
 	vx::Vec3 Position() const { return mState.position; }
 	vx::Vec3 Forward() const { return mState.forward; }
@@ -77,15 +77,15 @@ public:
 	struct Properties
 	{
 		Properties() = default;
-		Properties(float move, float rot, float fovy = 60.0f,
+		Properties(float move, float rot_sensitivity, float fovy = 60.0f,
 			float _near = 0.2f, float _far = 500.0f) :
-			moveSpeed(move), rotSpeed(rot),
+			moveSpeed(move), rotSensitivity(rot_sensitivity),
 			fovY(fovy), zNear(_near), zFar(_far) {
 		}
 
 		/// 20 - 100
 		float moveSpeed = 25.0f;
-		float rotSpeed = 5.0f;
+		float rotSensitivity = 0.05f;
 
 		float fovY = 60.0f;
 		/// 0.1 - 1

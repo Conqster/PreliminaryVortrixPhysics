@@ -28,22 +28,26 @@ namespace vx
 		Vec3 gravity = Vec3(0.0f, -9.81f, 0.0f);
 
 		class BodyManager* bodyManager = nullptr;
+
+		uint64 mStepIndex = 0;
+
 		float gravityScale = 1.0f;
 
 		float stepDeltaTime = 1.0f / 60.0f;
 
-		bool forceBVHRebuild = true;
+		class ScratchAllocator* mScratchAllocator = nullptr;
+		class IslandCoordinator* mIslandCoordinator = nullptr;
 
-		bool BVH_rebuild_SAH = false;
 		/// rebuild BVH, when imbalance ration grows
 		/// above treshold
 		float rebuildBVH_ImbalanceRatioTreshold = 0.6f;
-
 		uint32 maxBroadphasePair = 10240;
 
-		class ScratchAllocator* mScratchAllocator;
+		bool forceBVHRebuild = true;
 
-		class IslandCoordinator* mIslandCoordinator;
+		bool BVH_rebuild_SAH = false;
+
+		class DebugGizmosRenderer* mDebugRenderer = nullptr;
 	};
 
 
@@ -304,10 +308,14 @@ namespace vx
 		/// Later group the booleans 
 		/// like Motion_properties, bodies etc and make use of enums
 		// === DEBUG DRAW ===
-		DrawSettings drawSettings;
+		DrawSettings* drawSettings;
 
 		//for debugging 
 		Float3 frameGravityVelocity;
+
+
+		int maxConcurrency = -1;
+		bool splitLargeIsland = true;
 	};
 
 }

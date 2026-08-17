@@ -32,7 +32,7 @@ struct CreatePhysicsObjectSettings
 	vx::EShapeType bodyShape = vx::EShapeType::Sphere;
 	vx::Float3 halfExtents{ 0.5f };
 
-	bool applyImpulse = true;
+	bool applyImpulseAndVel = true;
 	float initialLinearVelocity = 20.0f;
 
 	float damping = 0.1f;// 0.95f;
@@ -40,7 +40,7 @@ struct CreatePhysicsObjectSettings
 
 	float density = 1000.0f;
 	bool overrideMasses = false;
-	Float3 inertia;
+	vx::Float3 inertia;
 	/// Multiply Inertia Tensor with Mass, for final Inertia
 	bool multiplyInertiaTensor_Mass = false;
 
@@ -56,10 +56,55 @@ struct CreatePhysicsObjectSettings
 
 	bool openWindow = false;
 	bool allowKeyHeld = false;
+
+	bool showSpawnPreview = false;
 };
 
 
+#include "Vortrix/Dynamics/Body/BodyID.h"
+#include "Vortrix/Dynamics/Constraints/Constraint.h"
+struct AppCreateConstraint
+{
+	vx::BodyID body_a;
+	vx::BodyID body_b;
 
+	vx::Vec3 anchor_a = vx::Vec3(0.0f);
+	vx::Vec3 anchor_b = vx::Vec3(0.0f);
+
+	vx::Float3 anchorADebugCol = vx::Float3(1.0f, 0.2f, 0.2f);
+	vx::Float3 anchorBDebugCol = vx::Float3(0.2f, 1.0f, 0.6f);
+
+	vx::EConstraintType type = vx::EConstraintType::Distance;
+
+	union {
+		float min_dist = 1.0f;
+		bool enableVelocityBias;
+	};
+
+	union {
+		float max_dist = 1.0f;
+		float errorTreshold;
+	};
+
+	inline void SwitchDefaultDistance()
+	{
+		min_dist = 1.0f;
+		max_dist = 1.0f;
+	}
+
+	inline void SwitchDefaultPoint()
+	{
+		enableVelocityBias = true;
+		errorTreshold = vx::kEpsilon;
+	}
+
+	float freq = 0.0f;
+	float damping = 0.0f;
+
+	bool debugLine = false;
+	float sphereSize = 0.05f;
+	bool highlightBodies = true;
+};
 
 struct DebugAngularImpulse
 {
@@ -70,14 +115,6 @@ struct DebugAngularImpulse
 
 	bool draw = false;
 };
-
-
-struct SpawnObjectCanon
-{
-	vx::Vec3 spawn = vx::Vec3(-4.0f, 2.0f, 0.0f);
-	vx::Vec3 back =  vx::Vec3(-5.0f, 1.0f, 0.0f);
-};
-
 
 
 

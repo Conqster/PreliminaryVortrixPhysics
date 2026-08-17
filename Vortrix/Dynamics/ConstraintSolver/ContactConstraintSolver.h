@@ -161,7 +161,7 @@ namespace vx {
 		void Init(uint32 max_constraints);
 
 		/// per frame transient allocation
-		VX_INLINE void PreFrameSetup(const PhysicsWorldSettings& phys_setting)
+		VX_INLINE void PreFrameSetup()
 		{
 			VX_PROFILE_FUNCTION();
 			//might zero out constraint buffer 
@@ -258,7 +258,7 @@ namespace vx {
 				actualPersistentPointCounts = 0;
 			}
 		};
-		const ContactConstraintSolverStat& GetStats() const { return mStats; }
+		const ContactConstraintSolverStat& Stats() const { return mStats; }
 
 		void DebugDraw(DebugGizmosRenderer* debug_renderer, const class ConstraintSolver* constraint_solver, const BodyManager* body_manager, const DrawSettings& settings) const;
 	private:
@@ -583,6 +583,10 @@ namespace vx {
 				CacheContactPoint* cache = cpt_c->cacheLocalPoint;
 				if (cache)
 				{
+					VX_ASSERT(!VxIsInf(cpt_c->normal.totalLamda) && !VxIsNaN(cpt_c->normal.totalLamda));
+					VX_ASSERT(!VxIsInf(cpt_c->lateralTangent[0].totalLamda) && !VxIsNaN(cpt_c->lateralTangent[0].totalLamda));
+					VX_ASSERT(!VxIsInf(cpt_c->lateralTangent[1].totalLamda) && !VxIsNaN(cpt_c->lateralTangent[1].totalLamda));
+
 					cache->totalNormalLambda = cpt_c->normal.totalLamda;
 					cache->totalTangentLambda[0] = cpt_c->lateralTangent[0].totalLamda;
 					cache->totalTangentLambda[1] = cpt_c->lateralTangent[1].totalLamda;

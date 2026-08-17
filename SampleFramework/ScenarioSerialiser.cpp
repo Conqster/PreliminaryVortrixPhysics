@@ -9,7 +9,10 @@
 #include "Vortrix/Collision/Shapes/CapsuleShape.h"
 #include "Vortrix/Collision/Shapes/PlaneShape.h"
 
+#include "SampleFramework/Scenarios/Scenario.h"
 
+
+#include "Vortrix/Dynamics/Constraints/PointConstraint.h"
 
 #include "Vortrix/PhysicsWorld.h"
 
@@ -17,7 +20,15 @@
 
 #include <ostream>
 
-bool serialiser::Serialise(const vx::BodyManager* body_manager, const Camera& app_cam, const char* name, const char* directory, const char* info)
+#include <unordered_set>
+
+
+////when serialising scenario remove ragdoll bodies before saving
+/// so ragdolls are saved as ragdoll setting; easier for batch body shape loading
+/// also helps with its constraints saving as well 
+
+
+bool serialiser::Serialise(const vx::BodyManager* body_manager, const Camera& app_cam, const char* name, const char* directory, const char* info, Scenario* scenario)
 {
 
 	std::vector<SerialisedShape> shapes;
@@ -27,12 +38,95 @@ bool serialiser::Serialise(const vx::BodyManager* body_manager, const Camera& ap
 	bodies.reserve(body_manager->BodyCount());
 
 	std::vector<uint32_t> body_id_to_serialied_idx;
+	body_id_to_serialied_idx.resize(body_manager->BodyCount() + body_manager->CurrentFreeIndicesCount(), vx::uint32(-1));
 
-	//body_id_to_serialied_idx.reserve(body_manager->BodyCount() + body_manager->mFreedIdxs.size());
+	///remove ragdoll datas
+	const auto& ragdolls_bodies = scenario->RagdollCreatedBodies();
+	auto& ragdolls_constraints = scenario->RagdollCreatedConstraints();
 
+	
+	std::vector<vx::BodyID> bodies_id;
 	for (const auto& body : body_manager->GetBodies())
+		//if (body.IsIDValid())
+			bodies_id.push_back(body.ID());
+
+	if (!ragdolls_bodies.empty())
 	{
-		if (!body.IsIDValid()) continue;
+		//scenario->PhysicsWorld()->RemoveBodies(&ragdolls_bodies[0], ragdolls_bodies.size());
+		for(const auto& body_id : ragdolls_bodies)
+			bodies_id[body_id.Idx()] = vx::BodyID();
+	}
+	//if(!ragdolls_constraints.empty())
+		//scenario->PhysicsWorld()->RemoveConstraints(&ragdolls_constraints[0], ragdolls_constraints.size());
+
+	vx::Constraints physics_constraints = scenario->PhysicsWorld()->NonContactConstraints();
+
+	if (!ragdolls_constraints.empty())
+	{
+		std::unordered_set<vx::Constraint*> _remove(ragdolls_constraints.begin(), ragdolls_constraints.end());
+		physics_constraints.erase(
+
+			std::remove_if(physics_constraints.begin(), physics_constraints.end(),
+				[&](vx::Constraint* x)
+				{
+					return _remove.find(x) != _remove.end();
+				}),
+			physics_constraints.end()
+		);
+
+
+		/// this is bad; good hack for now
+		for (const auto& constraint : physics_constraints)
+		{
+			const vx::BodyID body_a = constraint->BodyA()->ID();
+			const vx::BodyID body_b = constraint->BodyB()->ID();
+
+			if (!bodies_id[body_a.Idx()].IsValid())
+			{
+				VX_LOG_WARN("Ragdoll group must have invalidate body id but still connected to another joint constraint, updating: ", body_a.ID());
+				bodies_id[body_a.Idx()] = body_a;
+			}
+
+			if (!bodies_id[body_b.Idx()].IsValid())
+			{
+				VX_LOG_WARN("Ragdoll group must have invalidate body id, but still connected to another joint constraint, updating:", body_b.ID());
+				bodies_id[body_b.Idx()] = body_b;
+			}
+		}
+	}
+	//if (!ragdolls_constraints.empty())
+	//{
+	//	for (vx::Constraint** c = &ragdolls_constraints[0], 
+	//		**c_end = (&ragdolls_constraints[0]) + ragdolls_constraints.size();
+	//		c < c_end; ++c)
+	//	{
+	//		VX_ASSERT((*c), "Attempting to remove null constraint");
+	//		vx::Constraint::Idx c_idx = (*c)->ConstraintIdx();
+	//		VX_ASSERT(c_idx != vx::Constraint::kInvalidIdx, "Attempting to remove invalid constraint");
+
+	//		vx::Constraint::Idx c_idx_end = physics_constraints.back()->ConstraintIdx();
+
+	//		//swap 
+	//		if (c_idx < c_idx_end)
+	//		{
+	//			std::swap(physics_constraints[c_idx], physics_constraints[c_idx_end]);
+	//			physics_constraints[c_idx]->ConstraintIdx(c_idx);
+	//		}
+
+	//		(*c)->ConstraintIdx(vx::Constraint::kInvalidIdx);
+	//		physics_constraints.pop_back();
+	//	}
+	//}
+
+
+
+	//for (const auto& body : body_manager->GetBodies())
+	vx::uint32 serialised_body_count = 0;
+	for(auto& body_id : bodies_id)
+	{
+		//if (!body.IsIDValid()) continue;
+		if (!body_id.IsValid()) continue;
+		const auto& body = body_manager->GetBody(body_id);
 
 		const vx::Shape* shape = body.GetShape();
 
@@ -58,10 +152,69 @@ bool serialiser::Serialise(const vx::BodyManager* body_manager, const Camera& ap
 				body.MotionType(),
 				body.MaxLinearVelocity(),
 				body.MaxAngularVelocity(),
-				body_manager->GetBodyDebugInfo(body.GetID()).bodyInBroadphase,
+				body_manager->GetBodyDebugInfo(body.ID()).bodyInBroadphase,
 				body.LinearDamping(),
 				body.AngularDamping()
 			});
+
+		body_id_to_serialied_idx[body_id.Idx()] = serialised_body_count++;
+	}
+
+
+	std::vector<SerialisedDistanceConstraint> serialised_distance_constraint;
+	std::vector<SerialisedPointConstraint> serialised_point_constraint;
+	///serialising constraint
+	if (!physics_constraints.empty())
+	{
+		for (const auto& constraint : physics_constraints)
+		{
+			VX_ASSERT(constraint->BodyA());
+			VX_ASSERT(constraint->BodyB());
+			vx::uint32 body_a = body_id_to_serialied_idx[constraint->BodyA()->ID().Idx()];
+			vx::uint32 body_b = body_id_to_serialied_idx[constraint->BodyB()->ID().Idx()];
+			VX_ASSERT(body_a != vx::uint32(-1));
+			VX_ASSERT(body_b != vx::uint32(-1));
+
+			switch (constraint->Type())
+			{
+			case vx::EConstraintType::Distance:
+			{
+				const vx::DistanceConstraint* dist_constraint = static_cast<const vx::DistanceConstraint*>(constraint);
+				SerialisedDistanceConstraint serialise_constraint;
+				serialise_constraint.serialisedBodyA = body_a;
+				serialise_constraint.serialisedBodyB = body_b;
+				serialise_constraint.localAnchorA = dist_constraint->LocalAnchorA();
+				serialise_constraint.localAnchorB = dist_constraint->LocalAnchorB();
+				serialise_constraint.minDist = dist_constraint->MinDistance();
+				serialise_constraint.maxDist = dist_constraint->MaxDistance();
+				serialise_constraint.frequency = dist_constraint->SpringFrequency();
+				serialise_constraint.dampingRatio = dist_constraint->SpringDampingRatio();
+
+				serialised_distance_constraint.push_back(serialise_constraint);
+				break;
+			}
+			case vx::EConstraintType::Point:
+			{
+				const vx::PointConstraint* point_constraint = static_cast<const vx::PointConstraint*>(constraint);
+				SerialisedPointConstraint serialise_constraint;
+				serialise_constraint.serialisedBodyA = body_a;
+				serialise_constraint.serialisedBodyB = body_b;
+
+				serialise_constraint.localAnchorA = point_constraint->LocalAnchorA();
+				serialise_constraint.localAnchorB = point_constraint->LocalAnchorB();
+
+
+				serialise_constraint.enableVelocityBias = point_constraint->mHasVelocityBias;
+				serialise_constraint.errorTreshold = point_constraint->mErrorTreshold;
+
+				serialised_point_constraint.push_back(serialise_constraint);
+				break;
+			}
+			default:
+				VX_ASSERT(false);
+				break;
+			}
+		}
 	}
 
 
@@ -78,18 +231,43 @@ bool serialiser::Serialise(const vx::BodyManager* body_manager, const Camera& ap
 	j["Shapes"] = ToJson(shapes);
 	j["Bodies"] = ToJson(bodies);
 	j["Camera"] = ToJson(serialise_cam);
+	j["Distance Constraint"] = ToJson(serialised_distance_constraint);
+	j["Point Constraint"] = ToJson(serialised_point_constraint);
+
+	///update the positions of ragdoll using bodies approx
+	for (auto& _ragdoll : scenario->RagdollSettings())
+	{
+		if (_ragdoll.firstBodyOffsetInScene == -1)
+			continue;
+
+
+		const int body_idx = _ragdoll.firstBodyOffsetInScene;
+		const int body_count = _ragdoll.limbsCount;
+
+		vx::Vec3 pos = vx::Vec3::Zero();
+
+		//get first five bodies
+		for (vx::uint32 i = body_idx; i < (body_idx + body_count); ++i)
+			pos += body_manager->GetBody(scenario->RagdollCreatedBodies()[i]).Position();
+
+		pos /= float(body_count);
+
+		_ragdoll.position = pos;
+	}
+
+	j["Ragdolls"] = ToJson(scenario->RagdollSettings());
 		 
-    std::filesystem::path _path = directory;
-    auto full_path = std::filesystem::absolute(_path);
+	std::filesystem::path _path = directory;
+	auto full_path = std::filesystem::absolute(_path);
 	if(!std::filesystem::exists(_path))
 		std::filesystem::create_directories(_path);
 	std::ofstream o(_path.string() + "\\" + name + ".json");
 	o << std::setw(4) << j << std::endl;
-    return true;
+	return true;
 }
 
 
-bool serialiser::Deserialise(vx::PhysicsWorld* io_physicsworld, std::string& scene_name, std::string& scene_info, Camera& app_cam, const char* file_path)
+bool serialiser::Deserialise(vx::PhysicsWorld* io_physicsworld, Scenario* scenario, std::string& scene_name, std::string& scene_info, Camera& app_cam, const char* file_path)
 {
 	std::filesystem::path _file_path = file_path;
 
@@ -116,6 +294,10 @@ bool serialiser::Deserialise(vx::PhysicsWorld* io_physicsworld, std::string& sce
 
 	std::vector<SerialisedShape> shapes;
 	std::vector<SerialisedBody> bodies;
+	std::vector<SerialisedRagdollSettings> ragdoll_settings;
+
+	std::vector<SerialisedDistanceConstraint> serialised_distance_constraint;
+	std::vector<SerialisedPointConstraint> serialised_point_constraint;
 
 	SerialisedSceneCameraState _cam;
 
@@ -128,6 +310,16 @@ bool serialiser::Deserialise(vx::PhysicsWorld* io_physicsworld, std::string& sce
 
 		shapes = serialiser::FromJson<std::vector<SerialisedShape>>(j["Shapes"]);
 		bodies = serialiser::FromJson<std::vector<SerialisedBody>>(j["Bodies"]);
+
+		if (scenario && j["Ragdolls"] != nullptr)
+			ragdoll_settings = serialiser::FromJson<std::vector<SerialisedRagdollSettings>>(j["Ragdolls"]);
+
+
+		if (j["Distance Constraint"] != nullptr)
+			serialised_distance_constraint = serialiser::FromJson<std::vector<SerialisedDistanceConstraint>>(j["Distance Constraint"]);
+		if (j["Point Constraint"] != nullptr)
+			serialised_point_constraint = serialiser::FromJson<std::vector<SerialisedPointConstraint>>(j["Point Constraint"]);
+
 	}
 	catch (Json::exception& e)
 	{
@@ -146,6 +338,11 @@ bool serialiser::Deserialise(vx::PhysicsWorld* io_physicsworld, std::string& sce
 	body_shapes.reserve(shapes.size());
 	///later create all bodies at once
 
+
+	bool cache_body_id = !serialised_distance_constraint.empty() || !serialised_point_constraint.empty();
+
+	std::vector<vx::BodyID> serialise_body_to_bodyID;
+	serialise_body_to_bodyID.reserve(bodies.size());
 
 	for (vx::uint32 i = 0; i < bodies.size(); ++i)
 	{
@@ -208,7 +405,57 @@ bool serialiser::Deserialise(vx::PhysicsWorld* io_physicsworld, std::string& sce
 		body_settings.shape = body_shapes[serialised_body.serialisedShapeIndex];
 
 		///later create all bodies at once
-		io_physicsworld->CreateBody(body_settings);
+		vx::Body* body = io_physicsworld->CreateBody(body_settings);
+
+
+		(cache_body_id) ? serialise_body_to_bodyID.push_back(body->ID()) : void(0);
 	}
+
+
+	for (auto& constraint : serialised_distance_constraint)
+	{
+		VX_ASSERT(constraint.serialisedBodyA != vx::uint32(-1));
+		VX_ASSERT(constraint.serialisedBodyB != vx::uint32(-1));
+		vx::Body* body_a = &io_physicsworld->GetBodyManager().GetBody(serialise_body_to_bodyID[constraint.serialisedBodyA]);
+		vx::Body* body_b = &io_physicsworld->GetBodyManager().GetBody(serialise_body_to_bodyID[constraint.serialisedBodyB]);
+
+
+		vx::DistanceConstraintSettings _constraint;
+		_constraint.localAnchorA = constraint.localAnchorA;
+		_constraint.localAnchorB = constraint.localAnchorB;
+		_constraint.minDist = constraint.minDist;
+		_constraint.maxDist = constraint.maxDist;
+		_constraint.frequency = constraint.frequency;
+		_constraint.dampingRatio = constraint.dampingRatio;
+
+
+		///later might want to hold pointers to constraints
+		io_physicsworld->CreateConstraintsT(new vx::DistanceConstraint(body_a, body_b, _constraint), 1);
+	}
+
+	for (auto& constraint : serialised_point_constraint)
+	{
+		VX_ASSERT(constraint.serialisedBodyA != vx::uint32(-1));
+		VX_ASSERT(constraint.serialisedBodyB != vx::uint32(-1));
+		vx::Body* body_a = &io_physicsworld->GetBodyManager().GetBody(serialise_body_to_bodyID[constraint.serialisedBodyA]);
+		vx::Body* body_b = &io_physicsworld->GetBodyManager().GetBody(serialise_body_to_bodyID[constraint.serialisedBodyB]);
+
+		vx::PointConstraintSettings _constraint;
+
+		_constraint.anchorA = constraint.localAnchorA;
+		_constraint.anchorB = constraint.localAnchorB;
+		_constraint.anchorPointFrame = vx::EConstraintFrame::Local;
+		_constraint.enableVelocityBias = constraint.enableVelocityBias;
+		_constraint.errorTreshold = constraint.errorTreshold;
+
+
+		///later might want to hold pointers to constraints
+		io_physicsworld->CreateConstraintsT(new vx::PointConstraint(body_a, body_b, _constraint), 1);
+	}
+
+
+	for (auto& ragdoll : ragdoll_settings)
+		scenario->CreateRagdoll(ragdoll, nullptr);
+
 }
 

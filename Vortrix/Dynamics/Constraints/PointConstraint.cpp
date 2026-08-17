@@ -53,9 +53,9 @@ namespace vx {
 		BodyID body_ids[2];
 
 		if (mBodyA->IsDynamic() && !mBodyA->IsAwake())
-			body_ids[bodies_activate_count++] = mBodyA->GetID();
+			body_ids[bodies_activate_count++] = mBodyA->ID();
 		if (mBodyB->IsDynamic() && !mBodyB->IsAwake())
-			body_ids[bodies_activate_count++] = mBodyB->GetID();
+			body_ids[bodies_activate_count++] = mBodyB->ID();
 
 		if (bodies_activate_count > 0)
 			ctx.bodyManager->ActivateBodies(body_ids, bodies_activate_count);
@@ -80,8 +80,8 @@ namespace vx {
 		else
 			VX_ASSERT(false);
 
-		SolverBodyIndex idxA = solver->GetOrCreateSolverBody(mBodyA->GetID(), ctx);
-		SolverBodyIndex idxB = solver->GetOrCreateSolverBody(mBodyB->GetID(), ctx);
+		SolverBodyIndex idxA = solver->GetOrCreateSolverBody(mBodyA->ID(), ctx);
+		SolverBodyIndex idxB = solver->GetOrCreateSolverBody(mBodyB->ID(), ctx);
 
 		for(int i = 0; i < 3; ++i)
 		{
@@ -136,7 +136,7 @@ namespace vx {
 			Mat44 rAx = Mat44::SkewSymmetric3x3(rA);
 			invIA_x_rAx = invIA.Multiply3x3(rAx);
 
-			inv_massA = mBodyA->GetInverseMass();
+			inv_massA = mBodyA->InverseMass();
 			inv_eff_M = rAx.Multiply3x3(invIA).Multiply3x3RightTransposed(rAx);
 			//VX_LOG_DEBUG("inv_eff_M: ", inv_eff_M);
 		}
@@ -146,7 +146,7 @@ namespace vx {
 			Mat44 rBx = Mat44::SkewSymmetric3x3(rB);
 			invIB_x_rBx = invIB.Multiply3x3(rBx);
 
-			inv_massB = mBodyB->GetInverseMass();
+			inv_massB = mBodyB->InverseMass();
 			inv_eff_M = inv_eff_M.Add(rBx.Multiply3x3(invIB).Multiply3x3RightTransposed(rBx));
 			//VX_LOG_DEBUG("inv_eff_M: ", inv_eff_M);
 		}
@@ -237,7 +237,7 @@ namespace vx {
 			Mat44 rAx = Mat44::SkewSymmetric3x3(rA);
 			invIA_x_rAx = invIA.Multiply3x3(rAx);
 
-			inv_massA = mBodyA->GetInverseMass();
+			inv_massA = mBodyA->InverseMass();
 			inv_eff_M = rAx.Multiply3x3(invIA).Multiply3x3RightTransposed(rAx);
 		}
 
@@ -248,7 +248,7 @@ namespace vx {
 			Mat44 rBx = Mat44::SkewSymmetric3x3(rB);
 			invIB_x_rBx = invIB.Multiply3x3(rBx);
 
-			inv_massB = mBodyB->GetInverseMass();
+			inv_massB = mBodyB->InverseMass();
 			inv_eff_M = inv_eff_M.Add(rBx.Multiply3x3(invIB).Multiply3x3RightTransposed(rBx));
 		}
 
@@ -394,8 +394,8 @@ namespace vx {
 		Vec3 ang_velA = mBodyA->GetAngularVelocity();
 		Vec3 ang_velB = mBodyB->GetAngularVelocity();
 
-		float inv_massA = mBodyA->GetInverseMass();
-		float inv_massB = mBodyB->GetInverseMass();
+		float inv_massA = mBodyA->InverseMass();
+		float inv_massB = mBodyB->InverseMass();
 
 		//velocity iteration
 		for (int i = 0; i < velocity_iteration; ++i)
@@ -487,14 +487,14 @@ namespace vx {
 					Vec3 rAXn = rA.Cross(axis);
 					invIArAXn = invIA.Multiply3x3(rAXn);
 
-					inv_eff_mass += mBodyA->GetInverseMass() + invIArAXn.Dot(rAXn);
+					inv_eff_mass += mBodyA->InverseMass() + invIArAXn.Dot(rAXn);
 				}
 				if (bodyB_nonstatic)
 				{
 					Vec3 rBXn = rB.Cross(axis);
 					invIBrBXn = invIB.Multiply3x3(rBXn);
 
-					inv_eff_mass += mBodyB->GetInverseMass() + invIBrBXn.Dot(rBXn);
+					inv_eff_mass += mBodyB->InverseMass() + invIBrBXn.Dot(rBXn);
 				}
 
 				float lambda = -(1.0f / inv_eff_mass) * baumgarte * seperation_along_axis;
@@ -571,7 +571,7 @@ namespace vx {
 			rAXn.Store(o_row->rAXn);
 			invIrAXn.Store(o_row->invIrAXn);
 
-			inv_eff_mass += mBodyA->GetInverseMass() + invIrAXn.Dot(rAXn);
+			inv_eff_mass += mBodyA->InverseMass() + invIrAXn.Dot(rAXn);
 		}
 		else
 		{
@@ -587,7 +587,7 @@ namespace vx {
 			rBXn.Store(o_row->rBXn);
 			invIrBXn.Store(o_row->invIrBXn);
 
-			inv_eff_mass += mBodyB->GetInverseMass() + invIrBXn.Dot(rBXn);
+			inv_eff_mass += mBodyB->InverseMass() + invIrBXn.Dot(rBXn);
 		}
 		else
 		{

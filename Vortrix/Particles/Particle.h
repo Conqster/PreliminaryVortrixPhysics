@@ -70,8 +70,8 @@ namespace vx::Particles
 		}
 
 		const bool HasFiniteMass() const { return mInverseMass > 0.0; }
-		float GetMass() { return mMass; }
-		float GetInverseMass() { return mInverseMass; }
+		float Mass() { return mMass; }
+		float InverseMass() { return mInverseMass; }
 		Vec3 GetVelocity() const { return mVelocity; }
 		Vec3 GetPosition() const { return mPosition; }
 
