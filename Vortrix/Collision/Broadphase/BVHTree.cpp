@@ -15,6 +15,8 @@
 
 #include "Vortrix/Core/StackString.h"
 
+#include "Vortrix/SimulationContexts.h"
+
 
 namespace vx
 {
@@ -418,7 +420,7 @@ namespace vx
 
 
 	template<typename BoundType>
-	void BVHTree<BoundType>::ComputeCollidingPairs(PhysicsStepContext& physics_ctx, BroadphasePair* io_pairs, uint32& io_count)
+	void BVHTree<BoundType>::ComputeCollidingPairs(const PhysicsStepContext& physics_ctx, SimStep& io_sim_step)
 	{
 		VX_PROFILE_FUNCTION();
 		if (mRootID == kInvalidNode) return;
@@ -493,8 +495,8 @@ namespace vx
 						mBodyManager->GetBodySimStats(*b0).phase |= EBodySimphaseFlags::InBroadphase;
 						mBodyManager->GetBodySimStats(*b1).phase |= EBodySimphaseFlags::InBroadphase;
 					}
-					VX_ASSERT(io_count < physics_ctx.maxBroadphasePair);
-					io_pairs[io_count++] = BroadphasePair(b0, b1);
+					VX_ASSERT(io_sim_step.broadphasePairCount < physics_ctx.maxBroadphasePair);
+					io_sim_step.broadphasePair[io_sim_step.broadphasePairCount++] = BroadphasePair(b0, b1);
 					//potential_pair.emplace_back(b0, b1);
 				}
 
@@ -530,7 +532,7 @@ namespace vx
 
 #if defined(VX_PROFILE_BROAD)
 		mStats.pairCount = count;
-		mStats.actualPairCount = io_count;// potential_pair.size();
+		mStats.actualPairCount = io_sim_step.broadphasePairCount;// potential_pair.size();
 		mStats.treeIterativePairStack = stack_count;
 		mStats.frameMaxStackSize = max_stack_size;
 		mStats.maxAttainedStackSize = VxMax(mStats.maxAttainedStackSize, static_cast<uint>(max_stack_size));

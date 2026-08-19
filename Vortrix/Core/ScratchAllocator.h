@@ -32,7 +32,7 @@ namespace vx {
 			size_t new_stack_top = mStackTop + AlignUp(size, 16);
 			if (new_stack_top > mStackSize)
 			{
-				VX_LOG_ERROR("Out of memory, Trying to allocate from scratch", size);
+				VX_LOG_ERROR("Out of memory, Trying to allocate from scratch: ", size);
 				return nullptr;
 			}
 

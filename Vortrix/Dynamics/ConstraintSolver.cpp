@@ -243,6 +243,7 @@ namespace vx {
 			(*c)->SolvePositionConstraint(dt, baumgarte);
 	}
 
+
 	VX_INLINE void ConstraintSolver::WarmStart(const Linear1DRow& row, SolverBody& body0, SolverBody& body1)
 	{
 		if (row.lambda == 0.0f)
@@ -273,7 +274,7 @@ namespace vx {
 		}
 	}
 
-	void ConstraintSolver::SolverAll(const PhysicsStepContext& ctx, uint32 iterations)
+	void ConstraintSolver::SolverAll(const PhysicsStepContext& ctx, uint32 iterations, Constraint** constraints, uint32 count)
 	{
 		VX_PROFILE_FUNCTION();
 		//ConstraintSolver::WarmStart(mLinear1DRows.data(), 0, mLinear1DRows.size(), mBodies.data());
@@ -292,7 +293,7 @@ namespace vx {
 		for (int i = 0; i < iterations; ++i)
 			ConstraintSolver::SolverVelocityLinear1DRows(mLinear1DRows, 0, mLinear1DRowsCounts, mBodies.data());
 
-			CommitStateConstraint();
+		CommitStateConstraint(constraints, count);
 
 		ConstraintSolver::WriteBackBodies(mBodies.data(), mBodies.size(), *ctx.bodyManager);
 	}

@@ -574,7 +574,7 @@ void Application::ResetWorld(bool& reset_flag)
 
 	/// note this resets camera, 
 	/// but could be overwritten in Scenario if needed
-	ResetCamera();
+	//ResetCamera();
 
 	mPhysicsWorld = new PhysicsWorld(mPhysicsWorldSettings);
 
@@ -2266,6 +2266,7 @@ void Application::PhysicsSettingItemOverlays()
 		if (curr_thread_count != phy_settings.maxConcurrency && !(phy_settings.maxConcurrency == - 1 && curr_thread_count == max_threads))
 			ImGui::TextColored(ImVec4(1, 0, 0, 1), "Task Coordinator, thread count miss match reset physics world");
 		ImGui::Checkbox("Split large Islands", &phy_settings.splitLargeIsland);
+		ImGui::SliderFloat("Scratch Allocation", &phy_settings.scratchAllocationMiB, 0.0f, 32.0f, "%.1f MiB");
 
 
 
@@ -3035,6 +3036,9 @@ void Application::CreateNewCustomPhysicsObject()
 						ImGui::SliderFloat("Bodies friction", &bodies_friction, 0.0f, 1.0f);
 						ImGui::SliderFloat("Bodies restitution", &bodies_restitution, 0.0f, 1.0f);
 
+						ImGui::Spacing();
+						ImGui::Text("Bodies Count: %d", mSampleStructure.positions.size());
+						ImGui::Spacing();
 
 						switch (structure_type)
 						{

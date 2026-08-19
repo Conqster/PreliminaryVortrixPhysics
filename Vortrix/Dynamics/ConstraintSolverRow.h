@@ -7,6 +7,46 @@
 
 namespace vx {
 
+	struct ConstraintRowInfo
+	{
+		/// lower 24 bits 0x00ffffff is the constraint the row partipate in represent
+		/// the 1 bit after 24 bit (25 bits) is flag for is the constraint needs/wants position correction
+		/// 
+		/// 7 bits up is details of the jacobian linear row group in solving consrtraint 
+		/// a constraint could have 1 - 6 linear rows, depending on the num of degree of freedom removed 
+		/// first lower 3 of 7 bits is the index of row in local group (bit shift 25)
+		/// next 4 bits id the total row in local group (bit shift 28)
+		static constexpr uint32 kConstraintIndexMask = 0x00ffffff;
+		static constexpr uint32 kPositionCorrectionMask = 0x01000000;//0x01;
+		static constexpr uint32 kRowIndexMask = 0x0e000000;
+		static constexpr uint32 kRowCountMask = 0xf0000000;
+
+		static constexpr uint32 kPositionCorrectionBitShift = 24;
+		static constexpr uint32 kRowIndexBitShift = 25;
+		static constexpr uint32 kRowCountBitShift = 28;
+
+		ConstraintRowInfo(uint32 constraint_idx,
+			uint8 row_idx, uint8 row_count,
+			bool position_correction) : data(
+				(uint32(row_count) << kRowCountBitShift) |
+				(uint32(row_idx) << kRowIndexBitShift) |
+				(uint32(position_correction) << kPositionCorrectionBitShift) |
+				constraint_idx) {
+		}
+		ConstraintRowInfo() = default;
+
+		uint32 ConstraintIndex() const { return data & kConstraintIndexMask; }
+		bool NeedPositionCorrection() const { return (data & kPositionCorrectionMask) != 0; }
+
+		///mask out lower, it belongs to solve position flag 
+		uint8 RowLocalIndex() const { return uint8((data & kRowIndexMask) >> kRowIndexBitShift); }
+		uint8 RowCount() const { return uint8((data & kRowCountMask) >> kRowCountBitShift); }
+
+	private:
+		uint32 data;
+	};
+	static_assert(std::is_trivial_v<ConstraintRowInfo>);
+
 	/// i think a quick and dirty solution after set up most of the data are read only
 	/// then i would grouop the datas together and surpiseingly this struct is read only over multiple required iteration; 
 	/// because of the SolverBody index; only lambda is update inbetween velocity iterations
@@ -36,13 +76,11 @@ namespace vx {
 		///invIrBXn = mBodyA->ComputeInvInteriaWorld().Multiply3x3(rAXn
 		Float3 invIrBXn;
 
-		//for now has hack 
-		class Constraint* user;
-
-		//later have idx part as a single constraint have multiple rows 
-		uint32 hackIdx;
+		ConstraintRowInfo info;
 	};
 	static_assert(std::is_trivial_v<Linear1DRow>, "Linear1DRow Must be a trivial type!");
+
+
 
 	struct Rigid1DConstraint
 	{

@@ -45,11 +45,11 @@ namespace vx {
 		mDispatcher.Register(EShapeType::Capsule, EShapeType::Box, &CollisionDispatcher::SwappedRef<Narrowphase::BoxVsCapsule>);
 	}
 
-	bool NarrowphaseQuery::ProcessPairAndTrySetupContactConstraint(const Body* a, const Body* b, ContactConstraintSolver& contact_solver, const CollisionContext& ctx)
+	bool NarrowphaseQuery::ProcessPairAndTrySetupContactConstraint(const Body* a, const Body* b, ContactConstraintSolver& contact_solver, SimStep* io_step)
 	{
 		//VX_PROFILE_FUNCTION();
-		BodySimStats& body_a_stat = ctx.bodyManager->GetBodySimStats(*a);
-		BodySimStats& body_b_stat = ctx.bodyManager->GetBodySimStats(*b);
+		BodySimStats& body_a_stat = io_step->mPhysicsStepContext->bodyManager->GetBodySimStats(*a);
+		BodySimStats& body_b_stat = io_step->mPhysicsStepContext->bodyManager->GetBodySimStats(*b);
 
 		body_a_stat.phase |= EBodySimphaseFlags::InNarrowphase;
 		body_b_stat.phase |= EBodySimphaseFlags::InNarrowphase;
@@ -67,7 +67,7 @@ namespace vx {
 				manifold))
 			{
 				//use opptunity to add to contact constaint
-				contact_solver.SetupContactConstraint(manifold, ctx);
+				contact_solver.SetupContactConstraint(manifold);
 
 				//later move in collision fn when check if static
 				body_a_stat.phase |= EBodySimphaseFlags::IsColliding;
@@ -83,17 +83,17 @@ namespace vx {
 		return false;
 	}
 
-
-	void NarrowphaseQuery::ProcessPairs(BroadphasePair* in_pairs, ContactConstraintSolver& contact_solver, const CollisionContext& ctx)
+	/// remove this later 
+	void NarrowphaseQuery::ProcessPairs(BroadphasePair* in_pairs, ContactConstraintSolver& contact_solver, SimStep* io_step)
 	{
 		VX_PROFILE_FUNCTION();
 
-		mStats.numPairReceived = ctx.broadphasePairCount;
+		mStats.numPairReceived = io_step->broadphasePairCount;
 
 		uint32 pair_count = 0;
-		for (BroadphasePair* bp = in_pairs, *bp_end = in_pairs + ctx.broadphasePairCount;
+		for (BroadphasePair* bp = in_pairs, *bp_end = in_pairs + io_step->broadphasePairCount;
 			bp < bp_end; ++bp)
-			if (ProcessPairAndTrySetupContactConstraint((*bp).a, (*bp).b, contact_solver, ctx))
+			if (ProcessPairAndTrySetupContactConstraint((*bp).a, (*bp).b, contact_solver, io_step))
 				pair_count++;
 
 		mStats.numContactPair = pair_count;

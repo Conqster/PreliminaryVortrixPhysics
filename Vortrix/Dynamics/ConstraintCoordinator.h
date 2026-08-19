@@ -47,6 +47,7 @@ namespace vx {
 
 
 		Constraints& GetConstraints() { return mConstraints; }
+		uint32 ConstraintCount() const { return mConstraints.size(); }
 		uint32 GetTotalPredicted1DRow() const { return mTotalPredicted1DRow; }
 		uint32 PrepConstraintSolving(ConstraintSolver& solver, const PhysicsStepContext& ctx);
 		void DebugGizmos(DebugGizmosRenderer* debug_renderer, const NonContactConstraintDrawSettings& draw_settings);

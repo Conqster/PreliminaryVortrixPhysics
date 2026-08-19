@@ -19,6 +19,8 @@
 
 #include "Collision/Narrowphase/NarrowphaseQuery.h"
 
+#include "SimulationContexts.h"
+
 #include <mutex>
 
 ////Things to do 
@@ -80,6 +82,8 @@
 /// CONVERT MOUSE INTERACTION TO CONSTRAINT BASED
 /// MEMOPRY ALLOC
 // make body shape ref counted 
+
+
 
 class DebugGizmosRenderer;
 class Renderer;
@@ -205,8 +209,8 @@ namespace vx
 		//TODO(Jay): Later dont return broadphase only state
 		VX_INLINE Broadphase* GetBroadphase() { return mBroadphase; }
 		//VX_INLINE BVHBroadphase<AABB>* GetBVH_AABB_Broadphase() { return mBroadphase->AsBVH_AABB(); }
-		const BroadphasePair* BroadphasePairsPtr() const { return mBroadphaseBuffer.data; }
-		const uint32 BroadphasePairsCount() const { return mBroadphaseBuffer.count; }
+		const BroadphasePair* BroadphasePairsPtr() const { return mSimStep.broadphasePair; }
+		const uint32 BroadphasePairsCount() const { return mSimStep.broadphasePairCount; }
 
 
 		/// Narrowphase
@@ -240,6 +244,7 @@ namespace vx
 
 
 		PhysicsStepContext mContext;
+		SimStep mSimStep;
 		PhysicsWorldSettings* mSettings;
 		static uint32 mStepIndex;
 
@@ -262,14 +267,6 @@ namespace vx
 
 
 		WorldQuery mWorldQuery;
-
-
-		struct BroadphaseBuffer
-		{
-			BroadphasePair* data = nullptr;
-			uint32 count = 0;
-			uint32 maxPairs = 0;
-		}mBroadphaseBuffer;
 
 
 #if defined(VX_DEBUG_ALLOCATOR)

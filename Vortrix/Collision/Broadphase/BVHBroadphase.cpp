@@ -63,7 +63,7 @@ namespace vx
 	}
 
 	template<typename BoundType>
-	void BVHBroadphase<BoundType>::ComputeCollidingPair(PhysicsStepContext& physics_ctx, BroadphasePair* io_pairs, uint32& io_count)
+	void BVHBroadphase<BoundType>::ComputeCollidingPair(const PhysicsStepContext& physics_ctx, SimStep& io_sim_step)
 	{
 		VX_PROFILE_FUNCTION();
 
@@ -101,7 +101,7 @@ namespace vx
 		auto bvh_ctx = mTree.GetContext();
 		//out_pairs.reserve(bvh_ctx.stats->leafCount);
 
-		mTree.ComputeCollidingPairs(physics_ctx, io_pairs, io_count);
+		mTree.ComputeCollidingPairs(physics_ctx, io_sim_step);
 
 		mLastStep = physics_ctx.mStepIndex;
 	}

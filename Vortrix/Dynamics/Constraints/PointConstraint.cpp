@@ -88,8 +88,10 @@ namespace vx {
 			auto& row = rows[i];
 			row.bodyAidx = idxA;
 			row.bodyBidx = idxB;
-			
-			row.user = this;
+
+			row.info = ConstraintRowInfo(mConstraintIdx, i, 3, true);
+			VX_ASSERT(row.info.ConstraintIndex() == mConstraintIdx && row.info.RowLocalIndex() == i);
+			VX_ASSERT(row.info.RowCount() == 3 && row.info.NeedPositionCorrection() == true);
 		}
 
 		//alway solve constraint position correction 
@@ -104,8 +106,7 @@ namespace vx {
 
 	void PointConstraint::CommitSolverState(const Linear1DRow& row)
 	{
-		mAccumulatedLambda[row.hackIdx] = row.lambda;
-		//mAccumulatedLambda = Vec3(0.0f);
+		mAccumulatedLambda[row.info.RowLocalIndex()] = row.lambda;
 	}
 
 	void PointConstraint::SolvePositionConstraint(float dt, float baumgarte)
@@ -540,10 +541,6 @@ namespace vx {
 		BuildAxis1DJacobian(&rows[0], mAccumulatedLambda[0], Vec3::Right(), rA, rB, dispW, dt);
 		BuildAxis1DJacobian(&rows[1], mAccumulatedLambda[1], Vec3::Up(), rA, rB, dispW, dt);
 		BuildAxis1DJacobian(&rows[2], mAccumulatedLambda[2], Vec3::Forward(), rA, rB, dispW, dt);
-
-		rows[0].hackIdx = 0;
-		rows[1].hackIdx = 1;
-		rows[2].hackIdx = 2;
 	}
 
 	void PointConstraint::BuildAxis1DJacobian(Linear1DRow* o_row, float accumulated_lambda, const Vec3& axis,

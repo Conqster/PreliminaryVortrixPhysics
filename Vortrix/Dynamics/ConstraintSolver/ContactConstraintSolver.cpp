@@ -203,12 +203,12 @@ namespace vx {
 		mCacheContactPointTail = mMaxCacheContactPoints;
 	}
 
-	void ContactConstraintSolver::SetupContactConstraint(const ContactManifold& _manifold, const CollisionContext& ctx)
+	void ContactConstraintSolver::SetupContactConstraint(const ContactManifold& _manifold)
 	{
 #if TEST_CONTACT_CONSTRAINT_MT
-		SetupContactConstraint2Mt(_manifold, ctx);
+		SetupContactConstraint2Mt(_manifold);
 #else
-		SetupContactConstraint2(_manifold, ctx);
+		SetupContactConstraint2(_manifold);
 #endif // TEST_CONTACT_CONSTRAINT_MT
 	}
 
@@ -225,7 +225,7 @@ namespace vx {
 
 
 
-	void ContactConstraintSolver::SetupContactConstraint2(const ContactManifold& _manifold, const CollisionContext& ctx)
+	void ContactConstraintSolver::SetupContactConstraint2(const ContactManifold& _manifold)
 	{
 		/// now for debugginf cache
 		VX_PROFILE_FUNCTION();
@@ -237,7 +237,7 @@ namespace vx {
 		/// 2. if both dynamic, for consitency id a < b
 		/// 
 		/// ensure that the A is the dynamic while B is the static 
-		if (ctx.settings.consistentManifold)
+		if (mPhysicsContext->consistentManifold)
 		{
 			int priority_a = static_cast<int>(manifold.a->MotionType());
 			int priority_b = static_cast<int>(manifold.b->MotionType());
@@ -323,12 +323,12 @@ namespace vx {
 
 
 #if CONTACT_USE_SOLVERBODY
-		VX_ASSERT_WARN_VOID(ctx.constraintSolver, "trying to setup constact constraint from manifold, but solver/builder not available");
+		VX_ASSERT_WARN_VOID(mPhysicsContext->constraintSolver, "trying to setup constact constraint from manifold, but solver/builder not available");
 
 
 		{
-			SolverBodyIndex solver_body_idx0 = ctx.constraintSolver->GetOrCreateSolverBody(*manifold.a);
-			SolverBodyIndex solver_body_idx1 = ctx.constraintSolver->GetOrCreateSolverBody(*manifold.b);
+			SolverBodyIndex solver_body_idx0 = mPhysicsContext->constraintSolver->GetOrCreateSolverBody(*manifold.a);
+			SolverBodyIndex solver_body_idx1 = mPhysicsContext->constraintSolver->GetOrCreateSolverBody(*manifold.b);
 
 			constraint.SetBodies(solver_body_idx0, solver_body_idx1);
 
@@ -344,20 +344,20 @@ namespace vx {
 				body_ids[bodies_activate_count++] = manifold.b->ID();
 
 			if (bodies_activate_count > 0)
-				ctx.bodyManager->ActivateBodies(body_ids, bodies_activate_count);
-				
+				mPhysicsContext->bodyManager->ActivateBodies(body_ids, bodies_activate_count);
+
 
 			/// a is alway dynam,ic
 			if (manifold.a->IsDynamic() && manifold.b->IsDynamic())
 			{
- 				VX_ASSERT(manifold.a->GetIndexInActiveBodies() != Body::kInvalidActiveIdx && manifold.b->GetIndexInActiveBodies() != Body::kInvalidActiveIdx, "Invalid Body index");
-				ctx.islandCoordinator->LinkBodies(manifold.a->GetIndexInActiveBodies(), manifold.b->GetIndexInActiveBodies());
+				VX_ASSERT(manifold.a->GetIndexInActiveBodies() != Body::kInvalidActiveIdx && manifold.b->GetIndexInActiveBodies() != Body::kInvalidActiveIdx, "Invalid Body index");
+				mPhysicsContext->mIslandCoordinator->LinkBodies(manifold.a->GetIndexInActiveBodies(), manifold.b->GetIndexInActiveBodies());
 			}
 
 			if (manifold.a->IsDynamic())
-				ctx.islandCoordinator->LinkContactConstraint(constraint_idx, manifold.a->GetIndexInActiveBodies());
+				mPhysicsContext->mIslandCoordinator->LinkContactConstraint(constraint_idx, manifold.a->GetIndexInActiveBodies());
 			else if (manifold.b->IsDynamic())
-				ctx.islandCoordinator->LinkContactConstraint(constraint_idx, manifold.b->GetIndexInActiveBodies());
+				mPhysicsContext->mIslandCoordinator->LinkContactConstraint(constraint_idx, manifold.b->GetIndexInActiveBodies());
 			else
 				VX_ASSERT(false);
 		}
@@ -383,8 +383,8 @@ namespace vx {
 
 		ContactConstraintAxesSetting constraint_axes_setting;
 #if VX_DEBUG_DRAW
-		constraint_axes_setting.debug_renderer = ctx.debugRenderer;
-		constraint_axes_setting.debugDrawAxes = ctx.drawContactTBNs;
+		constraint_axes_setting.debug_renderer = mPhysicsContext->mDebugRenderer;
+		constraint_axes_setting.debugDrawAxes = mPhysicsContext->mDrawSettings->drawContactConstraintSolverTBNs;
 #endif // VX_DEBUG_DRAW
 		constraint_axes_setting.timeStep = mPhysicsContext->stepDeltaTime;
 
@@ -461,7 +461,7 @@ namespace vx {
 	}
 
 
-	void ContactConstraintSolver::SetupContactConstraint2Mt(const ContactManifold& _manifold, const CollisionContext& ctx)
+	void ContactConstraintSolver::SetupContactConstraint2Mt(const ContactManifold& _manifold)
 	{
 		VX_PROFILE_FUNCTION();
 		///Copy manifold for easy modification
@@ -472,7 +472,7 @@ namespace vx {
 		/// 2. if both dynamic, for consitency id a < b
 		/// 
 		/// ensure that the A is the dynamic while B is the static 
-		if (ctx.settings.consistentManifold)
+		if (mPhysicsContext->consistentManifold)
 		{
 			int priority_a = static_cast<int>(manifold.a->MotionType());
 			int priority_b = static_cast<int>(manifold.b->MotionType());
@@ -616,12 +616,12 @@ namespace vx {
 
 
 #if CONTACT_USE_SOLVERBODY
-		VX_ASSERT_WARN_VOID(ctx.constraintSolver, "trying to setup constact constraint from manifold, but solver/builder not available");
+		VX_ASSERT_WARN_VOID(mPhysicsContext->constraintSolver, "trying to setup constact constraint from manifold, but solver/builder not available");
 
 
 		{
-			SolverBodyIndex solver_body_idx0 = ctx.constraintSolver->GetOrCreateSolverBody(*manifold.a);
-			SolverBodyIndex solver_body_idx1 = ctx.constraintSolver->GetOrCreateSolverBody(*manifold.b);
+			SolverBodyIndex solver_body_idx0 = mPhysicsContext->constraintSolver->GetOrCreateSolverBody(*manifold.a);
+			SolverBodyIndex solver_body_idx1 = mPhysicsContext->constraintSolver->GetOrCreateSolverBody(*manifold.b);
 
 			constraint.SetBodies(solver_body_idx0, solver_body_idx1);
 
@@ -638,21 +638,21 @@ namespace vx {
 				body_ids[bodies_activate_count++] = manifold.b->ID();
 
 			if (bodies_activate_count > 0)
-				ctx.bodyManager->ActivateBodies(body_ids, bodies_activate_count);
+				mPhysicsContext->bodyManager->ActivateBodies(body_ids, bodies_activate_count);
 
 
 			/// a is alway dynam,ic
 			if (manifold.a->IsDynamic() && manifold.b->IsDynamic())
 			{
 				VX_ASSERT(manifold.a->GetIndexInActiveBodies() != Body::kInvalidActiveIdx && manifold.b->GetIndexInActiveBodies() != Body::kInvalidActiveIdx, "Invalid Body index");
-				ctx.islandCoordinator->LinkBodies(manifold.a->GetIndexInActiveBodies(), manifold.b->GetIndexInActiveBodies());
+				mPhysicsContext->mIslandCoordinator->LinkBodies(manifold.a->GetIndexInActiveBodies(), manifold.b->GetIndexInActiveBodies());
 			}
 
 
 			if (manifold.a->IsDynamic())
-				ctx.islandCoordinator->LinkContactConstraint(constraint_idx, manifold.a->GetIndexInActiveBodies());
+				mPhysicsContext->mIslandCoordinator->LinkContactConstraint(constraint_idx, manifold.a->GetIndexInActiveBodies());
 			else if (manifold.b->IsDynamic())
-				ctx.islandCoordinator->LinkContactConstraint(constraint_idx, manifold.b->GetIndexInActiveBodies());
+				mPhysicsContext->mIslandCoordinator->LinkContactConstraint(constraint_idx, manifold.b->GetIndexInActiveBodies());
 			else
 				VX_ASSERT(false);
 		}
@@ -679,8 +679,8 @@ namespace vx {
 
 		ContactConstraintAxesSetting constraint_axes_setting;
 #if VX_DEBUG_DRAW
-		constraint_axes_setting.debug_renderer = ctx.debugRenderer;
-		constraint_axes_setting.debugDrawAxes = ctx.drawContactTBNs;
+		constraint_axes_setting.debug_renderer = mPhysicsContext->mDebugRenderer;
+		constraint_axes_setting.debugDrawAxes = mPhysicsContext->mDrawSettings->drawContactConstraintSolverTBNs;
 #endif // VX_DEBUG_DRAW
 		constraint_axes_setting.timeStep = mPhysicsContext->stepDeltaTime;
 
@@ -1343,6 +1343,8 @@ for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
 		}
 	}
 
+
+
 	void ContactConstraintSolver::SolveVelocityConstraint(SolverBody* bodies)
 	{
 		VX_PROFILE_FUNCTION();
@@ -1397,6 +1399,88 @@ for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
 			SolveVelocityConstraint(constraint_info, sbA, sbB);
 		}
 	}
+
+	void ContactConstraintSolver::SolvePositionCorrection(const ContactConstraint& constraint, Body* bodyA, Body* bodyB, float total_inv_mass, float baumgarte, float slop, float min_limit, float max_limit, float limit_scale)
+	{
+		bool dyn_a = bodyA->IsDynamic();
+		bool dyn_b = bodyB->IsDynamic();
+
+		Vec3 n = constraint.Normal();
+
+		float correction_limit = 0.01;
+		{
+			float limitA = dyn_a ?
+				bodyA->GetShape()->HalfExtents().MinComponent() * limit_scale : kMaxf;
+			float limitB = dyn_b ?
+				bodyB->GetShape()->HalfExtents().MinComponent() * limit_scale : kMaxf;
+
+			correction_limit = VxMin(limitA, limitB);
+
+			correction_limit = VxClamp(correction_limit, min_limit, max_limit);
+		}
+
+		Mat44 transform0 = bodyA->ComputeWorldTransform();
+		Mat44 transform1 = bodyB->ComputeWorldTransform();
+
+
+		for (int i = 0; i < constraint.NumConstraintPoints(); ++i)
+		{
+			auto& contact_point = constraint.PointConstraint(i);
+
+			///New contact point in world as bodies position might have been corrected
+			const Vec3 p0 = transform0.Transform(Vec3::LoadFloat3Raw(contact_point.cacheLocalPoint->localPoint0));
+			const Vec3 p1 = transform1.Transform(Vec3::LoadFloat3Raw(contact_point.cacheLocalPoint->localPoint1));
+
+			float seperation = (p1 - p0).Dot(n);
+			///seperation constant
+			/// dist along normal + slop 
+			/// to avoid jittering between bodies
+			//float C = VxMax(seperation + slop, -kEpsilon);
+			float C = seperation + slop;
+
+			if (C < 0.0f)
+			{
+				float inv_effective_mass = total_inv_mass;
+				Vec3 p = (p0 + p1) * 0.5f;
+				/// point relative to bodies
+				Vec3 r0 = p - bodyA->Position();
+				Vec3 r1 = p - bodyB->Position();
+
+				Vec3 inv_Ir0_Xn, inv_Ir1_Xn;
+				if (dyn_a)
+				{
+					Vec3 r0_X_n = r0.Cross(n);
+					inv_Ir0_Xn = bodyA->ComputeInvInteriaWorld().Multiply3x3(r0_X_n);
+					inv_effective_mass += r0_X_n.Dot(inv_Ir0_Xn);
+				}
+				if (dyn_b)
+				{
+					Vec3 r1_X_n = r1.Cross(n);
+					inv_Ir1_Xn = bodyB->ComputeInvInteriaWorld().Multiply3x3(r1_X_n);
+					inv_effective_mass += r1_X_n.Dot(inv_Ir1_Xn);
+				}
+
+				if (inv_effective_mass < 1e-9f)
+					continue;
+
+				C = VxMax(C, -correction_limit);
+				float lambda = -(baumgarte * C) / inv_effective_mass;
+				Vec3 lambda_vector = lambda * n;
+
+				if (dyn_a)
+				{
+					bodyA->ApplyLinearDisplacement(-lambda_vector * bodyA->InverseMass());
+					bodyA->ApplyAngularDisplacement(-lambda * inv_Ir0_Xn);
+				}
+				if (dyn_b)
+				{
+					bodyB->ApplyLinearDisplacement(lambda_vector * bodyB->InverseMass());
+					bodyB->ApplyAngularDisplacement(lambda * inv_Ir1_Xn);
+				}
+			}
+		}
+	}
+
 	void ContactConstraintSolver::SolvePositionCorrections(SolverBody* bodies, BodyManager& body_manager, float baumgarte, float slop, float min_limit, float max_limit, float limit_scale)
 	{
 		VX_PROFILE_FUNCTION();
@@ -1423,88 +1507,9 @@ for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
 			Body* a = &body_manager.GetBody(sbA.bodyID);
 			Body* b = &body_manager.GetBody(sbB.bodyID);
 
-
-			bool dyn_a = a->IsDynamic();
-			bool dyn_b = b->IsDynamic();
-
-			//VX_ASSERT_WARN_VOID(dyn_a || dyn_b, "not possible one of the bodies need to be non static");
-
-			Vec3 n = constraint.Normal();
-
-			float correction_limit = 0.01;
-			{
-				float limitA = dyn_a ?
-					a->GetShape()->HalfExtents().MinComponent() * limit_scale : kMaxf;
-				float limitB = dyn_b ?
-					b->GetShape()->HalfExtents().MinComponent() * limit_scale : kMaxf;
-
-				correction_limit = VxMin(limitA, limitB);
-
-				correction_limit = VxClamp(correction_limit, min_limit, max_limit);
-			}
-
-			Mat44 transform0 = a->ComputeWorldTransform();
-			Mat44 transform1 = b->ComputeWorldTransform();
-
 			//effective mass 
 			float total_inv_mass = sbA.invMass + sbB.invMass;
-
-			for (int i = 0; i < constraint.NumConstraintPoints(); ++i)
-			{
-				auto& contact_point = constraint.PointConstraint(i);
-
-				///New contact point in world as bodies position might have been corrected
-				const Vec3 p0 = transform0.Transform(Vec3::LoadFloat3Raw(contact_point.cacheLocalPoint->localPoint0));
-				const Vec3 p1 = transform1.Transform(Vec3::LoadFloat3Raw(contact_point.cacheLocalPoint->localPoint1));
-
-				float seperation = (p1 - p0).Dot(n);
-				///seperation constant
-				/// dist along normal + slop 
-				/// to avoid jittering between bodies
-				//float C = VxMax(seperation + slop, -kEpsilon);
-				float C = seperation + slop;
-
-				if (C < 0.0f)
-				{
-					float inv_effective_mass = total_inv_mass;
-					Vec3 p = (p0 + p1) * 0.5f;
-					/// point relative to bodies
-					Vec3 r0 = p - a->Position();
-					Vec3 r1 = p - b->Position();
-
-					Vec3 inv_Ir0_Xn, inv_Ir1_Xn;
-					if (dyn_a)
-					{
-						Vec3 r0_X_n = r0.Cross(n);
-						inv_Ir0_Xn = a->ComputeInvInteriaWorld().Multiply3x3(r0_X_n);
-						inv_effective_mass += r0_X_n.Dot(inv_Ir0_Xn);
-					}
-					if (dyn_b)
-					{
-						Vec3 r1_X_n = r1.Cross(n);
-						inv_Ir1_Xn = b->ComputeInvInteriaWorld().Multiply3x3(r1_X_n);
-						inv_effective_mass += r1_X_n.Dot(inv_Ir1_Xn);
-					}
-
-					if (inv_effective_mass < 1e-9f)
-						continue;
-
-					C = VxMax(C, -correction_limit);
-					float lambda = -(baumgarte * C) / inv_effective_mass;
-					Vec3 lambda_vector = lambda * n;
-
-					if (dyn_a)
-					{
-						a->ApplyLinearDisplacement(-lambda_vector * a->InverseMass());
-						a->ApplyAngularDisplacement(-lambda * inv_Ir0_Xn);
-					}
-					if (dyn_b)
-					{
-						b->ApplyLinearDisplacement(lambda_vector * b->InverseMass());
-						b->ApplyAngularDisplacement(lambda * inv_Ir1_Xn);
-					}
-				}
-			}
+			SolvePositionCorrection(constraint, a, b, total_inv_mass, baumgarte, slop, min_limit, max_limit, limit_scale);
 		}
 	}
 #else

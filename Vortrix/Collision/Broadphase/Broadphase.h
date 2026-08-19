@@ -43,7 +43,7 @@ namespace vx
 
 		virtual void InsertBody(Body* body) = 0;
 		virtual void RemoveBody(const BodyID& id) = 0;
-		virtual void ComputeCollidingPair(struct PhysicsStepContext& physics_ctx, struct BroadphasePair* io_pairs, uint32& io_count) = 0;
+		virtual void ComputeCollidingPair(const struct PhysicsStepContext& physics_ctx, struct SimStep& io_sim_step) = 0;
 		virtual void DebugDraw(DebugGizmosRenderer*, const DrawSettings&) = 0;
 
 		virtual void SetBoundThreshold(float v) { mBoundThreshold = v;}

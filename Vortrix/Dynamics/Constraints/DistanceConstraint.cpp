@@ -82,14 +82,17 @@ namespace vx{
 		row->bodyAidx = solver->GetOrCreateSolverBody(mBodyA->ID(), ctx);
 		row->bodyBidx = solver->GetOrCreateSolverBody(mBodyB->ID(), ctx);
 
-		if(RequiresPositionCorrection())
+		bool require_position_correction = RequiresPositionCorrection();
+		if(require_position_correction)
 			solver->AppendPositionCorrectionQueue(this);// Queue
 
 		//quick hack 
 		//if warm start is disable, then no required accumulate lambda write back 
 		mAccumulatedLambda = {};
 
-		row->user = this;
+		row->info = ConstraintRowInfo(mConstraintIdx, 0, 1, require_position_correction);
+		VX_ASSERT(row->info.ConstraintIndex() == mConstraintIdx && row->info.RowLocalIndex() == 0);
+		VX_ASSERT(row->info.RowCount() == 1 && row->info.NeedPositionCorrection() == require_position_correction);
 		return 1;
 	}
 

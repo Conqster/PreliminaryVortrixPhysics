@@ -8,6 +8,8 @@
 
 #include "Dynamics/Body/BodyManager.h"
 
+#include "Vortrix/SimulationContexts.h"
+
 namespace vx
 {
 	
@@ -24,7 +26,7 @@ namespace vx
 
 		void InsertBody(Body* body) override {}
 		void RemoveBody(const BodyID& id) override {}
-		void ComputeCollidingPair(PhysicsStepContext& physics_ctx, BroadphasePair* io_pairs, uint32& io_count) override
+		void ComputeCollidingPair(const PhysicsStepContext& physics_ctx, SimStep& io_sim_step) override
 		{
 			VX_PROFILE_FUNCTION();
 			auto& bodies = physics_ctx.bodyManager->GetBodies();
@@ -53,8 +55,8 @@ namespace vx
 
 					if (aAABB.Overlaps(bAABB))
 					{
-						VX_ASSERT(physics_ctx.maxBroadphasePair < io_count);
-						io_pairs[io_count++] = BroadphasePair(&bodies[i], &bodies[j]);
+						VX_ASSERT(io_sim_step.broadphasePairCount < physics_ctx.maxBroadphasePair);
+						io_sim_step.broadphasePair[io_sim_step.broadphasePairCount++] = BroadphasePair(&bodies[i], &bodies[j]);
 					}
 				}
 			}

@@ -169,20 +169,18 @@ namespace vx {
 
 		static void WarmStart(Linear1DRow* rows, size_t begin_offset, size_t count, SolverBody* bodies);
 
-		void CommitStateConstraint()
+		void CommitStateConstraint(Constraint** constraints, uint32 available_count)
 		{
 			VX_PROFILE_FUNCTION();
-			//for (const auto& r : mLinear1DRows)
-			//	if (r.user)
-			//		r.user->CommitSolverState(r);
-
 			for (Linear1DRow* r = mLinear1DRows, *r_end = mLinear1DRows + mLinear1DRowsCounts; r < r_end; ++r)
-				if ((*r).user)
-					(*r).user->CommitSolverState(*r);
+			{
+				VX_ASSERT(r->info.ConstraintIndex() < available_count);
+				constraints[r->info.ConstraintIndex()]->CommitSolverState(*r);
+			}
 		}
 
 
-		void SolverAll(const PhysicsStepContext& ctx, uint32 iterations);
+		void SolverAll(const PhysicsStepContext& ctx, uint32 iterations, Constraint** constraints, uint32 count);
 	private:
 		//vectot for now
 		//std::vector<Linear1DRow> mLinear1DRows;

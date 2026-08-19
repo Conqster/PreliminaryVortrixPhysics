@@ -8,7 +8,7 @@
 namespace vx {
 
 	class BodyManager;
-	struct CollisionContext;
+	struct SimStep;
 
 	class NarrowphaseQuery
 	{
@@ -18,8 +18,8 @@ namespace vx {
 
 		const CollisionResolutionStat& Stats() const { return mStats; }
 
-		bool ProcessPairAndTrySetupContactConstraint(const Body* a, const Body* b, ContactConstraintSolver& contact_solver, const CollisionContext& ctx);
-		void ProcessPairs(struct BroadphasePair* in_pairs, class ContactConstraintSolver& contact_solver, const CollisionContext& ctx);
+		bool ProcessPairAndTrySetupContactConstraint(const Body* a, const Body* b, ContactConstraintSolver& contact_solver, SimStep* io_step);
+		void ProcessPairs(struct BroadphasePair* in_pairs, class ContactConstraintSolver& contact_solver, SimStep* io_step);
 
 	private:
 		CollisionDispatcher mDispatcher;

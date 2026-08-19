@@ -176,13 +176,13 @@ namespace vx {
 			mStats.StepReset();
 		}
 
-		void SetupContactConstraint(const ContactManifold& manifold, const struct CollisionContext& ctx);
+		void SetupContactConstraint(const ContactManifold& manifold);
 
 		uint32 MaxConstraints() const { return mMaxConstraints; }
 		
-		void SetupContactConstraint2(const ContactManifold& manifold, const struct CollisionContext& ctx);
+		void SetupContactConstraint2(const ContactManifold& manifold);
 		/// attempting to write a thread safe version for multi threading
-		void SetupContactConstraint2Mt(const ContactManifold& manifold, const struct CollisionContext& ctx);
+		void SetupContactConstraint2Mt(const ContactManifold& manifold);
 		void WarmStart();
 
 
@@ -219,7 +219,7 @@ namespace vx {
 		ECombineMode GetRestitutionCombineMode() const { return mCombinedRestitutionMode;}
 
 
-		void SetPhysicsContext(PhysicsStepContext* ctx) { mPhysicsContext = ctx; }
+		void SetPhysicsContext(PhysicsStepContext* i_ctx) { VX_ASSERT(i_ctx != nullptr); mPhysicsContext = i_ctx; }
 		struct ContactConstraintSolverStat
 		{
 			int numContactConstraints = 0;
@@ -597,6 +597,7 @@ namespace vx {
 
 		static void WriteBackImplusesManifoldCache(ContactConstraint* contact_constraints, size_t count)
 		{
+			VX_PROFILE_FUNCTION();
 			for (ContactConstraint* cc = contact_constraints, *cc_end = contact_constraints + count; cc < cc_end; ++cc)
 			{
 				WriteBackImpluseCache(*cc);
@@ -722,6 +723,7 @@ namespace vx {
 		void SolveVelocityConstraint(SolverBody* bodies);
 		void SolveVelocityConstraint(const uint32* constraint_start_idx, uint32 count, SolverBody* bodies);
 		void SolvePositionCorrections(SolverBody* bodies, BodyManager& body_manager, float baumgarte, float slop, float min_limit, float max_limit, float limit_scale);
+		static void SolvePositionCorrection(const ContactConstraint& constraint, Body* bodyA, Body* bodyB, float total_inv_mass, float baumgarte, float slop, float min_limit, float max_limit, float limit_scale);
 #else
 		void SolverContactManifold(const SolverSettings& phy_settings);
 		void PositionalCorrection(ContactConstraint& constraint, float baumgarte, float slop, float min_limit, float max_limit, float limit_scale);

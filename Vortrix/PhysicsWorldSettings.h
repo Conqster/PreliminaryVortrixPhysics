@@ -47,7 +47,16 @@ namespace vx
 
 		bool BVH_rebuild_SAH = false;
 
+		bool consistentManifold = false;
+		class ConstraintSolver* constraintSolver = nullptr;
+
 		class DebugGizmosRenderer* mDebugRenderer = nullptr;
+
+		bool enableContact = true;
+		uint32 velocityIterations = 10;
+		///hack for now
+		class PhysicsWorld* mPhysicsWorld = nullptr;
+		struct DrawSettings* mDrawSettings = nullptr;
 	};
 
 
@@ -230,7 +239,7 @@ namespace vx
 		float drawPerIslandConstraintGroupColourAlpha = 1.0f;
 		
 		/// bodies
-		EBodyColourMode bodyColourMode = EBodyColourMode::IslandIdx;
+		EBodyColourMode bodyColourMode = EBodyColourMode::Instances;
 		//bool drawBounds = false; //for drawAABB, drawOBB
 		bool drawAABB = false;
 		bool drawOBB = false;
@@ -316,6 +325,8 @@ namespace vx
 
 		int maxConcurrency = -1;
 		bool splitLargeIsland = true;
+
+		float scratchAllocationMiB = 1.0f;
 	};
 
 }

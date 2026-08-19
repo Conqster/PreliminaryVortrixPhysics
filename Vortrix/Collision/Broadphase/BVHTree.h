@@ -259,7 +259,7 @@ namespace vx
 			return (static_cast<float>(total_jump) / count);
 		}
 
-		void ComputeCollidingPairs(PhysicsStepContext& physics_ctx, BroadphasePair* io_pairs, uint32& io_count);
+		void ComputeCollidingPairs(const PhysicsStepContext& physics_ctx, struct SimStep& io_sim_step);
 
 		void UpdateDirtyNodes(const NodeID* dirty_leave_nodes, uint32 dirty_node_count/*uint32 last_broadphase_step*/);
 		void RebuildBruteforceInsertion();
@@ -327,7 +327,7 @@ namespace vx
 		//struct NodePair { NodeID a; NodeID b; };
 		//std::vector<NodePair> mNodeStack;
 
-		//used for bodies simulation stat update
+		//used for bodies simulation data update
 		BodyManager* mBodyManager = nullptr;
 		NodeID* mLeafNodeIDs = nullptr;
 		uint32 mLeafNodeCount = 0;

@@ -245,9 +245,7 @@ namespace vx
 		mBroadphase->SetBoundThreshold(mSettings->collision.boundsMargin);
 		mBroadphase->Init(&mBodyManager, broad_init);
 
-		//mBroadphasePairs.reserve(max_body_pairs);
-		//mBroadphaseBuffer.data = new BroadphasePair[max_body_pairs];
-		mBroadphaseBuffer.maxPairs = max_body_pairs;
+		mContext.maxBroadphasePair = max_body_pairs;
 
 		mContactConstraintSolver.Init(max_contact_constraint);
 		mContactConstraintSolver.SetPhysicsContext(&mContext);
@@ -257,7 +255,8 @@ namespace vx
 
 		mWorldQuery.Init(mBroadphase);
 
-		mScratchAllocator = new ScratchAllocator(1 * 1024 * 1024);
+		VX_ASSERT(mSettings->scratchAllocationMiB > 0.0f);
+		mScratchAllocator = new ScratchAllocator(static_cast<size_t>(mSettings->scratchAllocationMiB * 1024.0f * 1024.0f));
 
 
 #if defined(VX_DEBUG_ALLOCATOR)
@@ -331,7 +330,15 @@ namespace vx
 		mContext.rebuildBVH_ImbalanceRatioTreshold = mSettings->collision.rebuildBVH_ImbalanceRatioTreshold;
 		mContext.mScratchAllocator = mScratchAllocator;
 		mContext.mIslandCoordinator = mIslandCoordinator;
-		mContext.maxBroadphasePair = mBroadphaseBuffer.maxPairs;
+
+		mContext.velocityIterations = mSettings->solver.velocityIterations;
+		mContext.enableContact = mSettings->solver.enableContact;
+
+		//new 
+		mContext.mPhysicsWorld = this;
+		mContext.consistentManifold = mSettings->collision.consistentManifold;
+		mContext.constraintSolver = mConstraintSolver;
+		mContext.mDrawSettings = mSettings->drawSettings;
 
 		mWorldQuery.SetDrawBroadphaseNodesWalked(mSettings->drawSettings->drawWalkedTreeQuery);
 
@@ -345,33 +352,75 @@ namespace vx
 				body_debug.simulationStats.Reset();
 		}
 
+		mSimStep.mPhysicsStepContext = &mContext;
+		mSimStep.broadphasePair = reinterpret_cast<BroadphasePair*>(mScratchAllocator->Allocate(sizeof(BroadphasePair) * mContext.maxBroadphasePair));
+		mSimStep.broadphasePairCount = 0;
+		mSimStep.nextProcessPairIdx = { 0 };
+		mSimStep.solveVelocityNextIslandIdx = { 0 };
+		////////////////////////////////////
+		// Broadphase
+		////////////////////////////////////
+
+		VX_ASSERT(mBroadphase != nullptr);
+		//// broadphase could happen before gravity + acceleration intergration 
+		/// broadphase only reads bodies (position, and type), and write debug data to body manager
+		/// a thread start work immediately
+		mTaskCoordinator->ConstructTask([broadphase = mBroadphase, ctx = &mContext, sim_step = &mSimStep]()
+			{
+				broadphase->ComputeCollidingPair(*ctx, *sim_step);
+			}, 0);
+
 
 		{
 			VX_PROFILE_SCOPE("Integrate bodies acceleration");
 
-			uint32 num_active_bodies = NumActiveBodies();
-			BodyID* active_bodies = ActiveBodies();
+			/// clamp acceleration & gravity tasks count to max concurrency - 1 (leaving the a thread for working broadphase)
+			const int max_acceleration_workers = VxMax(1, int(mTaskCoordinator->MaxConcurrency() - 1));
+			uint32 num_acceleration_gravity_tasks = VxMin(int((NumActiveBodies() + (SimStep::kAcclerationGravityTaskBatch - 1)) / SimStep::kAcclerationGravityTaskBatch), max_acceleration_workers);
 
-			for (int i = 0; i < num_active_bodies; ++i)
+			std::atomic<uint32> next_active_body_idx = 0;
+			for (uint32 i = 0; i < num_acceleration_gravity_tasks; ++i)
 			{
-				Body& body = mBodyManager.GetBody(active_bodies[i]);
-				body.IntegrateAcceleration(dt, mSettings->gravity * mSettings->gravityScale);
-				body.ClearAccumulatedForces();
+				mTaskCoordinator->ConstructTask([step_ctx = &mContext, &next_active_body_idx, 
+					world_gravity = mSettings->gravity, gravity_scale = mSettings->gravityScale]()
+					{
+						uint32 num_active_bodies = step_ctx->bodyManager->NumActiveBodies();
+						BodyID* active_bodies = step_ctx->bodyManager->ActiveBodies();
+
+						const vx::Vec3 gravity = world_gravity * gravity_scale;
+
+						/// atomically fetch batch and process
+						for (;;)
+						{
+							const uint32 active_body_begin = next_active_body_idx.fetch_add(SimStep::kAcclerationGravityTaskBatch);
+
+							/// at the end of broadphase pair
+							if (active_body_begin >= num_active_bodies)
+								break;
+
+							uint32 active_body_end = VxMin(num_active_bodies, active_body_begin + SimStep::kAcclerationGravityTaskBatch);
+
+							for (uint32 i = active_body_begin; i < active_body_end; ++i)
+							{
+								Body& body = step_ctx->bodyManager->GetBody(active_bodies[i]);
+								if (body.IsDynamic())
+								{
+									body.IntegrateAcceleration(step_ctx->stepDeltaTime, gravity);
+									body.ClearAccumulatedForces();
+								}
+							}
+						}
+					}, 0);
 			}
 		}
 
-		mBroadphaseBuffer.data = reinterpret_cast<BroadphasePair*>(mScratchAllocator->Allocate(sizeof(BroadphasePair) * mBroadphaseBuffer.maxPairs));
-		auto& mBroadpairCount = mBroadphaseBuffer.count;
-		mBroadpairCount = 0;
-		//uint32& broadpair_count = 0; later wrap in pointer
-		/// Broadphase collsion
-		//VX_ASSERT_WARN(mBroadphase, "Broadphase is null.");
-		if (mBroadphase != nullptr)
-			mBroadphase->ComputeCollidingPair(mContext, mBroadphaseBuffer.data, mBroadpairCount);
 
+
+		/// Allow main thread to compute this before waiting 
+		//////////////////////////////////
+		// Reset/clear sub systems
+		//////////////////////////////////
 		mContactConstraintSolver.PreFrameSetup(); //for per frame transient allcation for now
-
-
 		/// for now need to invalidate previous frame local bodies 
 		/// so the bodies could be update for use by narrowphase handshake 
 		/// with contact constraint, fix later 
@@ -379,82 +428,78 @@ namespace vx
 			VX_PROFILE_SCOPE("Clear Non contact constraint");
 			mConstraintSolver->HackClear();
 		}
-		CollisionContext collision_ctx
-		{
-			mSettings->collision, mContext.mDebugRenderer,
-			mSettings->drawSettings->drawContactConstraintSolverTBNs,
-			mContext.mStepIndex, mBroadpairCount, mConstraintSolver,
-			mIslandCoordinator, &mBodyManager
-		};
-		//Narrowphase: collision detection & contact generations
-		
-		//mNarrowphaseQuery.ProcessPairs(mBroadphaseBuffer.data, mContactConstraintSolver, collision_ctx);
-
-
 		mIslandCoordinator->PrepareIslands((uint32)mBodyManager.GetBodies().size());
+
+		/////wait for acceleration, gravity, broadphase, clearing sub systems 
+		mTaskCoordinator->WaitForTasks();
 
 #if USE_MULTITHREAD
 		{
 			VX_PROFILE_SCOPE("Processing and contact constraint setup multithreading");
-			///multithreading
-			struct QuickPairProcessAndConstraintSetupContext
-			{
-				BroadphasePair* pairs;
-				NarrowphaseQuery& narrowphase_query;
-				ContactConstraintSolver& contact_solver;
-				const CollisionContext& collision_ctx;
-			};
 
-			QuickPairProcessAndConstraintSetupContext pair_process_and_constraint_setup_ctx =
-			{
-				mBroadphaseBuffer.data,
-				mNarrowphaseQuery,
-				mContactConstraintSolver,
-				collision_ctx
-			};
-
-
-			//mProcessPairAndTrySetupContactConstraintTasks.clear();
-
-			//for (BroadphasePair* bp = mBroadphaseBuffer.data,
-			//	*bp_end = mBroadphaseBuffer.data + collision_ctx.broadphasePairCount;
-			//	bp < bp_end; ++bp)
-			//{
-			//	/// create tasks 
-			//	mProcessPairAndTrySetupContactConstraintTasks.push_back(mTaskCoordinator->ConstructTask([body_a = (*bp).a, body_b = (*bp).b, ctx = &pair_process_and_constraint_setup_ctx]()
+			//mTaskCoordinator->ParallelFor(
+			//	collision_ctx.broadphasePairCount,
+			//	k_pair_per_task,
+			//	///Range Task
+			//	{
+			//		&pair_process_and_constraint_setup_ctx,
+			//		[](void* user_data, uint32 begin, uint32 end)
 			//		{
-			//			ctx->narrowphase_query.ProcessPairAndTrySetupContactConstraint(body_a, body_b, ctx->contact_solver, ctx->collision_ctx);
-			//		}, 0)); /// no dependancies
-			//}
+			//			VX_PROFILE_SCOPE("Parallel For Broadphase pair; Thread execution");
+			//			auto& ctx = *static_cast<QuickPairProcessAndConstraintSetupContext*>(user_data);
+			//			for (uint32 i = begin; i < end; ++i)
+			//			{
+			//				auto& pair = ctx.pairs[i];
 
-			constexpr uint32 k_pair_per_task = 32;
+			//				ctx.narrowphase_query.ProcessPairAndTrySetupContactConstraint(
+			//					pair.a,
+			//					pair.b,
+			//					ctx.contact_solver, ctx.collision_ctx);
+			//			}
+			//		}
+			//	});
 
-			mTaskCoordinator->ParallelFor(
-				collision_ctx.broadphasePairCount,
-				k_pair_per_task,
-				///Range Task
-				{
-					&pair_process_and_constraint_setup_ctx,
-					[](void* user_data, uint32 begin, uint32 end)
+			/// use max possible concurrency
+			uint32 num_process_pair_try_setup_constraint_tasks = VxMin(int((mSimStep.broadphasePairCount + (SimStep::kProcessBodyPairBatch - 1)) / SimStep::kProcessBodyPairBatch), int(mTaskCoordinator->MaxConcurrency()));
+			for (uint32 i = 0; i < num_process_pair_try_setup_constraint_tasks; ++i)
+			{
+				mTaskCoordinator->ConstructTask([sim_step = &mSimStep]()
 					{
-						VX_PROFILE_SCOPE("Parallel For Broadphase pair; Thread execution");
-						auto& ctx = *static_cast<QuickPairProcessAndConstraintSetupContext*>(user_data);
-						for (uint32 i = begin; i < end; ++i)
-						{
-							auto& pair = ctx.pairs[i];
+						uint32 total_broadphase_pair_count = sim_step->broadphasePairCount;
 
-							ctx.narrowphase_query.ProcessPairAndTrySetupContactConstraint(
-								pair.a,
-								pair.b,
-								ctx.contact_solver, ctx.collision_ctx);
+						/// atomically fetch batch and process
+						for (;;)
+						{
+							const uint32 process_batch_begin = sim_step->nextProcessPairIdx.fetch_add(SimStep::kProcessBodyPairBatch);
+
+							/// at the end of broadphase pair
+							if (process_batch_begin >= total_broadphase_pair_count)
+								break;
+
+							uint32 process_batch_end = VxMin(total_broadphase_pair_count, process_batch_begin + SimStep::kProcessBodyPairBatch);
+
+							for (uint32 i = process_batch_begin; i < process_batch_end; ++i)
+							{
+								auto& pair = sim_step->broadphasePair[i];
+
+								///probably make this a static function
+								///also seperate processing narrow phase away and setup 
+								/// 
+								/// 
+								sim_step->mPhysicsStepContext->mPhysicsWorld->mNarrowphaseQuery.ProcessPairAndTrySetupContactConstraint(
+									pair.a,
+									pair.b,
+									sim_step->mPhysicsStepContext->mPhysicsWorld->mContactConstraintSolver, sim_step);
+							}
 						}
-					}
-				});
+					}, 0);
+			}
+
 
 			mTaskCoordinator->WaitForTasks();
 		}
 #else
-		mNarrowphaseQuery.ProcessPairs(mBroadphaseBuffer.data, mContactConstraintSolver, collision_ctx);
+		mNarrowphaseQuery.ProcessPairs(mBroadphaseBuffer.data, mContactConstraintSolver, sim_step);
 #endif // USE_MULTITHREAD
 
 #if TEST_CONTACT_CONSTRAINT_MT
@@ -463,15 +508,12 @@ namespace vx
 
 
 		/// free broadphase data straight after narrowphase
-		mScratchAllocator->Free(mBroadphaseBuffer.data, sizeof(BroadphasePair) * mBroadphaseBuffer.maxPairs);
-		mBroadphaseBuffer.data = nullptr;
-
+		mScratchAllocator->Free(mSimStep.broadphasePair, sizeof(BroadphasePair) * mContext.maxBroadphasePair);
+		mSimStep.broadphasePair = nullptr;
 		/// Prepare non contact constraint 
 		/// contact constraint should be done
 		/// time to prep joint constraints 
 		const uint32 active_joint_constraint_count = mConstraintCoordinator.PrepConstraintSolving(*mConstraintSolver, mContext);
-
-
 		/// Active Body should have been linked 
 		/// Body Contact Constraint 
 		/// Body Non Contact Constraint
@@ -557,42 +599,25 @@ namespace vx
 			//////solve islands multicore 
 			{
 				VX_PROFILE_SCOPE("Solving Velocity Constraints");
-				const uint32 island_count = mIslandCoordinator->IslandCount();
 
 #define TEST_SOLVER_CONSTRAINT_MT 1
 #if TEST_SOLVER_CONSTRAINT_MT
-				std::atomic<uint32> next_island_indices = { 0 };
-
-				struct SolvingIslandContext
-				{
-					ConstraintSolver& constraintSolver;
-					ContactConstraintSolver& contactConstraintSolver;
-					IslandCoordinator* islandCoordinator;
-					const uint32 velocityIterations;
-					const bool enableContact;
-					const bool splitLargeIsland;
-				};
-				SolvingIslandContext solving_island_ctx{ 
-					*mConstraintSolver,
-					mContactConstraintSolver,
-					mIslandCoordinator,
-					mSettings->solver.velocityIterations,
-					mSettings->solver.enableContact, 
-					mSettings->splitLargeIsland};
 
 				/// create task as the count; thread workers
 				for(uint32 i = 0; i < mTaskCoordinator->MaxConcurrency(); ++i)
 				{
-					mTaskCoordinator->ConstructTask([&solving_island_ctx, &next_island_indices, island_count = mIslandCoordinator->IslandCount()]()
+					mTaskCoordinator->ConstructTask([io_physics_ctx = &mContext, io_step = &mSimStep]()
 						{
 
 #define VX_SPLIT_ISLAND 1
-							const uint32 velocity_iteration_count = solving_island_ctx.velocityIterations;
+							const uint32 velocity_iteration_count = io_physics_ctx->velocityIterations;
 
 
 #if VX_SPLIT_ISLAND
+							uint32 island_count = io_physics_ctx->mIslandCoordinator->IslandCount();
 							bool normal_island_complete = false;
-							bool large_island_complete = !solving_island_ctx.splitLargeIsland;
+							const bool sim_split_large_island = io_physics_ctx->mPhysicsWorld->mSettings->splitLargeIsland;
+							bool large_island_complete = !sim_split_large_island;
 							///NEW+
 							for (;;)
 							{
@@ -602,16 +627,20 @@ namespace vx
 									break;
 
 
-								auto* solver_bodies = solving_island_ctx.constraintSolver.GetBodiesPtr();
+								//auto* solver_bodies = solving_island_ctx.constraintSolver.GetBodiesPtr();
+								SolverBody* solver_bodies = io_physics_ctx->mPhysicsWorld->mConstraintSolver->GetBodiesPtr();
 
-								if(solving_island_ctx.splitLargeIsland)
+								//if(solving_island_ctx.splitLargeIsland)
+								if(sim_split_large_island)
 								{
 									///try splitting island 
 									IslandCoordinator::IslandRange<uint32> island_contact_range(nullptr, nullptr), island_noncontact_range(nullptr, nullptr);
 									uint32 solving_split_island_idx;
 									uint32 debug_bin = uint32(-1);
-									IslandCoordinator::Splitter::EStatus status = solving_island_ctx.islandCoordinator->GetSplitter().NextConstactConstraintBatchRange(solving_split_island_idx,
-										island_count, island_contact_range, island_noncontact_range, debug_bin, solving_island_ctx.islandCoordinator->SortedIslandIndices());
+	/*								IslandCoordinator::Splitter::EStatus status = solving_island_ctx.islandCoordinator->GetSplitter().NextConstactConstraintBatchRange(solving_split_island_idx,
+										island_count, island_contact_range, island_noncontact_range, debug_bin, solving_island_ctx.islandCoordinator->SortedIslandIndices());*/
+									IslandCoordinator::Splitter::EStatus status = io_physics_ctx->mIslandCoordinator->GetSplitter().NextConstactConstraintBatchRange(solving_split_island_idx,
+										island_count, island_contact_range, island_noncontact_range, debug_bin, io_physics_ctx->mIslandCoordinator->SortedIslandIndices());
 
 									switch (status)
 									{
@@ -626,11 +655,11 @@ namespace vx
 										worked = true;
 										//solve batch
 										if (island_noncontact_range.Valid())
-											solving_island_ctx.constraintSolver.SolverVelocityLinear1DRowsIndices(island_noncontact_range.begin, island_noncontact_range.Size());
+											io_physics_ctx->constraintSolver->SolverVelocityLinear1DRowsIndices(island_noncontact_range.begin, island_noncontact_range.Size());
 
 
-										if (solving_island_ctx.enableContact && island_contact_range.Valid())
-											solving_island_ctx.contactConstraintSolver.SolveVelocityConstraint(island_contact_range.begin, island_contact_range.Size(), solver_bodies);
+										if (io_physics_ctx->enableContact && island_contact_range.Valid())
+											io_physics_ctx->mPhysicsWorld->mContactConstraintSolver.SolveVelocityConstraint(island_contact_range.begin, island_contact_range.Size(), solver_bodies);
 
 
 										/// couple of issues 
@@ -639,7 +668,7 @@ namespace vx
 
 										///mark batch as processed 
 										uint32 processed_count = island_contact_range.Size() + island_noncontact_range.Size();
-										solving_island_ctx.islandCoordinator->GetSplitter().MarkConstactConstraintBatchRangeComplete(solving_split_island_idx, processed_count, velocity_iteration_count, debug_bin);
+										io_physics_ctx->mIslandCoordinator->GetSplitter().MarkConstactConstraintBatchRangeComplete(solving_split_island_idx, processed_count, velocity_iteration_count, debug_bin);
 
 										continue;
 									}
@@ -655,32 +684,32 @@ namespace vx
 								///solve island as small island
 								/// find the first not large island to solve
 								/// 
-								uint32 normal_island_indices_idx = next_island_indices.load(std::memory_order_relaxed);
+								uint32 normal_island_indices_idx = io_step->solveVelocityNextIslandIdx.load(std::memory_order_relaxed);
 								if (normal_island_indices_idx >= island_count)
 								{
 									normal_island_complete = true;
 									continue;
 								}
 
-								const uint32 normal_island_idx = solving_island_ctx.islandCoordinator->SortedIslandIndices()[normal_island_indices_idx];
-								if (!solving_island_ctx.splitLargeIsland || !solving_island_ctx.islandCoordinator->GetSplitter().IsIslandLarge(normal_island_idx))
+								const uint32 normal_island_idx = io_physics_ctx->mIslandCoordinator->SortedIslandIndices()[normal_island_indices_idx];
+								if (!sim_split_large_island || !io_physics_ctx->mIslandCoordinator->GetSplitter().IsIslandLarge(normal_island_idx))
 								{
 									VX_PROFILE_SCOPE("Solving Island");
 									/// race condition
-									if (next_island_indices.compare_exchange_strong(normal_island_indices_idx, normal_island_indices_idx + 1))
+									if (io_step->solveVelocityNextIslandIdx.compare_exchange_strong(normal_island_indices_idx, normal_island_indices_idx + 1))
 									{
 										worked = true;
-										IslandCoordinator::IslandRange<uint32> constraint_island_indices_range = solving_island_ctx.islandCoordinator->IslandNonContactConstraintRowIndicesRange(normal_island_idx);
-										IslandCoordinator::IslandRange<uint32> contact_constraint_island_indices_range = solving_island_ctx.islandCoordinator->ContactConstraintIndicesIslandRange(normal_island_idx);
+										IslandCoordinator::IslandRange<uint32> constraint_island_indices_range = io_physics_ctx->mIslandCoordinator->IslandNonContactConstraintRowIndicesRange(normal_island_idx);
+										IslandCoordinator::IslandRange<uint32> contact_constraint_island_indices_range = io_physics_ctx->mIslandCoordinator->ContactConstraintIndicesIslandRange(normal_island_idx);
 
 										for (int i = 0; i < velocity_iteration_count; ++i)
 										{
 											if (constraint_island_indices_range.Valid())
-												solving_island_ctx.constraintSolver.SolverVelocityLinear1DRowsIndices(constraint_island_indices_range.begin, constraint_island_indices_range.Size());
+												io_physics_ctx->constraintSolver->SolverVelocityLinear1DRowsIndices(constraint_island_indices_range.begin, constraint_island_indices_range.Size());
 
 
-											if (solving_island_ctx.enableContact && contact_constraint_island_indices_range.Valid())
-												solving_island_ctx.contactConstraintSolver.SolveVelocityConstraint(contact_constraint_island_indices_range.begin, contact_constraint_island_indices_range.Size(), solver_bodies);
+											if (io_physics_ctx->enableContact && contact_constraint_island_indices_range.Valid())
+												io_physics_ctx->mPhysicsWorld->mContactConstraintSolver.SolveVelocityConstraint(contact_constraint_island_indices_range.begin, contact_constraint_island_indices_range.Size(), solver_bodies);
 
 										}
 									}
@@ -689,7 +718,7 @@ namespace vx
 								{
 									///increment for next iteration
 									/// only increment is some else as not 
-									next_island_indices.compare_exchange_strong(normal_island_indices_idx, normal_island_indices_idx + 1);
+									io_step->solveVelocityNextIslandIdx.compare_exchange_strong(normal_island_indices_idx, normal_island_indices_idx + 1);
 								}
 
 
@@ -770,7 +799,7 @@ namespace vx
 				//}
 
 				///later use sorted island to solver bigger island first
-				for (uint32 island = 0; island < island_count; ++island)
+				for (uint32 island = 0; island < mIslandCoordinator->IslandCount(); ++island)
 				{
 					for (int i = 0; i < mSettings.solver.velocityIterations; ++i)
 					{
@@ -808,7 +837,7 @@ namespace vx
 
 			//commit solver state to constraint
 			if (mSettings->solver.warmstart)
-				mConstraintSolver->CommitStateConstraint();
+				mConstraintSolver->CommitStateConstraint(mConstraintCoordinator.GetConstraints().data(), mConstraintCoordinator.GetConstraints().size());
 
 			//write back bodies 
 			ConstraintSolver::WriteBackBodies(solver_bodies, mConstraintSolver->GetBodiesCount(), mBodyManager);
@@ -816,7 +845,7 @@ namespace vx
 #else
 			mContactConstraintSolver.SolveVelocityConstraint(mSettings.solver);
 			
-			mConstraintSolver->SolverAll(mContext, mSettings.solver.velocityIterations);
+			mConstraintSolver->SolverAll(mContext, mSettings.solver.velocityIterations, mConstraintCoordinator.GetConstraints().data(), mConstraintCoordinator.GetConstraints().size());
 
 			///test constraint solving isolating, central solver with solver bodi4es
 			//{
@@ -851,22 +880,72 @@ namespace vx
 		{
 			VX_PROFILE_SCOPE("Integrate bodies velocities and clear accumulated force");
 
-			uint32 num_active_bodies = NumActiveBodies();
-			BodyID* active_bodies = ActiveBodies();
+			//uint32 num_active_bodies = NumActiveBodies();
+			//BodyID* active_bodies = ActiveBodies();
 
-			for (int i = 0; i < num_active_bodies; ++i)
+			//for (int i = 0; i < num_active_bodies; ++i)
+			//{
+			//	Body& body = mBodyManager.GetBody(active_bodies[i]);
+			//	body.IntegrateVelocity(dt);
+
+			//	//simulation debugger
+			//	mBodyManager.UpdateBodyVelocitySimStat(body);
+			//}
+
+			uint32 num_velocity_interreation_tasks = VxMin(int((NumActiveBodies() + (SimStep::kVelocityIntergrationTaskBatch - 1)) / SimStep::kVelocityIntergrationTaskBatch), int(mTaskCoordinator->MaxConcurrency()));
+
+			std::atomic<uint32> next_active_body_idx = 0;
+			for (uint32 i = 0; i < num_velocity_interreation_tasks; ++i)
 			{
-				Body& body = mBodyManager.GetBody(active_bodies[i]);
-				body.IntegrateVelocity(dt);
+				mTaskCoordinator->ConstructTask([step_ctx = &mContext, &next_active_body_idx]()
+					{
+						uint32 num_active_bodies = step_ctx->bodyManager->NumActiveBodies();
+						BodyID* active_bodies = step_ctx->bodyManager->ActiveBodies();
 
-				//simulation debugger
-				mBodyManager.UpdateBodyVelocitySimStat(body);
+						/// atomically fetch batch and process
+						for (;;)
+						{
+							const uint32 active_body_begin = next_active_body_idx.fetch_add(SimStep::kVelocityIntergrationTaskBatch);
+
+							/// at the end of broadphase pair
+							if (active_body_begin >= num_active_bodies)
+								break;
+
+							uint32 active_body_end = VxMin(num_active_bodies, active_body_begin + SimStep::kVelocityIntergrationTaskBatch);
+
+							for (uint32 i = active_body_begin; i < active_body_end; ++i)
+							{
+								Body& body = step_ctx->bodyManager->GetBody(active_bodies[i]);
+								body.IntegrateVelocity(step_ctx->stepDeltaTime);
+
+								//simulation debugger
+								step_ctx->bodyManager->UpdateBodyVelocitySimStat(body);
+							}
+						}
+					}, 0);
 			}
+
+			mTaskCoordinator->WaitForTasks();
 		}
 
 		if (mSettings->solver.enable)
 		{
 			VX_PROFILE_SCOPE("Resolve Position Correction");
+			////might need a mapper from jocobian linear row to constraints 
+			/// as a hack for now 
+			/// because position correction is on the constraint itself
+			/// 
+			/// could get linear row then solve the ones with mapping to a constraint; but 
+			/// the caveat is that a constraint might have rows overlapping two batches
+			/// 
+			/// collect constraints during velocity solving; but could still fall into the same issue
+			/// 
+			/// a way to oversome inssue is to use first linear row to determine not the whole
+			/// so a buffer ewhen creating linear row 
+			/// mLinearRowToConstraint[linear_row_count] = constraint_idx;
+			/// linear_row_count += constraint_row_count. 
+			/// the issue with this is it uses more memory 
+			/// 
 			float baumgarte = mSettings->solver.baumgarte;
 			Constraint** solve_constraint_position = mConstraintSolver->GetConstraintResolvePositionQueuePtr();
 			uint32 num_position_constraint = mConstraintSolver->ConstraintResolvePositionQueueCount();
@@ -886,6 +965,80 @@ namespace vx
 				}
 #endif // CONTACT_USE_SOLVERBODY
 			}
+
+
+			for (int i = 0; i < island_count; ++i)
+			for (int i = 0; i < mSettings->solver.positionIterations; ++i)
+			{
+				/// non contact constraint 
+				IslandCoordinator::IslandRange<uint32> constraint_island_indices_range(nullptr, nullptr);
+				const uint32 total_constraint = mConstraintCoordinator.ConstraintCount();
+
+				const uint32* global_row_idx = constraint_island_indices_range.begin;
+				do
+				{
+					const Linear1DRow& row = mConstraintSolver->GetLinearRowPtr()[(*global_row_idx)];
+
+					const auto& row_info = row.info;
+					if (row_info.NeedPositionCorrection())
+					{
+						VX_ASSERT(row_info.ConstraintIndex() < total_constraint);
+						VX_ASSERT(row_info.RowLocalIndex() == 0); //
+
+						mConstraintCoordinator.GetConstraints()[row_info.ConstraintIndex()]->SolvePositionConstraint(dt, baumgarte);
+
+						global_row_idx += row_info.RowCount();
+						continue;
+					}
+
+					global_row_idx++;
+				} while (global_row_idx < constraint_island_indices_range.end);
+
+
+
+				/// contact constraint
+				if (mSettings->solver.enableContact)
+				{
+					float slop = mSettings->solver.positionCorrectionSlop;
+					float min_limit = mSettings->solver.positionCorrectionGlobalLimits[0];
+					float max_limit = mSettings->solver.positionCorrectionGlobalLimits[1];
+					float limit_scale = mSettings->solver.positionCorrectionBodyLimitScale;
+
+					IslandCoordinator::IslandRange<uint32> contact_island_indices_range(nullptr, nullptr);
+
+					SolverBody* solver_bodies = mConstraintSolver->GetBodiesPtr();
+
+					for (const uint32* contact_idx = contact_island_indices_range.begin;
+						contact_idx < contact_island_indices_range.end; ++contact_idx)
+					{
+
+						ContactConstraintSolver::ContactConstraint* constraint = mContactConstraintSolver.GetContactConstraint(*contact_idx);
+
+						SolverBodyIndex& body0 = constraint->BodyA();
+						SolverBodyIndex& body1 = constraint->BodyB();
+
+						if (!body0.Value() && !body1.Value())
+						{
+							VX_LOG_WARN("either bodies needs to be valid");
+							continue;
+						}
+
+						SolverBody& sbA = solver_bodies[body0.Value()];
+						SolverBody& sbB = solver_bodies[body1.Value()];
+
+
+						Body* a = &mBodyManager.GetBody(sbA.bodyID);
+						Body* b = &mBodyManager.GetBody(sbB.bodyID);
+
+						//effective mass 
+						float total_inv_mass = sbA.invMass + sbB.invMass;
+						ContactConstraintSolver::SolvePositionCorrection(*constraint, a, b, total_inv_mass, baumgarte, slop, min_limit, max_limit, limit_scale);
+					}
+				}
+			}
+
+
+
 
 #if !CONTACT_USE_SOLVERBODY
 			mContactConstraintSolver.SolvePositionConstraint(mSettings.solver);
@@ -1373,6 +1526,7 @@ namespace vx
 
 	void PhysicsWorld::UpdateBodiesIslandActivationState(float dt)
 	{
+		VX_PROFILE_FUNCTION();
 		/// citeria to put bodies to sleep 
 		/// for island to sleep all its bodies need to meet this citeria 
 		/// 
