@@ -1586,6 +1586,7 @@ void Application::OnDrawImGuiOverlays()
 				ImGui::EndMenu();
 			}
 			if (ImGui::MenuItem("Physics Config & Debug ")) open_phy_debug = !open_phy_debug;
+			if (ImGui::MenuItem("Solver Body Physics Body")) mPhysicsImGuiWindows.showSolverBodyPhysicsBodyWindow = !mPhysicsImGuiWindows.showSolverBodyPhysicsBodyWindow;
 
 			ImGui::Separator();
 
@@ -1708,6 +1709,9 @@ void Application::OnDrawImGuiOverlays()
 
 	if(mPhysicsImGuiWindows.createConstraints)
 		CreateConstraintsWindow();
+
+	if(mPhysicsImGuiWindows.showSolverBodyPhysicsBodyWindow)
+		SolverBodyPhysicsBodyWindow();
 
 
 
@@ -4818,112 +4822,227 @@ void Application::PhysicsIslandCoordSplitterTab()
 	{
 		ImGui::Text("Bin constraint batch size: %d", mPhysicsWorld->GetIslandCoordinator()->GetSplitter().kBatchSize);
 
-		for(uint32 island_idx = 0; island_idx < mPhysicsWorld->GetIslandCoordinator()->IslandCount(); ++island_idx)
+		if (mPhysicsWorld->GetIslandCoordinator()->GetSplitter().ConstraintIndicesBuffer() == nullptr)
+			ImGui::TextColored(ImVec4(1, 0, 0, 1), "Missing Debug information for island splitter constriant indices buffer; Enable flag VX_DEBUG_ISLAND_SPLITTER");
+		else
 		{
-			///test bins 
-			auto& island_split_bins = mPhysicsWorld->GetIslandCoordinator()->GetSplitter().IslandsSplitBins()[island_idx];
-
-			uint32 total_column = 1; /// numbering column
-			total_column += island_split_bins.mNumActiveBins + 1;  ///plus one non parallel bin
-
-			vx::Colour island_col = vx::Colour::RandomColour(island_idx);
-			ImGui::TextColored(ImVec4(island_col.R(), island_col.G(), island_col.B(), 1.0f), "Island %d", island_idx);
-			if (ImGui::BeginTable("table1", total_column, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+			for (uint32 island_idx = 0; island_idx < mPhysicsWorld->GetIslandCoordinator()->IslandCount(); ++island_idx)
 			{
-				using IslandSplitterBinRange = vx::IslandCoordinator::Splitter::BinConstraintsOffsetRange;
-				IslandSplitterBinRange* island_splitter_bin_range = (IslandSplitterBinRange*)VX_STACK_ALLOC((island_split_bins.mNumActiveBins + 1) * sizeof(IslandSplitterBinRange));
+				///test bins 
+				auto& island_split_bins = mPhysicsWorld->GetIslandCoordinator()->GetSplitter().IslandsSplitBins()[island_idx];
 
+				uint32 total_column = 1; /// numbering column
+				total_column += island_split_bins.mNumActiveBins + 1;  ///plus one non parallel bin
 
-
-				uint32 largest_bin_range = 0;
-				uint32 total_constraint_in_island = 0;
+				vx::Colour island_col = vx::Colour::RandomColour(island_idx);
+				ImGui::TextColored(ImVec4(island_col.R(), island_col.G(), island_col.B(), 1.0f), "Island %d", island_idx);
+				if (ImGui::BeginTable("table1", total_column, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
 				{
-					ImGui::TableSetupColumn("No\Bins");
-					/// bins
-					for (vx::uint32 i = 0; i < island_split_bins.mNumActiveBins; ++i)
+					using IslandSplitterBinRange = vx::IslandCoordinator::Splitter::BinConstraintsOffsetRange;
+					IslandSplitterBinRange* island_splitter_bin_range = (IslandSplitterBinRange*)VX_STACK_ALLOC((island_split_bins.mNumActiveBins + 1) * sizeof(IslandSplitterBinRange));
+
+
+
+					uint32 largest_bin_range = 0;
+					uint32 total_constraint_in_island = 0;
 					{
-						ImGui::TableSetupColumn((vx::StackString<6>("") << i).Data());
-						//ImGui::TableSetColumnIndex(1 + i);
-						//ImGui::Text("%d:", i);
-						//ImGui::SameLine();
-						//vx::Colour col = vx::Colour::RandomColour(i);
-						//ImGui::ColorButton("##", ImVec4(col.R(), col.G(), col.B(), 1.0f));
-						island_splitter_bin_range[i] = island_split_bins.mBins[i];
+						ImGui::TableSetupColumn("No\Bins");
+						/// bins
+						for (vx::uint32 i = 0; i < island_split_bins.mNumActiveBins; ++i)
+						{
+							ImGui::TableSetupColumn((vx::StackString<6>("") << i).Data());
+							//ImGui::TableSetColumnIndex(1 + i);
+							//ImGui::Text("%d:", i);
+							//ImGui::SameLine();
+							//vx::Colour col = vx::Colour::RandomColour(i);
+							//ImGui::ColorButton("##", ImVec4(col.R(), col.G(), col.B(), 1.0f));
+							island_splitter_bin_range[i] = island_split_bins.mBins[i];
 
-						largest_bin_range = vx::VxMax(largest_bin_range, island_splitter_bin_range[i].TotalConstraintCount());
-						total_constraint_in_island += island_splitter_bin_range[i].TotalConstraintCount();
+							largest_bin_range = vx::VxMax(largest_bin_range, island_splitter_bin_range[i].TotalConstraintCount());
+							total_constraint_in_island += island_splitter_bin_range[i].TotalConstraintCount();
+						}
+						/// non parallel bin
+						island_splitter_bin_range[island_split_bins.mNumActiveBins] = island_split_bins.mBins[vx::IslandCoordinator::Splitter::kMaxBin];
+						largest_bin_range = vx::VxMax(largest_bin_range, island_splitter_bin_range[island_split_bins.mNumActiveBins].TotalConstraintCount());
+						total_constraint_in_island += island_splitter_bin_range[island_split_bins.mNumActiveBins].TotalConstraintCount();
+
+
+						ImGui::TableSetupColumn("Non parallel");
+						//ImGui::TableSetColumnIndex(island_split_bins.mNumActiveBins);
+						////ImGui::Text("Non parallel: ");
+						////ImGui::SameLine();
+						//vx::Colour col = vx::Colour::RandomColour(island_split_bins.mNumActiveBins);
+						//ImGui::ColorButton("Non parallel: ", ImVec4(col.R(), col.G(), col.B(), 1.0f));
+
+						ImGui::TableHeadersRow();
 					}
-					/// non parallel bin
-					island_splitter_bin_range[island_split_bins.mNumActiveBins] = island_split_bins.mBins[vx::IslandCoordinator::Splitter::kMaxBin];
-					largest_bin_range = vx::VxMax(largest_bin_range, island_splitter_bin_range[island_split_bins.mNumActiveBins].TotalConstraintCount());
-					total_constraint_in_island += island_splitter_bin_range[island_split_bins.mNumActiveBins].TotalConstraintCount();
 
 
-					ImGui::TableSetupColumn("Non parallel");
-					//ImGui::TableSetColumnIndex(island_split_bins.mNumActiveBins);
-					////ImGui::Text("Non parallel: ");
-					////ImGui::SameLine();
-					//vx::Colour col = vx::Colour::RandomColour(island_split_bins.mNumActiveBins);
-					//ImGui::ColorButton("Non parallel: ", ImVec4(col.R(), col.G(), col.B(), 1.0f));
+					for (vx::uint32 i = 0; i < largest_bin_range; ++i)
+					{
+						ImGui::TableNextRow();
 
-					ImGui::TableHeadersRow();
-				}
+						ImGui::TableSetColumnIndex(0);
+						ImGui::Text("%d", i);
 
 
-				for (vx::uint32 i = 0; i < largest_bin_range; ++i)
-				{
+						bool batch_toggle = (i / mPhysicsWorld->GetIslandCoordinator()->GetSplitter().kBatchSize) % 2 == 0;
+						ImU32 col0 = IM_COL32(island_col.R8(), island_col.G8(), island_col.B8(), 100);
+						ImU32 col1 = IM_COL32(50, 50, 50, 100);
+						ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, batch_toggle ? col0 : col1);
+
+						for (vx::uint32 bin_idx = 0; bin_idx < island_split_bins.mNumActiveBins + 1; ++bin_idx)
+						{
+							const auto& curr_island_splitter_bin_range = island_splitter_bin_range[bin_idx];
+
+							if (curr_island_splitter_bin_range.TotalConstraintCount() <= i)
+								continue;
+
+
+
+
+							ImGui::TableSetColumnIndex(bin_idx + 1);
+							bool show_constraint_offset = true;
+
+							uint32 constraint_solver_idx = mPhysicsWorld->GetIslandCoordinator()->GetSplitter().ConstraintIndicesBuffer()[curr_island_splitter_bin_range.contactStart + i];
+
+							if (show_constraint_offset)
+							{
+								ImGui::Text("%d:", curr_island_splitter_bin_range.contactStart + i);
+								ImGui::SameLine();
+							}
+							ImGui::Text("%d", constraint_solver_idx);
+						}
+					}
+
+
 					ImGui::TableNextRow();
-
 					ImGui::TableSetColumnIndex(0);
-					ImGui::Text("%d", i);
-
-
-					bool batch_toggle = (i / mPhysicsWorld->GetIslandCoordinator()->GetSplitter().kBatchSize) % 2 == 0;
-					ImU32 col0 = IM_COL32(island_col.R8(), island_col.G8(), island_col.B8(), 100);
-					ImU32 col1 = IM_COL32(50, 50, 50, 100);
-					ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, batch_toggle ? col0 : col1);
-
+					ImGui::Text("Total (%d)", total_constraint_in_island);
 					for (vx::uint32 bin_idx = 0; bin_idx < island_split_bins.mNumActiveBins + 1; ++bin_idx)
 					{
-						const auto& curr_island_splitter_bin_range = island_splitter_bin_range[bin_idx];
-
-						if (curr_island_splitter_bin_range.TotalConstraintCount() <= i)
-							continue;
-
-
-
-
 						ImGui::TableSetColumnIndex(bin_idx + 1);
-						bool show_constraint_offset = true;
-
-						uint32 constraint_solver_idx = mPhysicsWorld->GetIslandCoordinator()->GetSplitter().ConstraintIndicesBuffer()[curr_island_splitter_bin_range.contactStart + i];
-
-						if (show_constraint_offset)
-						{
-							ImGui::Text("%d:", curr_island_splitter_bin_range.contactStart + i);
-							ImGui::SameLine();
-						}
-						ImGui::Text("%d", constraint_solver_idx);
+						ImGui::Text("%d", island_splitter_bin_range[bin_idx].TotalConstraintCount());
 					}
+
+
+					ImGui::EndTable();
 				}
-
-
-				ImGui::TableNextRow();
-				ImGui::TableSetColumnIndex(0);
-				ImGui::Text("Total (%d)", total_constraint_in_island);
-				for (vx::uint32 bin_idx = 0; bin_idx < island_split_bins.mNumActiveBins + 1; ++bin_idx)
-				{
-					ImGui::TableSetColumnIndex(bin_idx + 1);
-					ImGui::Text("%d", island_splitter_bin_range[bin_idx].TotalConstraintCount());
-				}
-
-
-				ImGui::EndTable();
 			}
+
 		}
-		
 		ImGui::TreePop();
 	}
+
+
+
+	/////////////////////////////////////////////////////////////////////////////////////
+	///  Per Island Constraint Bins Solver body index
+	/////////////////////////////////////////////////////////////////////////////////////
+	if (ImGui::TreeNodeEx(" Per Island Constraint Bins Solver body index"))
+	{
+		if (mPhysicsWorld->GetIslandCoordinator()->GetSplitter().ConstraintIndicesBuffer() == nullptr)
+			ImGui::TextColored(ImVec4(1, 0, 0, 1), "Missing Debug information for island splitter constriant indices buffer; Enable flag VX_DEBUG_ISLAND_SPLITTER");
+		else
+		{
+			for (uint32 island_idx = 0; island_idx < mPhysicsWorld->GetIslandCoordinator()->IslandCount(); ++island_idx)
+			{
+				///test bins 
+				auto& island_split_bins = mPhysicsWorld->GetIslandCoordinator()->GetSplitter().IslandsSplitBins()[island_idx];
+
+				uint32 total_column = 1; /// numbering column
+				total_column += island_split_bins.mNumActiveBins + 1;  ///plus one non parallel bin
+
+				vx::Colour island_col = vx::Colour::RandomColour(island_idx);
+				ImGui::TextColored(ImVec4(island_col.R(), island_col.G(), island_col.B(), 1.0f), "Island %d", island_idx);
+				if (ImGui::BeginTable("table1", total_column, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+				{
+					using IslandSplitterBinRange = vx::IslandCoordinator::Splitter::BinConstraintsOffsetRange;
+					IslandSplitterBinRange* island_splitter_bin_range = (IslandSplitterBinRange*)VX_STACK_ALLOC((island_split_bins.mNumActiveBins + 1) * sizeof(IslandSplitterBinRange));
+
+
+
+					uint32 largest_bin_range = 0;
+					uint32 total_constraint_in_island = 0;
+					{
+						ImGui::TableSetupColumn("No\Bins");
+						/// bins
+						for (vx::uint32 i = 0; i < island_split_bins.mNumActiveBins; ++i)
+						{
+							ImGui::TableSetupColumn((vx::StackString<6>("") << i).Data());
+							island_splitter_bin_range[i] = island_split_bins.mBins[i];
+
+							largest_bin_range = vx::VxMax(largest_bin_range, island_splitter_bin_range[i].TotalConstraintCount());
+							total_constraint_in_island += island_splitter_bin_range[i].TotalConstraintCount();
+						}
+						/// non parallel bin
+						island_splitter_bin_range[island_split_bins.mNumActiveBins] = island_split_bins.mBins[vx::IslandCoordinator::Splitter::kMaxBin];
+						largest_bin_range = vx::VxMax(largest_bin_range, island_splitter_bin_range[island_split_bins.mNumActiveBins].TotalConstraintCount());
+						total_constraint_in_island += island_splitter_bin_range[island_split_bins.mNumActiveBins].TotalConstraintCount();
+
+
+						ImGui::TableSetupColumn("Non parallel");
+
+						ImGui::TableHeadersRow();
+					}
+
+
+					for (vx::uint32 i = 0; i < largest_bin_range; ++i)
+					{
+						ImGui::TableNextRow();
+
+						ImGui::TableSetColumnIndex(0);
+						ImGui::Text("%d", i);
+
+						for (vx::uint32 bin_idx = 0; bin_idx < island_split_bins.mNumActiveBins + 1; ++bin_idx)
+						{
+							const auto& curr_island_splitter_bin_range = island_splitter_bin_range[bin_idx];
+
+							if (curr_island_splitter_bin_range.TotalConstraintCount() <= i)
+								continue;
+
+
+							ImGui::TableSetColumnIndex(bin_idx + 1);
+
+							uint32 constraint_solver_idx = mPhysicsWorld->GetIslandCoordinator()->GetSplitter().ConstraintIndicesBuffer()[curr_island_splitter_bin_range.contactStart + i];
+							const auto* contact_corrd = mPhysicsWorld->ContactConstraintCoordinator()->GetContactConstraint(constraint_solver_idx);
+
+							ImGui::Text("%d; %d", contact_corrd->BodyA().Value(), contact_corrd->BodyB().Value());
+						}
+					}
+
+
+					ImGui::TableNextRow();
+					ImGui::TableSetColumnIndex(0);
+					ImGui::Text("Total (%d)", total_constraint_in_island);
+					for (vx::uint32 bin_idx = 0; bin_idx < island_split_bins.mNumActiveBins + 1; ++bin_idx)
+					{
+						ImGui::TableSetColumnIndex(bin_idx + 1);
+						ImGui::Text("%d", island_splitter_bin_range[bin_idx].TotalConstraintCount());
+					}
+
+
+					ImGui::EndTable();
+				}
+			}
+
+		}
+		ImGui::TreePop();
+	}
+
+}
+
+void Application::SolverBodyPhysicsBodyWindow()
+{
+	if (ImGui::Begin("SolverBodyPhysicsBodyWindow", &mPhysicsImGuiWindows.showSolverBodyPhysicsBodyWindow))
+	{
+		for (uint32 sb_idx = 0; sb_idx < mPhysicsWorld->GetConstraintSolver()->GetBodiesCount(); ++sb_idx)
+		{
+			const auto& sb = mPhysicsWorld->GetConstraintSolver()->GetBodiesPtr()[sb_idx];
+			ImGui::Text("%d: %d", sb_idx, sb.bodyID.ID());
+		}
+	}
+	ImGui::End();
 }
 
 void Application::CreateConstraintsWindow()

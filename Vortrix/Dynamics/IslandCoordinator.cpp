@@ -3,6 +3,9 @@
 #include "Vortrix/Core/Atomics.h"
 #include "ConstraintSolver/ContactConstraintSolver.h"
 
+
+#include <unordered_set>
+
 namespace vx {
 
 	IslandCoordinator::~IslandCoordinator()
@@ -641,7 +644,7 @@ namespace vx {
 	////////////////////////////////////////////////////////////////////////////////////////////////////////
 	IslandCoordinator::Splitter::EStatus IslandCoordinator::Splitter::IslandSplitBins2::NextConstactConstraintBatchRange(
 		uint32& o_contact_start, uint32& o_contact_end,
-		uint32& o_noncontact_start, uint32& o_noncontact_end, uint32& debug_bin)
+		uint32& o_noncontact_start, uint32& o_noncontact_end, int& first_iteration, uint32& debug_bin)
 	{
 		/// Criterion to define complete
 		///
@@ -691,6 +694,9 @@ namespace vx {
 
 					o_noncontact_start = bin_range.nonContactStart;
 					o_noncontact_end = bin_range.nonContactEnd;
+
+					//first_iteration = (mIterations == 0);
+					first_iteration = mIterations;
 
 					/// retrieved 
 					return EStatus::RetrievedBatch;
@@ -771,6 +777,10 @@ namespace vx {
 			o_noncontact_start = non_contact_batch_start;
 			o_noncontact_end = non_contact_batch_end;
 
+
+			//first_iteration = (mIterations == 0);
+			first_iteration = mIterations;
+
 			/// retrieved 
 			return EStatus::RetrievedBatch;
 		}
@@ -780,7 +790,7 @@ namespace vx {
 		return EStatus::WaitingForBatches; /// a thread is working on the bin; just wait and pick other batches from a different island if available
 	}
 
-	void IslandCoordinator::Splitter::IslandSplitBins2::MarkConstraintBatchRangeComplete(uint32 process_constraint, uint32 velocity_iteration, uint32 debug_bin)
+	void IslandCoordinator::Splitter::IslandSplitBins2::MarkConstraintBatchRangeComplete(uint32 process_constraint, uint32 velocity_iteration, bool& last_iteration, uint32 debug_bin)
 	{
 		/// 
 		/// only a thread could mark a batch
@@ -810,6 +820,8 @@ namespace vx {
 
 		VX_ASSERT(total_processed <= bin_range.TotalConstraintCount());
 
+		last_iteration = (mIterations + 1 >= velocity_iteration);
+
 		if (finished_curr_bin)
 		{
 			///at the end of current bin 
@@ -834,7 +846,7 @@ namespace vx {
 			if (is_last_bin)
 			{
 				///this might determine next iteraction not completion
-				if(mIterations + 1 >= velocity_iteration)
+				if(last_iteration)
 					mComplete.store(true, std::memory_order_release);
 				else
 				{
@@ -848,6 +860,7 @@ namespace vx {
 					mCurrBinNext.store(new_bin_next, std::memory_order_release);
 
 					mIterations++;
+					mFirstIteration.store(false, std::memory_order_release);
 				}
 			}
 			else
@@ -900,7 +913,7 @@ namespace vx {
 	////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-	IslandCoordinator::Splitter::EStatus IslandCoordinator::Splitter::NextConstactConstraintBatchRange(uint32& split_island_idx, uint32 island_count, IslandRange<uint32>& island_contact_range, IslandRange<uint32>& island_noncontact_range, uint32& debug_bin, const uint32* sorted_island_indices)
+	IslandCoordinator::Splitter::EStatus IslandCoordinator::Splitter::NextConstactConstraintBatchRange(uint32& split_island_idx, uint32 island_count, IslandRange<uint32>& island_contact_range, IslandRange<uint32>& island_noncontact_range, int& batch_first_iteration, uint32& debug_bin, const uint32* sorted_island_indices)
 	{
 		bool complete = true;
 
@@ -927,7 +940,7 @@ namespace vx {
 			uint32 noncontact_start_offset;
 			uint32 noncontact_end_offset;
 
-			EStatus status = mIslandSplitBins2[island_idx].NextConstactConstraintBatchRange(contact_start_offset, contact_end_offset, noncontact_start_offset, noncontact_end_offset, debug_bin);
+			EStatus status = mIslandSplitBins2[island_idx].NextConstactConstraintBatchRange(contact_start_offset, contact_end_offset, noncontact_start_offset, noncontact_end_offset, batch_first_iteration, debug_bin);
 			switch (status)
 			{
 			case EStatus::Complete:
@@ -947,8 +960,8 @@ namespace vx {
 					mConstraintIndices.data() + contact_end_offset
 				);
 				island_noncontact_range = IslandRange<uint32>(
-					mNonConstraintIndices.data() + noncontact_start_offset,
-					mNonConstraintIndices.data() + noncontact_end_offset
+					mConstraintIndices.data() + noncontact_start_offset,
+					mConstraintIndices.data() + noncontact_end_offset
 				);
 #else
 				island_contact_range = IslandRange<uint32>(
@@ -962,6 +975,8 @@ namespace vx {
 				);
 #endif // VX_DEBUG_SPLITTER
 
+				///VX_ASSERT(batch_first_iteration == mIslandSplitBins2[island_idx].mIterations, (StackString<32>("1: ") << batch_first_iteration << "; 2: " << mIslandSplitBins2[island_idx].mIterations).Data());
+				//batch_first_iteration = (mIslandSplitBins2[island_idx].mIterations == 0);
 				uint32 constraint_offset_count = contact_end_offset - contact_start_offset;
 				VX_ASSERT(constraint_offset_count == island_contact_range.Size());
 				//VX_ASSERT(island_contact_range.Size() == 2);
@@ -975,10 +990,10 @@ namespace vx {
 		return complete ? EStatus::Complete : EStatus::WaitingForBatches;
 	}
 
-	void IslandCoordinator::Splitter::MarkConstactConstraintBatchRangeComplete(uint32 island_idx, uint32 process_count, uint32 velocity_iteration, uint32 debug_bin)
+	void IslandCoordinator::Splitter::MarkConstactConstraintBatchRangeComplete(uint32 island_idx, uint32 process_count, uint32 velocity_iteration, bool& last_iteration, uint32 debug_bin)
 	{
 		auto& island_split_bins = mIslandSplitBins2[island_idx];
-		island_split_bins.MarkConstraintBatchRangeComplete(process_count, velocity_iteration, debug_bin);
+		island_split_bins.MarkConstraintBatchRangeComplete(process_count, velocity_iteration, last_iteration, debug_bin);
 	}
 
 	void IslandCoordinator::Splitter::Prepare(uint32 active_count, const IslandCoordinator& island_coord, ScratchAllocator* scratch_allocator)
@@ -1041,6 +1056,7 @@ namespace vx {
 			mIslandSplitBins2[island_idx].mIterations = 0;
 
 			mIslandSplitBins2[island_idx].mComplete = false;
+			mIslandSplitBins2[island_idx].mFirstIteration = true;
 			mIslandSplitBins2[island_idx].mBins[kMaxBin] = {};
 			///uint32 
 			//mIslandSplitBins2[island_idx].mTotalBatchProcessed = { 0 };
@@ -1293,6 +1309,78 @@ namespace vx {
 					}
 				}
 			}
+
+			struct ValidateInfo
+			{
+				ValidateInfo(uint32 solver_body_idx, uint32 splitter_constraint_idx) : 
+					data((solver_body_idx << 16) | splitter_constraint_idx){ }
+				uint32 data;
+			//private:
+			};
+
+			std::vector<ValidateInfo> mValidateInfo;
+
+			//// validate that bodies does not appaer multiple 
+			/// times within bins.
+			auto& curr_island_split_bins = mIslandSplitBins2[island_idx];
+			// add contact constraint and non contact constraint to the constraint indices 
+			///contact + non contact
+			for (uint32 i = 0; i < curr_island_split_bins.mNumActiveBins; ++i)
+			{
+				const BinConstraintsOffsetRange& bin = curr_island_split_bins.mBins[i];
+
+				std::unordered_set<int> found_participating_bodies;
+
+				///go through contact 
+				for (uint32 contact_idx = bin.contactStart;
+					contact_idx < bin.contactEnd; ++contact_idx)
+				{
+					///get constraint from global 
+					const uint32 global_sim_constraint_idx = mConstraintIndices[contact_idx];
+
+					const auto* contact_corrd = contact_coord->GetContactConstraint(global_sim_constraint_idx);
+
+					if(constraint_solver->AttemptGetBody(body_manager, contact_corrd->BodyA()).IsDynamic())
+						if (!found_participating_bodies.insert(contact_corrd->BodyA().Value()).second)
+							mValidateInfo.push_back(ValidateInfo(contact_corrd->BodyA().Value(), contact_idx));
+
+					if(constraint_solver->AttemptGetBody(body_manager, contact_corrd->BodyB()).IsDynamic())
+						if (!found_participating_bodies.insert(contact_corrd->BodyB().Value()).second)
+							mValidateInfo.push_back(ValidateInfo(contact_corrd->BodyB().Value(), contact_idx));
+				}
+
+
+				/// go through non contact
+				//for (uint32 contact_idx = bin.nonContactStart;
+				//	contact_idx < bin.nonContactEnd; ++contact_idx)
+				//{
+				//	///get constraint from global 
+				//	const uint32 global_sim_constraint_idx = mConstraintIndices[contact_idx];
+
+				//	const auto* contact_corrd = contact_coord->GetContactConstraint(global_sim_constraint_idx);
+
+				//	if (!found_participating_bodies.insert(contact_corrd->BodyA().Value()).second)
+				//		mValidateInfo.push_back(ValidateInfo(contact_corrd->BodyA().Value(), contact_idx));
+				//	if (!found_participating_bodies.insert(contact_corrd->BodyB().Value()).second)
+				//		mValidateInfo.push_back(ValidateInfo(contact_corrd->BodyB().Value(), contact_idx));
+				//}
+
+
+
+			}
+
+
+
+			if (!mValidateInfo.empty())
+			{
+				VX_LOG_DEBUG("=====================================");
+				VX_LOG_DEBUG("Failed to Validate Splitting of island: ", island_idx);
+
+				for (const auto& info : mValidateInfo)
+					VX_LOG_DEBUG("Solver Body: ", ((info.data & 0xffff0000) >> 16), ", Constraint: ", (info.data & 0x0000ffff));
+				VX_LOG_DEBUG("=====================================");
+			}
+
 			
 			//write range into bin
 			if(curr_bin_range.TotalConstraintCount() > 0)

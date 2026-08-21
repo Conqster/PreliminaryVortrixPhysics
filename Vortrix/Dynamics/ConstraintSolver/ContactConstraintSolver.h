@@ -313,8 +313,8 @@ namespace vx {
 			Float3 localPoint0;
 			Float3 localPoint1;
 
-			float totalNormalLambda;
-			float totalTangentLambda[2];
+			float totalNormalLambda = 0;
+			float totalTangentLambda[2] = { 0, 0 };
 		};
 
 		/// SolverContactPoint
@@ -604,6 +604,15 @@ namespace vx {
 			}
 		}
 
+		static void WriteBackImplusesManifoldCache(const uint32* constraint_indices, uint32 indices_count, ContactConstraint* contact_constraints, size_t total_count)
+		{
+			for (const uint32* idx = constraint_indices, *idx_end = constraint_indices + indices_count; idx < idx_end; ++idx)
+			{
+				VX_ASSERT((*idx) < total_count);
+				WriteBackImpluseCache(contact_constraints[(*idx)]);
+			}
+		}
+
 
 		ContactConstraint* ContactConstraintsPtr() { return mConstraints; }
 
@@ -719,6 +728,9 @@ namespace vx {
 		static void WarmStart(const ContactConstraint& contact_constraint, struct SolverBody& body0, SolverBody& body1);
 		static void WarmStart(ContactConstraint* contact_constraints, size_t count, SolverBody* bodies);
 
+		static void WarmStart(const uint32* constraint_indices, uint32 indices_count,
+			const ContactConstraint* constraint_buff, uint32 total_constraints,
+			SolverBody* solver_bodies, uint32 total_solver_bodies);
 
 		void SolveVelocityConstraint(SolverBody* bodies);
 		void SolveVelocityConstraint(const uint32* constraint_start_idx, uint32 count, SolverBody* bodies);

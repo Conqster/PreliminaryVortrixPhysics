@@ -169,6 +169,26 @@ namespace vx {
 
 		static void WarmStart(Linear1DRow* rows, size_t begin_offset, size_t count, SolverBody* bodies);
 
+
+		static void WarmStart(const uint32* rows_indices, uint32 indices_count,
+			const Linear1DRow* linear_row_buff, uint32 total,
+			SolverBody* solver_bodies, uint32 total_solver_bodies);
+
+
+		static void CommitStateConstraint(const uint32* rows_indices, uint32 indices_count, 
+			const Linear1DRow* linear_row_buff, uint32 total,
+			Constraint** constraints, uint32 total_constraint)
+		{
+			for (const uint32* idx = rows_indices, *idx_end = rows_indices + indices_count; idx < idx_end; ++idx)
+			{
+				VX_ASSERT((*idx) < total);
+				const Linear1DRow& row = linear_row_buff[(*idx)];
+
+				VX_ASSERT(row.info.ConstraintIndex() < total_constraint);
+				constraints[row.info.ConstraintIndex()]->CommitSolverState(row);
+			}
+		}
+
 		void CommitStateConstraint(Constraint** constraints, uint32 available_count)
 		{
 			VX_PROFILE_FUNCTION();

@@ -1162,6 +1162,24 @@ for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
 		}
 	}
 
+	void ContactConstraintSolver::WarmStart(const uint32* constraint_indices, uint32 indices_count, const ContactConstraint* constraint_buff, uint32 total_constraints, SolverBody* solver_bodies, uint32 total_solver_bodies)
+	{
+		for (const uint32* idx = constraint_indices, *idx_end = constraint_indices + indices_count; idx < idx_end; ++idx)
+		{
+			VX_ASSERT((*idx) < total_constraints);
+
+			const ContactConstraint* constraint = &constraint_buff[(*idx)];
+
+			VX_ASSERT(constraint->BodyA().Value() < total_solver_bodies);
+			VX_ASSERT(constraint->BodyB().Value() < total_solver_bodies);
+
+			SolverBody& sbA = solver_bodies[constraint->BodyA().Value()];
+			SolverBody& sbB = solver_bodies[constraint->BodyB().Value()];
+
+			WarmStart(*constraint, sbA, sbB);
+		}
+	}
+
 	void ContactConstraintSolver::SolveVelocityConstraint(ContactConstraint& constraint_info, SolverBody& sbA, SolverBody& sbB)
 	{
 		bool dyn_a = (sbA.invMass > 0);
@@ -1173,8 +1191,8 @@ for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
 		Vec3 tangents[2];
 
 		//////Get velocities 
-		Vec3 lin_vel0 = Vec3(0.0f);
-		Vec3 ang_vel0 = Vec3(0.0f);
+		Vec3 lin_vel0;
+		Vec3 ang_vel0;
 
 		if (dyn_a)
 		{
@@ -1182,8 +1200,8 @@ for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
 			ang_vel0 = sbA.w;
 		}
 
-		Vec3 lin_vel1 = Vec3(0.0f);
-		Vec3 ang_vel1 = Vec3(0.0f);
+		Vec3 lin_vel1;
+		Vec3 ang_vel1;
 
 		if (dyn_b)
 		{
@@ -1192,9 +1210,6 @@ for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
 		}
 
 
-
-
-		//for (auto& pt : contact_info.points)
 		for (int i = 0; i < constraint_info.NumConstraintPoints(); ++i)
 		{
 			auto& pt = constraint_info.PointConstraint(i);
@@ -1322,27 +1337,28 @@ for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
 
 
 
-			VX_ASSERT(!lin_vel0.IsNaN(), "lin_vel0 is nan");
-			VX_ASSERT(!ang_vel0.IsNaN(), "ang_vel0 is nan");
-			VX_ASSERT(!lin_vel1.IsNaN(), "lin_vel1 is nan");
-			VX_ASSERT(!ang_vel1.IsNaN(), "ang_vel1 is nan");
 
 			////set velocities; prevent multiple bodies value value changes
 			/// and heavy torque level & world moment inetria internal to bodies ApplyImpluse
 			if (dyn_a)
 			{
+				VX_ASSERT(!lin_vel0.IsNaN(), "lin_vel0 is nan");
+				VX_ASSERT(!ang_vel0.IsNaN(), "ang_vel0 is nan");
 				sbA.v = lin_vel0;
 				sbA.w = ang_vel0;
 			}
 
 			if (dyn_b)
 			{
+				VX_ASSERT(!lin_vel1.IsNaN(), "lin_vel1 is nan");
+				VX_ASSERT(!ang_vel1.IsNaN(), "ang_vel1 is nan");
 				sbB.v = lin_vel1;
 				sbB.w = ang_vel1;
 			}
 		}
 	}
 
+	
 
 
 	void ContactConstraintSolver::SolveVelocityConstraint(SolverBody* bodies)
@@ -1369,7 +1385,6 @@ for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
 			SolverBody& sbA = bodies[body0.Value()];
 			SolverBody& sbB = bodies[body1.Value()];
 
-
 			SolveVelocityConstraint(constraint_info, sbA, sbB);
 		}
 	}
@@ -1378,6 +1393,9 @@ for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
 		VX_PROFILE_FUNCTION();
 		for (const uint32* idx = constraint_start_idx, *idx_end = constraint_start_idx + count; idx < idx_end; ++idx)
 		{
+
+		
+
 			auto& constraint_info = mConstraints[(*idx)];//constraint info
 
 			SolverBodyIndex& body0 = constraint_info.BodyA();

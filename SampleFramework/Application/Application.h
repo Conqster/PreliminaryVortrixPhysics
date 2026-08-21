@@ -97,7 +97,6 @@ namespace vx {
 }
 
 
-
 enum class EScenarioObjectType
 {
 	Ragdoll,
@@ -215,6 +214,8 @@ private:
 	/// window tab of PhysicsIslandCoordImGuiWindow
 	void PhysicsIslandCoordSplitterTab();
 
+	void SolverBodyPhysicsBodyWindow();
+
 	void CreateConstraintsWindow();
 	
 	void ApplyForceToSelectedBody();
@@ -252,6 +253,7 @@ private:
 		bool loadScenarioWindow= false;
 		bool createNewCustomPhysicsObject = false;
 		bool createConstraints = false;
+		bool showSolverBodyPhysicsBodyWindow = false;
 	}mPhysicsImGuiWindows;
 
 

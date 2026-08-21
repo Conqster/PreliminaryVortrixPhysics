@@ -33,14 +33,6 @@ namespace vx {
 		if (solver_idx.IsValid())
 			return solver_idx;
 
-#if TEST_CONTACT_CONSTRAINT_MT
-		std::lock_guard lock(mSolverBodyMutex);
-
-		/// check againt another thread might beat us to creation
-		if (solver_idx.IsValid())
-			return solver_idx;
-#endif // TEST_CONTACT_CONSTRAINT_MT
-
 		const Body& body = ctx.bodyManager->GetBody(physics_body_id);
 
 		SolverBody solver_body;
@@ -59,9 +51,18 @@ namespace vx {
 			solver_body.invMass = body.InverseMass();
 		}
 
+		
+		////before commiting as a thread beat us
+#if TEST_CONTACT_CONSTRAINT_MT
+		std::lock_guard lock(mSolverBodyMutex);
+
+		/// check againt another thread might beat us to creation
+		if (solver_idx.IsValid())
+			return solver_idx;
+#endif // TEST_CONTACT_CONSTRAINT_MT
+
 		uint32 new_idx = uint32(mBodies.size());
 		mBodies.push_back(solver_body);
-
 		solver_idx = SolverBodyIndex(new_idx);
 		//mBodyToSolverBody[physics_body_id.Value()] = new_idx;
 
@@ -80,15 +81,6 @@ namespace vx {
 			return solver_idx;
 
 
-#if TEST_CONTACT_CONSTRAINT_MT
-		std::lock_guard lock(mSolverBodyMutex);
-
-		/// check againt another thread might beat us to creation
-		if (solver_idx.IsValid())
-			return solver_idx;
-#endif // TEST_CONTACT_CONSTRAINT_MT
-
-
 		SolverBody solver_body;
 		solver_body.bodyID = body.ID();
 
@@ -105,11 +97,19 @@ namespace vx {
 			solver_body.invMass = body.InverseMass();
 		}
 
+
+		////before commiting as a thread beat us
+#if TEST_CONTACT_CONSTRAINT_MT
+		std::lock_guard lock(mSolverBodyMutex);
+
+		/// check againt another thread might beat us to creation
+		if (solver_idx.IsValid())
+			return solver_idx;
+#endif // TEST_CONTACT_CONSTRAINT_MT
+
 		uint32 new_idx = uint32(mBodies.size());
 		mBodies.push_back(solver_body);
-
 		solver_idx = SolverBodyIndex(new_idx);
-		//mBodyToSolverBody[physics_body_id.Value()] = new_idx;
 
 		return solver_idx;
 	}
@@ -274,19 +274,26 @@ namespace vx {
 		}
 	}
 
+	void ConstraintSolver::WarmStart(const uint32* rows_indices, uint32 indices_count, const Linear1DRow* linear_row_buff, uint32 total, SolverBody* solver_bodies, uint32 total_solver_bodies)
+	{
+		for (const uint32* idx = rows_indices, *idx_end = rows_indices + indices_count; idx < idx_end; ++idx)
+		{
+			VX_ASSERT((*idx) < total);
+			const Linear1DRow& row = linear_row_buff[(*idx)];
+
+			VX_ASSERT(row.bodyAidx.Value() < total_solver_bodies);
+			VX_ASSERT(row.bodyBidx.Value() < total_solver_bodies);
+
+			SolverBody& sbA = solver_bodies[row.bodyAidx.Value()];
+			SolverBody& sbB = solver_bodies[row.bodyBidx.Value()];
+
+			WarmStart(row, sbA, sbB);
+		}
+	}
+
 	void ConstraintSolver::SolverAll(const PhysicsStepContext& ctx, uint32 iterations, Constraint** constraints, uint32 count)
 	{
 		VX_PROFILE_FUNCTION();
-		//ConstraintSolver::WarmStart(mLinear1DRows.data(), 0, mLinear1DRows.size(), mBodies.data());
-
-		//for (int i = 0; i < iterations; ++i)
-		//	ConstraintSolver::SolverVelocityLinear1DRows(mLinear1DRows.data(), 0, mLinear1DRows.size(), mBodies.data());
-		//{
-		//	VX_PROFILE_SCOPE("ConstraintSolver Solve all commit state");
-		//	for (const auto& r : mLinear1DRows)
-		//		if (r.user)
-		//			r.user->CommitSolverState(r);
-		//}
 
 		ConstraintSolver::WarmStart(mLinear1DRows, 0, mLinear1DRowsCounts, mBodies.data());
 

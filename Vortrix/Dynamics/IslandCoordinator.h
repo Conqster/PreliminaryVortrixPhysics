@@ -221,8 +221,8 @@ namespace vx {
 			bool IsIslandLarge(uint32 island_idx) const { return mIslandIsLarge[island_idx]; }
 			EStatus NextConstactConstraintBatchRange(uint32& split_island_idx, uint32 island_count,
 				IslandRange<uint32>& island_contact_range, IslandRange<uint32>& island_noncontact_range,
-				uint32& debug_bin, const uint32* sorted_island_indices);
-			void MarkConstactConstraintBatchRangeComplete(uint32 island_idx, uint32 process_count, uint32 velocity_iteration, uint32 debug_bin);
+				int& batch_first_iteration, uint32& debug_bin, const uint32* sorted_island_indices);
+			void MarkConstactConstraintBatchRangeComplete(uint32 island_idx, uint32 process_count, uint32 velocity_iteration, bool& last_iteration, uint32 debug_bin);
 
 
 			/// old need to remove
@@ -283,16 +283,19 @@ namespace vx {
 				//std::atomic<uint32> mNext{ 0 };
 				//std::atomic<uint32> mCurrBin = 0;
 
+				//std::atomic<uint32> mIterations = 0;
 				uint32 mIterations = 0;
 
 				std::atomic<bool> mComplete = false;
+				std::atomic<bool> mFirstIteration = false;
+
 				///uint32 
 
 				EStatus NextConstactConstraintBatchRange(
 					uint32& o_contact_start, uint32& o_contact_end,
-					uint32& o_noncontact_start, uint32& o_noncontact_end, uint32& debug_bin);
+					uint32& o_noncontact_start, uint32& o_noncontact_end, int& first_iteration, uint32& debug_bin);
 
-				void MarkConstraintBatchRangeComplete(uint32 process_constraint, uint32 velocity_iteration, uint32 debug_bin);
+				void MarkConstraintBatchRangeComplete(uint32 process_constraint, uint32 velocity_iteration, bool& last_iteration, uint32 debug_bin);
 
 
 
@@ -320,7 +323,12 @@ namespace vx {
 
 			/// debug 
 			const IslandSplitBins2* IslandsSplitBins() const { return mIslandSplitBins2; }
+#if VX_DEBUG_ISLAND_SPLITTER
+			const uint32* ConstraintIndicesBuffer() const { return mConstraintIndices.data(); }
+#else
 			const uint32* ConstraintIndicesBuffer() const { return mConstraintIndices; }
+#endif // VX_DEBUG_ISLAND_SPLITTER
+
 
 			IslandRange<uint32> ContactConstraintIndicesIslandRange(uint32 island_idx, uint32 bin) const;
 

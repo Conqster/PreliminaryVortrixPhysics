@@ -42,7 +42,7 @@ if(MSVC)
 
 	#/EHsc for std::vector
 	#Base flags
-	set(VX_GLOBAL_FLAGS "/Zc:__cplusplus /MP4 /nologo /Zc:inline /fp:fast /fp:except- /Gm- /GR- /EHsc")
+	set(VX_GLOBAL_FLAGS "/Zc:__cplusplus /nologo /Zc:inline /fp:fast /fp:except- /Gm- /GR- /EHsc")
 	
 	set(VX_GLOBAL_FLAGS "${VX_GLOBAL_FLAGS} /Zc:sizedDealloc") 
 

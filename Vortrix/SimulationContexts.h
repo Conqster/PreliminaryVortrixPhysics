@@ -3,22 +3,6 @@
 #include "Vortrix/PhysicsWorldSettings.h"
 
 namespace vx {
-	//struct CollisionContext
-	//{
-	//	const CollisionSettings& settings;
-	//	DebugGizmosRenderer* debugRenderer = nullptr;
-	//	bool drawContactTBNs = false;
-	//	uint32 physicsFrameIdx = 0;
-
-	//	uint32 broadphasePairCount = 0;
-
-	//	//might become island builder/coordinator
-	//	class ConstraintSolver* constraintSolver = nullptr;
-	//	class IslandCoordinator* islandCoordinator = nullptr;
-	//	class BodyManager* bodyManager = nullptr;
-	//	//class PhysicsWorld* physicsWorld = nullptr;
-	//};
-
 
 	struct SimStep
 	{
@@ -46,6 +30,8 @@ namespace vx {
 
 		///island 
 		std::atomic<uint32> solveVelocityNextIslandIdx = { 0 };
+
+		std::atomic<uint32> solvePositionNextIslandSortedIdx = { 0 };
 
 
 		///probably hold pointer to active constraint (non contact)

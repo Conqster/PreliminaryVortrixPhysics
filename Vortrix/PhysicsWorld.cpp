@@ -357,6 +357,7 @@ namespace vx
 		mSimStep.broadphasePairCount = 0;
 		mSimStep.nextProcessPairIdx = { 0 };
 		mSimStep.solveVelocityNextIslandIdx = { 0 };
+		mSimStep.solvePositionNextIslandSortedIdx = { 0 };
 		////////////////////////////////////
 		// Broadphase
 		////////////////////////////////////
@@ -582,13 +583,14 @@ namespace vx
 
 
 #if CONTACT_USE_SOLVERBODY
+
 			Linear1DRow* constraint_solver_rows = mConstraintSolver->GetLinearRowPtr();
-			uint32 constraint_solver_row_count = mConstraintSolver->LinearRowCount(); 
+			uint32 constraint_solver_row_count = mConstraintSolver->LinearRowCount();
 			SolverBody* solver_bodies = mConstraintSolver->GetBodiesPtr();
 
+			/// perform warm starts
 			if (mSettings->solver.warmstart)
 			{
-				/// perform warm starts
 				ConstraintSolver::WarmStart(constraint_solver_rows, 0, constraint_solver_row_count, solver_bodies);
 				//fix this bad nested if branches
 				if (mSettings->solver.enableContact)
@@ -614,7 +616,8 @@ namespace vx
 
 
 #if VX_SPLIT_ISLAND
-							uint32 island_count = io_physics_ctx->mIslandCoordinator->IslandCount();
+							const uint32 island_count = io_physics_ctx->mIslandCoordinator->IslandCount();
+							const bool warm_start = io_physics_ctx->mPhysicsWorld->mSettings->solver.warmstart;
 							bool normal_island_complete = false;
 							const bool sim_split_large_island = io_physics_ctx->mPhysicsWorld->mSettings->splitLargeIsland;
 							bool large_island_complete = !sim_split_large_island;
@@ -636,11 +639,12 @@ namespace vx
 									///try splitting island 
 									IslandCoordinator::IslandRange<uint32> island_contact_range(nullptr, nullptr), island_noncontact_range(nullptr, nullptr);
 									uint32 solving_split_island_idx;
+									int batch_first_iteration = -1;
 									uint32 debug_bin = uint32(-1);
 	/*								IslandCoordinator::Splitter::EStatus status = solving_island_ctx.islandCoordinator->GetSplitter().NextConstactConstraintBatchRange(solving_split_island_idx,
 										island_count, island_contact_range, island_noncontact_range, debug_bin, solving_island_ctx.islandCoordinator->SortedIslandIndices());*/
 									IslandCoordinator::Splitter::EStatus status = io_physics_ctx->mIslandCoordinator->GetSplitter().NextConstactConstraintBatchRange(solving_split_island_idx,
-										island_count, island_contact_range, island_noncontact_range, debug_bin, io_physics_ctx->mIslandCoordinator->SortedIslandIndices());
+										island_count, island_contact_range, island_noncontact_range, batch_first_iteration, debug_bin, io_physics_ctx->mIslandCoordinator->SortedIslandIndices());
 
 									switch (status)
 									{
@@ -653,6 +657,28 @@ namespace vx
 									{
 										VX_PROFILE_SCOPE("Solving Large Island Batch");
 										worked = true;
+
+										/// perform warm starts
+										//if ((batch_first_iteration == 0) && warm_start)
+										//{
+										//	if (island_noncontact_range.Valid())
+										//	{
+										//		ConstraintSolver::WarmStart(island_noncontact_range.begin, island_noncontact_range.Size(),
+										//			io_physics_ctx->constraintSolver->GetLinearRowPtr(), io_physics_ctx->constraintSolver->LinearRowCount(),
+										//			solver_bodies, uint32(io_physics_ctx->constraintSolver->GetBodiesCount()));
+										//	}
+
+
+
+										//	//fix this bad nested if branches
+										//	if (io_physics_ctx->enableContact && island_contact_range.Valid())
+										//	{
+										//		ContactConstraintSolver::WarmStart(island_contact_range.begin, island_contact_range.Size(),
+										//			io_physics_ctx->mPhysicsWorld->mContactConstraintSolver.ContactConstraintsPtr(), io_physics_ctx->mPhysicsWorld->mContactConstraintSolver.NumContactConstraints(),
+										//			solver_bodies, uint32(io_physics_ctx->constraintSolver->GetBodiesCount()));
+										//	}
+										//}
+
 										//solve batch
 										if (island_noncontact_range.Valid())
 											io_physics_ctx->constraintSolver->SolverVelocityLinear1DRowsIndices(island_noncontact_range.begin, island_noncontact_range.Size());
@@ -668,7 +694,29 @@ namespace vx
 
 										///mark batch as processed 
 										uint32 processed_count = island_contact_range.Size() + island_noncontact_range.Size();
-										io_physics_ctx->mIslandCoordinator->GetSplitter().MarkConstactConstraintBatchRangeComplete(solving_split_island_idx, processed_count, velocity_iteration_count, debug_bin);
+										bool batch_last_iteration = false;
+										io_physics_ctx->mIslandCoordinator->GetSplitter().MarkConstactConstraintBatchRangeComplete(solving_split_island_idx, processed_count, velocity_iteration_count, batch_last_iteration, debug_bin);
+
+
+										if (batch_last_iteration && warm_start)
+										{
+
+											if (island_noncontact_range.Valid())
+											{
+												ConstraintSolver::CommitStateConstraint(island_noncontact_range.begin, island_noncontact_range.Size(),
+													io_physics_ctx->constraintSolver->GetLinearRowPtr(), io_physics_ctx->constraintSolver->LinearRowCount(),
+													io_physics_ctx->mPhysicsWorld->mConstraintCoordinator.GetConstraints().data(), io_physics_ctx->mPhysicsWorld->mConstraintCoordinator.GetConstraints().size());
+											}
+
+											if (io_physics_ctx->enableContact && island_contact_range.Valid())
+											{
+												ContactConstraintSolver::WriteBackImplusesManifoldCache(island_contact_range.begin, island_contact_range.Size(),
+													io_physics_ctx->mPhysicsWorld->mContactConstraintSolver.ContactConstraintsPtr(), io_physics_ctx->mPhysicsWorld->mContactConstraintSolver.NumContactConstraints());
+										
+											}
+										}
+
+
 
 										continue;
 									}
@@ -702,6 +750,26 @@ namespace vx
 										IslandCoordinator::IslandRange<uint32> constraint_island_indices_range = io_physics_ctx->mIslandCoordinator->IslandNonContactConstraintRowIndicesRange(normal_island_idx);
 										IslandCoordinator::IslandRange<uint32> contact_constraint_island_indices_range = io_physics_ctx->mIslandCoordinator->ContactConstraintIndicesIslandRange(normal_island_idx);
 
+										/// perform warm starts
+										//if (warm_start)
+										//{
+										//	if (constraint_island_indices_range.Valid())
+										//	{
+										//		ConstraintSolver::WarmStart(constraint_island_indices_range.begin, constraint_island_indices_range.Size(),
+										//			io_physics_ctx->constraintSolver->GetLinearRowPtr(), io_physics_ctx->constraintSolver->LinearRowCount(),
+										//			solver_bodies, uint32(io_physics_ctx->constraintSolver->GetBodiesCount()));
+										//	}
+
+										//	//fix this bad nested if branches
+										//	if (io_physics_ctx->enableContact && contact_constraint_island_indices_range.Valid())
+										//	{
+										//		ContactConstraintSolver::WarmStart(contact_constraint_island_indices_range.begin, contact_constraint_island_indices_range.Size(),
+										//			io_physics_ctx->mPhysicsWorld->mContactConstraintSolver.ContactConstraintsPtr(), io_physics_ctx->mPhysicsWorld->mContactConstraintSolver.NumContactConstraints(),
+										//			solver_bodies, uint32(io_physics_ctx->constraintSolver->GetBodiesCount()));
+										//	}
+										//}
+
+
 										for (int i = 0; i < velocity_iteration_count; ++i)
 										{
 											if (constraint_island_indices_range.Valid())
@@ -710,7 +778,24 @@ namespace vx
 
 											if (io_physics_ctx->enableContact && contact_constraint_island_indices_range.Valid())
 												io_physics_ctx->mPhysicsWorld->mContactConstraintSolver.SolveVelocityConstraint(contact_constraint_island_indices_range.begin, contact_constraint_island_indices_range.Size(), solver_bodies);
+										}
 
+
+										/// commit state 
+										if (warm_start)
+										{
+											if (constraint_island_indices_range.Valid())
+											{
+												ConstraintSolver::CommitStateConstraint(constraint_island_indices_range.begin, constraint_island_indices_range.Size(),
+													io_physics_ctx->constraintSolver->GetLinearRowPtr(), io_physics_ctx->constraintSolver->LinearRowCount(),
+													io_physics_ctx->mPhysicsWorld->mConstraintCoordinator.GetConstraints().data(), io_physics_ctx->mPhysicsWorld->mConstraintCoordinator.GetConstraints().size());
+											}
+
+											if (io_physics_ctx->enableContact && contact_constraint_island_indices_range.Valid())
+											{
+												ContactConstraintSolver::WriteBackImplusesManifoldCache(contact_constraint_island_indices_range.begin, contact_constraint_island_indices_range.Size(),
+													io_physics_ctx->mPhysicsWorld->mContactConstraintSolver.ContactConstraintsPtr(), io_physics_ctx->mPhysicsWorld->mContactConstraintSolver.NumContactConstraints());
+											}
 										}
 									}
 								}
@@ -745,6 +830,22 @@ namespace vx
 
 								auto* solver_bodies = solving_island_ctx.constraintSolver.GetBodiesPtr();
 
+
+								/// perform warm starts
+								if (warm_start)
+								{
+									if (constraint_island_indices_range.Valid())
+										ConstraintSolver::WarmStart(constraint_island_indices_range.begin, constraint_island_indices_range.Size(),
+											io_physics_ctx->constraintSolver->GetLinearRowPtr(), io_physics_ctx->constraintSolver->LinearRowCount(),
+											solver_bodies, uint32(io_physics_ctx->constraintSolver->GetBodiesCount()));
+
+									//fix this bad nested if branches
+									if (io_physics_ctx->enableContact && contact_constraint_island_indices_range.Valid())
+										ContactConstraintSolver::WarmStart(contact_constraint_island_indices_range.begin, contact_constraint_island_indices_range.Size(),
+											io_physics_ctx->mPhysicsWorld->mContactConstraintSolver.ContactConstraintsPtr(), io_physics_ctx->mPhysicsWorld->mContactConstraintSolver.NumContactConstraints(),
+											solver_bodies, uint32(io_physics_ctx->constraintSolver->GetBodiesCount()));
+								}
+
 								for (int i = 0; i < velocity_iteration_count; ++i)
 								{
 									if (constraint_island_indices_range.Valid())
@@ -756,6 +857,23 @@ namespace vx
 
 								}
 
+
+								/// commit state 
+								if (warm_start)
+								{
+									if (constraint_island_indices_range.Valid())
+									{
+										ConstraintSolver::CommitStateConstraint(constraint_island_indices_range.begin, constraint_island_indices_range.Size(),
+											io_physics_ctx->constraintSolver->GetLinearRowPtr(), io_physics_ctx->constraintSolver->LinearRowCount(),
+											io_physics_ctx->mPhysicsWorld->mConstraintCoordinator.GetConstraints().data(), io_physics_ctx->mPhysicsWorld->mConstraintCoordinator.GetConstraints().size());
+									}
+
+									if (io_physics_ctx->enableContact && contact_constraint_island_indices_range.Valid())
+									{
+										ContactConstraintSolver::WriteBackImplusesManifoldCache(contact_constraint_island_indices_range.begin, contact_constraint_island_indices_range.Size(),
+											io_physics_ctx->mPhysicsWorld->mContactConstraintSolver.ContactConstraintsPtr(), io_physics_ctx->mPhysicsWorld->mContactConstraintSolver.NumContactConstraints());
+									}
+								}
 								//if (next_island.load(std::memory_order_relaxed) >= island_count)
 								//	break;
 							}
@@ -771,49 +889,54 @@ namespace vx
 				if(mSettings->splitLargeIsland)
 					mIslandCoordinator->GetSplitter().ReleaseMemAllocation(mScratchAllocator, mBodyManager.NumActiveBodies(), mIslandCoordinator->IslandCount());
 #else
-				//for (int i = 0; i < mSettings.solver.velocityIterations; ++i)
-				//{
-				//	///later use sorted island to solver bigger island first
-				//	for (uint32 island = 0; island < island_count; ++island)
-				//	{
-				//		///solve non constraint first
-				//		{
-				//			IslandCoordinator::IslandRange<uint32> constraint_island_indices_range = mIslandCoordinator->GetIslandNonContactConstraintRowIndices(island);
-				//			if (constraint_island_indices_range.begin != nullptr)
-				//			{
-				//				const uint32 count = constraint_island_indices_range.end - constraint_island_indices_range.begin;
-				//				VX_ASSERT(count >= 0);
-				//				mConstraintSolver->SolverVelocityLinear1DRowsIndices(constraint_island_indices_range.begin, count, solver_bodies);
-				//			}
-				//		}
-
-
-				//		IslandCoordinator::IslandRange<uint32> contact_constraint_island_indices_range = mIslandCoordinator->GetIslandContactConstraintIndices(island);
-				//		if (mSettings.solver.enableContact && contact_constraint_island_indices_range.begin != nullptr)
-				//		{
-				//			const uint32 count = contact_constraint_island_indices_range.end - contact_constraint_island_indices_range.begin;
-				//			VX_ASSERT(count >= 0);
-				//			mContactConstraintSolver.SolveVelocityConstraint(contact_constraint_island_indices_range.begin, count, solver_bodies);
-				//		}
-				//	}
-				//}
 
 				///later use sorted island to solver bigger island first
 				for (uint32 island = 0; island < mIslandCoordinator->IslandCount(); ++island)
 				{
+					IslandCoordinator::IslandRange<uint32> constraint_island_indices_range = mIslandCoordinator->IslandNonContactConstraintRowIndicesRange(island);
+					IslandCoordinator::IslandRange<uint32> contact_constraint_island_indices_range = mIslandCoordinator->ContactConstraintIndicesIslandRange(island);
+					
+					/// perform warm starts
+					if (warm_start)
+					{
+						if (constraint_island_indices_range.Valid())
+							ConstraintSolver::WarmStart(constraint_island_indices_range.begin, constraint_island_indices_range.Size(),
+								io_physics_ctx->constraintSolver->GetLinearRowPtr(), io_physics_ctx->constraintSolver->LinearRowCount(),
+								solver_bodies, uint32(io_physics_ctx->constraintSolver->GetBodiesCount()));
+
+						//fix this bad nested if branches
+						if (io_physics_ctx->enableContact && contact_constraint_island_indices_range.Valid())
+							ContactConstraintSolver::WarmStart(contact_constraint_island_indices_range.begin, contact_constraint_island_indices_range.Size(),
+								io_physics_ctx->mPhysicsWorld->mContactConstraintSolver.ContactConstraintsPtr(), io_physics_ctx->mPhysicsWorld->mContactConstraintSolver.NumContactConstraints(),
+								solver_bodies, uint32(io_physics_ctx->constraintSolver->GetBodiesCount()));
+					}
+
 					for (int i = 0; i < mSettings.solver.velocityIterations; ++i)
 					{
 						///solve non constraint first
-						{
-							IslandCoordinator::IslandRange<uint32> constraint_island_indices_range = mIslandCoordinator->IslandNonContactConstraintRowIndicesRange(island);
-							if (constraint_island_indices_range.Valid())
-								mConstraintSolver->SolverVelocityLinear1DRowsIndices(constraint_island_indices_range.begin, constraint_island_indices_range.Size());
-						}
+						if (constraint_island_indices_range.Valid())
+							mConstraintSolver->SolverVelocityLinear1DRowsIndices(constraint_island_indices_range.begin, constraint_island_indices_range.Size());
 
 
-						IslandCoordinator::IslandRange<uint32> contact_constraint_island_indices_range = mIslandCoordinator->ContactConstraintIndicesIslandRange(island);
 						if (mSettings.solver.enableContact && contact_constraint_island_indices_range.Valid())
 							mContactConstraintSolver.SolveVelocityConstraint(contact_constraint_island_indices_range.begin, contact_constraint_island_indices_range.Size(), solver_bodies);
+					}
+
+					/// commit state 
+					if (io_physics_ctx->mPhysicsWorld->mSettings->solver.warmstart)
+					{
+						if (constraint_island_indices_range.Valid())
+						{
+							ConstraintSolver::CommitStateConstraint(constraint_island_indices_range.begin, constraint_island_indices_range.Size(),
+								io_physics_ctx->constraintSolver->GetLinearRowPtr(), io_physics_ctx->constraintSolver->LinearRowCount(),
+								io_physics_ctx->mPhysicsWorld->mConstraintCoordinator.GetConstraints().data(), io_physics_ctx->mPhysicsWorld->mConstraintCoordinator.GetConstraints().size());
+						}
+
+						if (io_physics_ctx->enableContact && contact_constraint_island_indices_range.Valid())
+						{
+							ContactConstraintSolver::WriteBackImplusesManifoldCache(contact_constraint_island_indices_range.begin, contact_constraint_island_indices_range.Size(),
+								io_physics_ctx->mPhysicsWorld->mContactConstraintSolver.ContactConstraintsPtr(), io_physics_ctx->mPhysicsWorld->mContactConstraintSolver.NumContactConstraints());
+						}
 					}
 				}
 
@@ -821,6 +944,20 @@ namespace vx
 #endif // TEST_SOLVER_CONSTRAINT_MT
 
 #else
+
+			Linear1DRow* constraint_solver_rows = mConstraintSolver->GetLinearRowPtr();
+			uint32 constraint_solver_row_count = mConstraintSolver->LinearRowCount();
+			SolverBody* solver_bodies = mConstraintSolver->GetBodiesPtr();
+			
+			/// perform warm starts
+			if (mSettings->solver.warmstart)
+			{
+				ConstraintSolver::WarmStart(constraint_solver_rows, 0, constraint_solver_row_count, solver_bodies);
+				//fix this bad nested if branches
+				if (mSettings->solver.enableContact)
+					ContactConstraintSolver::WarmStart(mContactConstraintSolver.ContactConstraintsPtr(), mContactConstraintSolver.NumContactConstraints(), solver_bodies);
+			}
+
 			for (int i = 0; i < mSettings.solver.velocityIterations; ++i)
 			{
 				ConstraintSolver::SolverVelocityLinear1DRows(constraint_solver_rows, 0, constraint_solver_row_count, solver_bodies);
@@ -829,43 +966,32 @@ namespace vx
 					mContactConstraintSolver.SolveVelocityConstraint(solver_bodies);
 			}
 
+			//commit solver state to constraint
+			if (mSettings->solver.warmstart)
+			{
+				mConstraintSolver->CommitStateConstraint(mConstraintCoordinator.GetConstraints().data(), mConstraintCoordinator.GetConstraints().size());
+
+				//commit contact constraint state to constraint
+				ContactConstraintSolver::WriteBackImplusesManifoldCache(
+					mContactConstraintSolver.ContactConstraintsPtr(), mContactConstraintSolver.NumContactConstraints());
+			}
+
 #endif // SOLVER_CONSTRAINT_VIA_ISLAND
 
 			} /// Solving velocity constraints
 
 
-
-			//commit solver state to constraint
-			if (mSettings->solver.warmstart)
-				mConstraintSolver->CommitStateConstraint(mConstraintCoordinator.GetConstraints().data(), mConstraintCoordinator.GetConstraints().size());
-
 			//write back bodies 
-			ConstraintSolver::WriteBackBodies(solver_bodies, mConstraintSolver->GetBodiesCount(), mBodyManager);
+			ConstraintSolver::WriteBackBodies(mConstraintSolver->GetBodiesPtr(), mConstraintSolver->GetBodiesCount(), mBodyManager);
 
 #else
 			mContactConstraintSolver.SolveVelocityConstraint(mSettings.solver);
 			
 			mConstraintSolver->SolverAll(mContext, mSettings.solver.velocityIterations, mConstraintCoordinator.GetConstraints().data(), mConstraintCoordinator.GetConstraints().size());
-
-			///test constraint solving isolating, central solver with solver bodi4es
-			//{
-			//	VX_PROFILE_SCOPE("Hack Solve Joint Constraints");
-
-			//	for(int i = 0; i < mSettings.solver.velocityIterations; ++i)
-			//	{
-			//		for (auto& c : mConstraintCoordinator->GetConstraints())
-			//		{
-			//			DistanceConstraint* _c = static_cast<DistanceConstraint*>(c);
-			//			_c->QuickSolve(dt);
-			//		}
-			//	}
-			//}
 #endif // CONTACT_USE_SOLVERBODY
 
 
-			//commit contact constraint state to constraint
-			ContactConstraintSolver::WriteBackImplusesManifoldCache(
-				mContactConstraintSolver.ContactConstraintsPtr(), mContactConstraintSolver.NumContactConstraints());
+
 		}
 
 #if USE_ISLAND_COORD
@@ -947,96 +1073,205 @@ namespace vx
 			/// the issue with this is it uses more memory 
 			/// 
 			float baumgarte = mSettings->solver.baumgarte;
-			Constraint** solve_constraint_position = mConstraintSolver->GetConstraintResolvePositionQueuePtr();
-			uint32 num_position_constraint = mConstraintSolver->ConstraintResolvePositionQueueCount();
-			for (int i = 0; i < mSettings->solver.positionIterations; ++i)
+//			Constraint** solve_constraint_position = mConstraintSolver->GetConstraintResolvePositionQueuePtr();
+//			uint32 num_position_constraint = mConstraintSolver->ConstraintResolvePositionQueueCount();
+//			for (int i = 0; i < mSettings->solver.positionIterations; ++i)
+//			{
+//				ConstraintSolver::SolveConstraintsPosition(solve_constraint_position, num_position_constraint, dt, baumgarte);
+//
+//#if CONTACT_USE_SOLVERBODY
+//				//fix this bad nested if branches
+//				if (mSettings->solver.enableContact)
+//				{
+//					mContactConstraintSolver.SolvePositionCorrections(
+//						mConstraintSolver->GetBodiesPtr(), mBodyManager,
+//						mSettings->solver.baumgarte, mSettings->solver.positionCorrectionSlop,
+//						mSettings->solver.positionCorrectionGlobalLimits[0], mSettings->solver.positionCorrectionGlobalLimits[1],
+//						mSettings->solver.positionCorrectionBodyLimitScale);
+//				}
+//#endif // CONTACT_USE_SOLVERBODY
+//			}
+
+			for (uint32 i = 0; i < mTaskCoordinator->MaxConcurrency(); ++i)
 			{
-				ConstraintSolver::SolveConstraintsPosition(solve_constraint_position, num_position_constraint, dt, baumgarte);
-
-#if CONTACT_USE_SOLVERBODY
-				//fix this bad nested if branches
-				if (mSettings->solver.enableContact)
-				{
-					mContactConstraintSolver.SolvePositionCorrections(
-						mConstraintSolver->GetBodiesPtr(), mBodyManager,
-						mSettings->solver.baumgarte, mSettings->solver.positionCorrectionSlop,
-						mSettings->solver.positionCorrectionGlobalLimits[0], mSettings->solver.positionCorrectionGlobalLimits[1],
-						mSettings->solver.positionCorrectionBodyLimitScale);
-				}
-#endif // CONTACT_USE_SOLVERBODY
-			}
-
-
-			for (int i = 0; i < island_count; ++i)
-			for (int i = 0; i < mSettings->solver.positionIterations; ++i)
-			{
-				/// non contact constraint 
-				IslandCoordinator::IslandRange<uint32> constraint_island_indices_range(nullptr, nullptr);
-				const uint32 total_constraint = mConstraintCoordinator.ConstraintCount();
-
-				const uint32* global_row_idx = constraint_island_indices_range.begin;
-				do
-				{
-					const Linear1DRow& row = mConstraintSolver->GetLinearRowPtr()[(*global_row_idx)];
-
-					const auto& row_info = row.info;
-					if (row_info.NeedPositionCorrection())
-					{
-						VX_ASSERT(row_info.ConstraintIndex() < total_constraint);
-						VX_ASSERT(row_info.RowLocalIndex() == 0); //
-
-						mConstraintCoordinator.GetConstraints()[row_info.ConstraintIndex()]->SolvePositionConstraint(dt, baumgarte);
-
-						global_row_idx += row_info.RowCount();
-						continue;
-					}
-
-					global_row_idx++;
-				} while (global_row_idx < constraint_island_indices_range.end);
-
-
-
-				/// contact constraint
-				if (mSettings->solver.enableContact)
-				{
-					float slop = mSettings->solver.positionCorrectionSlop;
-					float min_limit = mSettings->solver.positionCorrectionGlobalLimits[0];
-					float max_limit = mSettings->solver.positionCorrectionGlobalLimits[1];
-					float limit_scale = mSettings->solver.positionCorrectionBodyLimitScale;
-
-					IslandCoordinator::IslandRange<uint32> contact_island_indices_range(nullptr, nullptr);
-
-					SolverBody* solver_bodies = mConstraintSolver->GetBodiesPtr();
-
-					for (const uint32* contact_idx = contact_island_indices_range.begin;
-						contact_idx < contact_island_indices_range.end; ++contact_idx)
+				mTaskCoordinator->ConstructTask([physics_ctx = &mContext, sim_step = &mSimStep]()
 					{
 
-						ContactConstraintSolver::ContactConstraint* constraint = mContactConstraintSolver.GetContactConstraint(*contact_idx);
 
-						SolverBodyIndex& body0 = constraint->BodyA();
-						SolverBodyIndex& body1 = constraint->BodyB();
+						const uint32 total_constraint = physics_ctx->mPhysicsWorld->mConstraintCoordinator.ConstraintCount();
 
-						if (!body0.Value() && !body1.Value())
+						float slop = physics_ctx->mPhysicsWorld->mSettings->solver.positionCorrectionSlop;
+						float baumgarte = physics_ctx->mPhysicsWorld->mSettings->solver.baumgarte;
+						float min_limit = physics_ctx->mPhysicsWorld->mSettings->solver.positionCorrectionGlobalLimits[0];
+						float max_limit = physics_ctx->mPhysicsWorld->mSettings->solver.positionCorrectionGlobalLimits[1];
+						float limit_scale = physics_ctx->mPhysicsWorld->mSettings->solver.positionCorrectionBodyLimitScale;
+
+						SolverBody* solver_bodies = physics_ctx->constraintSolver->GetBodiesPtr();
+
+						const uint32 position_iterations = physics_ctx->mPhysicsWorld->mSettings->solver.positionIterations;
+						const bool enable_contact = physics_ctx->mPhysicsWorld->mSettings->solver.enableContact;
+
+						for (;;)
 						{
-							VX_LOG_WARN("either bodies needs to be valid");
-							continue;
+							const uint32 island_sort_idx = sim_step->solvePositionNextIslandSortedIdx.fetch_add(1, std::memory_order_relaxed);
+
+							if (island_sort_idx >= physics_ctx->mIslandCoordinator->IslandCount())
+								break;
+
+							/// non contact constraint 
+							const uint32 _island_idx = physics_ctx->mIslandCoordinator->SortedIslandIndices()[island_sort_idx];
+							IslandCoordinator::IslandRange<uint32> constraint_island_indices_range = physics_ctx->mIslandCoordinator->IslandNonContactConstraintRowIndicesRange(_island_idx);
+
+							/// contact constraint
+							IslandCoordinator::IslandRange<uint32> contact_island_indices_range = physics_ctx->mIslandCoordinator->ContactConstraintIndicesIslandRange(_island_idx);
+
+
+							for (int j = 0; j < position_iterations; ++j)
+							{
+
+								/// non contact constraint 
+								if (constraint_island_indices_range.Valid() && constraint_island_indices_range.Size() > 0)
+								{
+									const uint32* global_row_idx = constraint_island_indices_range.begin;
+									do
+									{
+										const Linear1DRow& row = physics_ctx->constraintSolver->GetLinearRowPtr()[(*global_row_idx)];
+
+										const auto& row_info = row.info;
+										if (row_info.NeedPositionCorrection())
+										{
+											VX_ASSERT(row_info.ConstraintIndex() < total_constraint);
+											VX_ASSERT(row_info.RowLocalIndex() == 0); //
+
+											physics_ctx->mPhysicsWorld->mConstraintCoordinator.GetConstraints()[row_info.ConstraintIndex()]->SolvePositionConstraint(physics_ctx->stepDeltaTime, baumgarte);
+
+											global_row_idx += row_info.RowCount();
+											continue;
+										}
+
+										global_row_idx++;
+									} while (global_row_idx < constraint_island_indices_range.end);
+								}
+
+
+
+								/// contact constraint
+								if (enable_contact && contact_island_indices_range.Valid())
+								{
+
+									for (const uint32* contact_idx = contact_island_indices_range.begin;
+										contact_idx < contact_island_indices_range.end; ++contact_idx)
+									{
+
+										ContactConstraintSolver::ContactConstraint* constraint = physics_ctx->mPhysicsWorld->mContactConstraintSolver.GetContactConstraint(*contact_idx);
+
+										SolverBodyIndex& body0 = constraint->BodyA();
+										SolverBodyIndex& body1 = constraint->BodyB();
+
+										if (!body0.Value() && !body1.Value())
+										{
+											VX_LOG_WARN("either bodies needs to be valid");
+											continue;
+										}
+
+										SolverBody& sbA = solver_bodies[body0.Value()];
+										SolverBody& sbB = solver_bodies[body1.Value()];
+
+
+										Body* a = &physics_ctx->bodyManager->GetBody(sbA.bodyID);
+										Body* b = &physics_ctx->bodyManager->GetBody(sbB.bodyID);
+
+										//effective mass 
+										float total_inv_mass = sbA.invMass + sbB.invMass;
+										ContactConstraintSolver::SolvePositionCorrection(*constraint, a, b, total_inv_mass, baumgarte, slop, min_limit, max_limit, limit_scale);
+									}
+								}
+
+							}
 						}
-
-						SolverBody& sbA = solver_bodies[body0.Value()];
-						SolverBody& sbB = solver_bodies[body1.Value()];
-
-
-						Body* a = &mBodyManager.GetBody(sbA.bodyID);
-						Body* b = &mBodyManager.GetBody(sbB.bodyID);
-
-						//effective mass 
-						float total_inv_mass = sbA.invMass + sbB.invMass;
-						ContactConstraintSolver::SolvePositionCorrection(*constraint, a, b, total_inv_mass, baumgarte, slop, min_limit, max_limit, limit_scale);
-					}
-				}
+					}, 0);
 			}
+			mTaskCoordinator->WaitForTasks();
+			//for (int island_sort_idx = 0; island_sort_idx < mIslandCoordinator->IslandCount(); ++island_sort_idx)
+			//{
+			//	/// non contact constraint 
+			//	const uint32 _island_idx = mIslandCoordinator->SortedIslandIndices()[island_sort_idx];
+			//	IslandCoordinator::IslandRange<uint32> constraint_island_indices_range = mIslandCoordinator->IslandNonContactConstraintRowIndicesRange(_island_idx);
+			//	const uint32 total_constraint = mConstraintCoordinator.ConstraintCount();
 
+			//	/// contact constraint
+			//	float slop = mSettings->solver.positionCorrectionSlop;
+			//	float min_limit = mSettings->solver.positionCorrectionGlobalLimits[0];
+			//	float max_limit = mSettings->solver.positionCorrectionGlobalLimits[1];
+			//	float limit_scale = mSettings->solver.positionCorrectionBodyLimitScale;
+
+			//	IslandCoordinator::IslandRange<uint32> contact_island_indices_range = mIslandCoordinator->ContactConstraintIndicesIslandRange(_island_idx);
+			//	SolverBody* solver_bodies = mConstraintSolver->GetBodiesPtr();
+
+			//	for (int i = 0; i < mSettings->solver.positionIterations; ++i)
+			//	{
+
+			//		/// non contact constraint 
+			//		if(constraint_island_indices_range.Valid() && constraint_island_indices_range.Size() > 0)
+			//		{
+			//			const uint32* global_row_idx = constraint_island_indices_range.begin;
+			//			do
+			//			{
+			//				const Linear1DRow& row = mConstraintSolver->GetLinearRowPtr()[(*global_row_idx)];
+
+			//				const auto& row_info = row.info;
+			//				if (row_info.NeedPositionCorrection())
+			//				{
+			//					VX_ASSERT(row_info.ConstraintIndex() < total_constraint);
+			//					VX_ASSERT(row_info.RowLocalIndex() == 0); //
+
+			//					mConstraintCoordinator.GetConstraints()[row_info.ConstraintIndex()]->SolvePositionConstraint(dt, baumgarte);
+
+			//					global_row_idx += row_info.RowCount();
+			//					continue;
+			//				}
+
+			//				global_row_idx++;
+			//			} while (global_row_idx < constraint_island_indices_range.end);
+			//		}
+
+
+
+			//		/// contact constraint
+			//		if (mSettings->solver.enableContact && contact_island_indices_range.Valid())
+			//		{
+
+			//			for (const uint32* contact_idx = contact_island_indices_range.begin;
+			//				contact_idx < contact_island_indices_range.end; ++contact_idx)
+			//			{
+
+			//				ContactConstraintSolver::ContactConstraint* constraint = mContactConstraintSolver.GetContactConstraint(*contact_idx);
+
+			//				SolverBodyIndex& body0 = constraint->BodyA();
+			//				SolverBodyIndex& body1 = constraint->BodyB();
+
+			//				if (!body0.Value() && !body1.Value())
+			//				{
+			//					VX_LOG_WARN("either bodies needs to be valid");
+			//					continue;
+			//				}
+
+			//				SolverBody& sbA = solver_bodies[body0.Value()];
+			//				SolverBody& sbB = solver_bodies[body1.Value()];
+
+
+			//				Body* a = &mBodyManager.GetBody(sbA.bodyID);
+			//				Body* b = &mBodyManager.GetBody(sbB.bodyID);
+
+			//				//effective mass 
+			//				float total_inv_mass = sbA.invMass + sbB.invMass;
+			//				ContactConstraintSolver::SolvePositionCorrection(*constraint, a, b, total_inv_mass, baumgarte, slop, min_limit, max_limit, limit_scale);
+			//			}
+			//		}
+
+			//	}
+			//}
+			
 
 
 

@@ -35,7 +35,7 @@
 
 
 //#define VX_DEBUG_ALLOCATOR
-#define VX_DEBUG_ISLAND_SPLITTER 0
+#define VX_DEBUG_ISLAND_SPLITTER 1
 
 ///Detect machine compiler 
 //#if defined(_MSC_VER)
