@@ -10,11 +10,10 @@ namespace vx{
 
 	struct ManifoldPoint
 	{
-		static bool kUseNewManifoldPt;
+		//static bool kUseNewManifoldPt;
 
 		/// points in Manifold world space
 		Vec3 pointA = Vec3(0.0f);
-		float peneration = 0.0f;
 		Vec3 pointB = Vec3(0.0f);
 	};
 
@@ -52,13 +51,14 @@ namespace vx{
 				mPoints.begin());
 		}
 
-		VX_INLINE void AddPoint(const Vec3& point_a, const Vec3& point_b, float penetration)
+		VX_INLINE void AddPoint(const Vec3& point_a, const Vec3& point_b)
 		{
 			VX_ASSERT(mPointCount < kMaxPoints);
 
+			//choose max depth 
+
 			ManifoldPoint& mp = mPoints[mPointCount++];
 			mp.pointA = point_a;
-			mp.peneration = penetration;
 			mp.pointB = point_b;
 		}
 
@@ -68,6 +68,7 @@ namespace vx{
 		const Body* b = nullptr;
 
 	public:
+		/// also penetration axis
 		Vec3 normal = Vec3::Up();
 	private:
 

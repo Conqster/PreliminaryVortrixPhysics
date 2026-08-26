@@ -96,11 +96,24 @@ void Font::Create(const char* font_path, const vx::Ref<Shader> shader)
 		mShader = shader;
 }
 
+
+uint32 CharacterVertexCount(const std::string_view& text)
+{
+	return text.size() * 6; //vertex per char
+}
+
 void Font::DrawText3D(const std::string_view& text, const vx::Vec3& pos, 
 	const vx::Vec3& rt, const vx::Vec3& up, float scale, const vx::Colour& col, ETextAlignment text_alignment)
 {
 
 	if (text.empty() || !mShader) return;
+
+	if (mVertices.size() + CharacterVertexCount(text) > kMaxTextVertexCount)
+	{
+		//VX_LOG_WARN("Text font frame vertex buffer full");
+		return;
+	}
+
 
 	using Create_Func = void(Font::*)(const std::string_view& , const vx::Vec3& ,
 		const vx::Vec3&, const vx::Vec3&, float, const vx::Colour&);
@@ -148,6 +161,9 @@ void Font::CreateVertexBuffer()
 
 void Font::PushVertex(const vx::Vec3& pos, float u, float v, const vx::Colour col)
 {
+	if (mVertices.size() > kMaxTextVertexCount - 1)
+		return;
+
 	TextVertex vertex;
 	pos.Store(vertex.position);
 	vertex.uv = { u,v };

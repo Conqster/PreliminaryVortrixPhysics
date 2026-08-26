@@ -250,7 +250,7 @@ namespace vx{
 		{
 			Float3 axis;
 			float effMass = 0.0f; //inv_mass + point_inv_mass(due rotation)
-			float totalLamda = 0.0f;//lagrange multiplier / total accumulated impluse along axis
+			float totalLambda = 0.0f;//lagrange multiplier / total accumulated impluse along axis
 
 			Float3 r0XAxis{ 0.0f }; //relative point0 Cross axis 
 			//angular factor
@@ -400,9 +400,9 @@ namespace vx{
 				if (p0_ls.IsApprox(Vec3::LoadFloat3Raw(cache_pt->localPoint0)) &&
 					p1_ls.IsApprox(Vec3::LoadFloat3Raw(cache_pt->localPoint1)))
 				{
-					point_constraint.normal.totalLamda = cache_pt->totalNormalLambda;
-					point_constraint.lateralTangent[0].totalLamda = cache_pt->totalTangentLambda[0];
-					point_constraint.lateralTangent[1].totalLamda = cache_pt->totalTangentLambda[1];
+					point_constraint.normal.totalLambda = cache_pt->totalNormalLambda;
+					point_constraint.lateralTangent[0].totalLambda = cache_pt->totalTangentLambda[0];
+					point_constraint.lateralTangent[1].totalLambda = cache_pt->totalTangentLambda[1];
 
 					was_close = true;
 					break;
@@ -411,9 +411,9 @@ namespace vx{
 
 			if (!was_close)
 			{
-				point_constraint.normal.totalLamda = 0.0f;
-				point_constraint.lateralTangent[0].totalLamda = 0.0f;
-				point_constraint.lateralTangent[1].totalLamda = 0.0f;
+				point_constraint.normal.totalLambda = 0.0f;
+				point_constraint.lateralTangent[0].totalLambda = 0.0f;
+				point_constraint.lateralTangent[1].totalLambda = 0.0f;
 			}
 
 			/// now only copy the local points 
@@ -444,7 +444,7 @@ namespace vx{
 			ContactPointConstraint& cpt_c = contact_constraint.contactPoints[i];
 
 			///normal
-			float impluse = cpt_c.normal.totalLamda;
+			float impluse = cpt_c.normal.totalLambda;
 
 			lin_vel0 -= impluse * inv_mass0 * Vec3::LoadFloat3Raw(cpt_c.normal.axis);
 			ang_vel0 -= impluse * Vec3::LoadFloat3Raw(cpt_c.normal.invIr0XAxis);
@@ -455,7 +455,7 @@ namespace vx{
 			//tangents 
 			for (int i = 0; i < 2; ++i)
 			{
-				impluse = cpt_c.lateralTangent[i].totalLamda;
+				impluse = cpt_c.lateralTangent[i].totalLambda;
 
 				lin_vel0 -= impluse * inv_mass0 * Vec3::LoadFloat3Raw(cpt_c.lateralTangent[i].axis);
 				ang_vel0 -= impluse * Vec3::LoadFloat3Raw(cpt_c.lateralTangent[i].invIr0XAxis);
@@ -477,9 +477,9 @@ namespace vx{
 			//	Vec3::LoadFloat3Raw(cpt_c.lateralTangent[0].invIr0XAxis) +
 			//	Vec3::LoadFloat3Raw(cpt_c.lateralTangent[1].invIr0XAxis);
 
-			//float cummulated_lambda = cpt_c.normal.totalLamda +
-			//	cpt_c.lateralTangent[0].totalLamda +
-			//	cpt_c.lateralTangent[1].totalLamda;
+			//float cummulated_lambda = cpt_c.normal.totalLambda +
+			//	cpt_c.lateralTangent[0].totalLambda +
+			//	cpt_c.lateralTangent[1].totalLambda;
 
 			//Vec3 v = cummulated_lambda * inv_mass0 * cummulated_axis;
 			//Vec3 w = cummulated_lambda * cummulates_axis_w;
@@ -509,9 +509,9 @@ namespace vx{
 			CacheContactPoint* cache = cpt_c.cacheLocalPoint;
 			if (cache)
 			{
-				cache->totalNormalLambda = cpt_c.normal.totalLamda;
-				cache->totalTangentLambda[0] = cpt_c.lateralTangent[0].totalLamda;
-				cache->totalTangentLambda[1] = cpt_c.lateralTangent[1].totalLamda;
+				cache->totalNormalLambda = cpt_c.normal.totalLambda;
+				cache->totalTangentLambda[0] = cpt_c.lateralTangent[0].totalLambda;
+				cache->totalTangentLambda[1] = cpt_c.lateralTangent[1].totalLambda;
 			}
 		}
 	}

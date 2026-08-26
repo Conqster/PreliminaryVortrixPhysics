@@ -62,7 +62,7 @@ namespace vx{
 		uint32 constraint_row_idx;
 
 		Linear1DRow* row = solver->AllocateLinear1DRow(constraint_row_idx, 1);
-		BuildDistanceJacobian(row, ctx.stepDeltaTime);
+		BuildDistanceJacobian(row, ctx.mDeltaTime);
 
 		if (mBodyA->IsDynamic())
 			ctx.mIslandCoordinator->LinkNonConstactConstraint(constraint_row_idx, 1, mBodyA->GetIndexInActiveBodies());

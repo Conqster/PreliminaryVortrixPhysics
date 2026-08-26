@@ -71,12 +71,14 @@ void BoxPyramidStackScenario::Init(vx::PhysicsWorld* i_world)
 
 	StructureConfig wall;
 	wall.count = vx::Vec3(10, 4, 1);
-	wall.basePos = vx::Vec3(10.0f, 2.9f, 10.0f);
+	//wall.basePos = vx::Vec3(10.0f, 2.9f, 10.0f);
+	wall.basePos = vx::Vec3(10.0f, 0.5f, 10.0f);
 	wall.halfExtent = vx::Vec3(0.5f);
 	CreateStructure(body_setting, wall, vx::Quat::Identity());
 
 	wall.count = vx::Vec3(1, 4, 10);
-	wall.basePos = vx::Vec3(15.5f, 2.9f, 14.5f);
+	//wall.basePos = vx::Vec3(15.5f, 2.9f, 14.5f);
+	wall.basePos = vx::Vec3(15.5f, 0.5f, 14.5f);
 	CreateStructure(body_setting, wall, vx::Quat::Identity());
 
 
@@ -98,7 +100,7 @@ void BoxPyramidStackScenario::Init(vx::PhysicsWorld* i_world)
 	StructureConfig pyramid;
 	//pyramid.count = vx::Vec3(2, 12, 12);
 	pyramid.count = vx::Vec3(8);
-	pyramid.basePos = vx::Vec3(10.0f, 1.5f, -10.0f);
+	pyramid.basePos = vx::Vec3(10.0f, 0.5f, -10.0f);
 	pyramid.halfExtent = half_extents;
 	pyramid.GetSize = [&](int layer)
 	{

@@ -14,18 +14,21 @@ namespace vx::Narrowphase {
 
 		count = VxMin(count, 4);
 		/// copy data before overwrite
-		std::array<ManifoldPoint, 4> m_pts;
+		std::array<ManifoldPoint, ContactManifold::kMaxPoints> pts;
 
 		int deepest = 0;
-		float max_penetration = in_out_pts[0].peneration;
+		//std::array<float, ContactManifold::kMaxPoints> penetration_depth_sq;
+		constexpr float k_min_penetration_sq = 1e-6f; // deal with potential floating point error 
+		float max_penetration_sq = k_min_penetration_sq;
 		for (int i = 0; i < count; ++i)
 		{
-			if (in_out_pts[i].peneration > max_penetration)
+			float depth_sq = VxMax(k_min_penetration_sq, (in_out_pts[i].pointB - in_out_pts[i].pointA).LengthSq());
+			if (depth_sq > max_penetration_sq)
 			{
 				deepest = i;
-				max_penetration = in_out_pts[i].peneration;
+				max_penetration_sq = depth_sq;
 			}
-			m_pts[i] = in_out_pts[i];
+			pts[i] = in_out_pts[i];
 		}
 
 
@@ -41,7 +44,7 @@ namespace vx::Narrowphase {
 		//std::swap(in_out_pts[0], in_out_pts[deepest]);
 		in_out_pts[0] = in_out_pts[deepest];
 		//remove -- move to the end
-		std::swap(m_pts[deepest], m_pts[count - 1]);
+		std::swap(pts[deepest], pts[count - 1]);
 
 		count--;
 		if (count <= 0)
@@ -54,7 +57,7 @@ namespace vx::Narrowphase {
 		float best_dist = -1.0f;
 		for (int i = 0; i < count; ++i)
 		{
-			float dist = (m_pts[i].pointA - in_out_pts[0].pointA).LengthSq();
+			float dist = (pts[i].pointA - in_out_pts[0].pointA).LengthSq();
 			if (dist > best_dist)
 			{
 				best_dist = dist;
@@ -62,9 +65,9 @@ namespace vx::Narrowphase {
 			}
 		}
 
-		in_out_pts[1] = m_pts[B];
+		in_out_pts[1] = pts[B];
 		/// move to the end
-		std::swap(m_pts[B], m_pts[count - 1]);
+		std::swap(pts[B], pts[count - 1]);
 
 		count--;
 		if (count <= 0)
@@ -76,7 +79,7 @@ namespace vx::Narrowphase {
 		best_dist = -1.0f;
 		for (int i = 0; i < count; ++i)
 		{
-			Vec3 A_2_pt = m_pts[i].pointA - in_out_pts[0].pointA;
+			Vec3 A_2_pt = pts[i].pointA - in_out_pts[0].pointA;
 			/// Area proportional |AB x AP| area = (|AB x AP|)^2
 			float area = A_2_pt.Cross(AB).LengthSq();
 			if (area > best_dist)
@@ -87,9 +90,9 @@ namespace vx::Narrowphase {
 		}
 
 
-		in_out_pts[2] = m_pts[C];
+		in_out_pts[2] = pts[C];
 		/// move to the end
-		std::swap(m_pts[C], m_pts[count - 1]);
+		std::swap(pts[C], pts[count - 1]);
 
 		count--;
 		if (count <= 0)
@@ -101,7 +104,7 @@ namespace vx::Narrowphase {
 		best_dist = -1.0f;
 		for (int i = 0; i < count; ++i)
 		{
-			Vec3 A_2_pt = m_pts[i].pointA - in_out_pts[0].pointA;
+			Vec3 A_2_pt = pts[i].pointA - in_out_pts[0].pointA;
 			float vol = VxAbs(A_2_pt.Dot(ABxAC));
 			/// Volume proportional |(AB x AC) .AP| area = (|(AB x AC) .AP|)/6 proportional to tetrahedron vol
 			if (vol > best_dist)
@@ -111,7 +114,7 @@ namespace vx::Narrowphase {
 			}
 		}
 
-		in_out_pts[3] = m_pts[D];
+		in_out_pts[3] = pts[D];
 	}
 
 
@@ -134,14 +137,29 @@ namespace vx::Narrowphase {
 		ManifoldPoint pts[VX_MAX_MANIFOLD_CANDIDATES];
 
 		//deepest peneration
+		//int deepest = 0;
+		//float max_penetration = in_pts[0].peneration;
+		//for (int i = 0; i < count; ++i)
+		//{
+		//	if (in_pts[i].peneration > max_penetration)
+		//	{
+		//		deepest = i;
+		//		max_penetration = in_pts[i].peneration;
+		//	}
+		//	pts[i] = in_pts[i];
+		//}
+
 		int deepest = 0;
-		float max_penetration = in_pts[0].peneration;
+		constexpr float k_min_penetration_sq = 1e-6f;
+		//float penetration_depth_sq[VX_MAX_MANIFOLD_CANDIDATES];
+		float max_penetration_sq = k_min_penetration_sq;
 		for (int i = 0; i < count; ++i)
 		{
-			if (in_pts[i].peneration > max_penetration)
+			float depth_sq = VxMax(k_min_penetration_sq, (in_pts[i].pointB - in_pts[i].pointA).LengthSq());
+			if (depth_sq > max_penetration_sq)
 			{
 				deepest = i;
-				max_penetration = in_pts[i].peneration;
+				max_penetration_sq = depth_sq;
 			}
 			pts[i] = in_pts[i];
 		}

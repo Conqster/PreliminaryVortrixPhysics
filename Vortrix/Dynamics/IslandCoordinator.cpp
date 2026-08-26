@@ -178,90 +178,9 @@ namespace vx {
 
 		if (active_bodies_count == 0) return;
 
-		/////update island idxs 
-		//for (uint32 i = 0; i < active_bodies_count; ++i)
-		//{
-		//	uint32 body_links = mBodiesIdxs[i];
-
-		//	///links with self
-		//	if (body_links == i)
-		//		mIslandIdxs[i] = next_island_idx++;
-		//	else
-		//	{
-		//		///not with self, Find 
-		//		uint32 v = ComputeActiveBodyLowestIdx(body_links);
-		//		if (v < i) //if behind, left side, already solve 
-		//			mIslandIdxs[i] = mIslandIdxs[v];
-		//		/// its ahead and need to be resolved
-		//		else if (v == i) //another self link
-		//		{
-		//			mIslandIdxs[i] = next_island_idx++;
-		//		}
-		//		else
-		//		{
-		//			VX_LOG_INFO("Propably need to link with self");
-		//		}
-		//	}
-		//	//if (body_links == i)
-		//	//	mIslandIdxs[i] = next_island_idx++;
-		//	//else
-		//	//{
-		//	//	//if (body_links < i) //if behind, left side, already solve 
-		//	//	//	mIslandIdxs[i] = mIslandIdxs[body_links];
-		//	//	//else
-		//	//	//{
-		//	//	//	VX_LOG_INFO("Propably need to link with self");
-
-		//	//	//}
-		//	//
-		//	//	///not with self, Find 
-		//	//	uint32 v = Find(body_links);
-		//	//	if (v < i) //if behind, left side, already solve 
-		//	//		mIslandIdxs[i] = mIslandIdxs[v];
-		//	//	else
-		//	//	{
-		//	//		VX_LOG_INFO("Propably need to link with self");
-
-		//	//	}
-		//	//}
-
-
-		//	//SolverBody& solver_body = constraint_solver.GetSolverBody(SolverBodyIndex(i));
-		//	//body_manager.GetBody(active_bodies[i]).SetIslandIndex(mIslandIdxs[i]);
-		//	body_manager.GetBody(body_manager.GetActiveBodyID(i)).SetIslandIndex(mIslandIdxs[i]);
-		//}
-
-		//if (islands.size() < next_island_idx)
-		//	islands.resize(next_island_idx);
-
-
-		//for (auto& _island : islands)
-		//	_island.bodyIds.clear();
-
-		//for (uint32 i = 0; i < active_bodies_count; ++i)
-		//{
-		//	auto& body = body_manager.GetBody(body_manager.GetActiveBodyID(i));
-		//	uint32 idx = body.GetIslandIndex();
-		//	islands[idx].bodyIds.push_back(body.ID());
-
-		//}
-
-
-
-		/// body id island 
-		/// compute required size
-
-		//uint32* island_body_start = reinterpret_cast<uint32*>(scratchAllocator->Allocate(sizeof(uint32) * islands.size()));
-		//uint32 prev_start = 0;
-		////first body starts at zero
-		//for (uint32 i = 1; i < islands.size(); ++i)
-		//{
-
-		//}
-
-
 		uint32* body_per_island = reinterpret_cast<uint32*>(scratchAllocator->Allocate(sizeof(uint32) * active_bodies_count));
 
+		//// Mapping active body index to island index 
 		///update island idxs 
 		for (uint32 i = 0; i < active_bodies_count; ++i)
 		{
@@ -325,7 +244,7 @@ namespace vx {
 		/// first island is 0 
 		island_start_write[0] = 0;
 
-
+		/// debugging the island construction
 		DEBUG_ISLAND(
 			/// procedding island start from the size/count of the body in previous island
 			StackString island_start_idx_txt("Island start idx: ");
@@ -453,7 +372,6 @@ namespace vx {
 
 			mConstraintIndicesIslands[write_spendle] = constraint_idx;
 			write_spendle++; ///increment island write spendle
-
 		}
 
 		/// update constraiunt end with island incremneted write
@@ -836,7 +754,7 @@ namespace vx {
 
 
 
-
+			 
 
 			const bool has_non_parallel_bin = mBins[kMaxBin].TotalConstraintCount() > 0;
 			const uint32 last_bin_idx = (has_non_parallel_bin) ? kMaxBin : (mNumActiveBins - 1);

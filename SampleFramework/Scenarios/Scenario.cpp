@@ -210,8 +210,8 @@ void Scenario::MouseClickCheck()
 		Input::GetKeyDown(IKeyCode::Y) ? -1.0f : 0.0f;
 
 	dir = Input::GetScrollWheel();
-
-	t_dist = vx::VxMax(0.0f, t_dist + dir);
+	float delta = 0.5f;
+	t_dist = vx::VxMax(0.0f, t_dist + (dir * delta));
 	//VX_LOG_DEBUG("Mouse Input: ", Input::GetScrollWheel());
 
 }
@@ -267,7 +267,8 @@ void Scenario::MouseCastRay(bool physics_simulated)
 		if (physics_simulated && !mBody.IsValid() && mMouseEvent != EClickEvent::None)
 		{
 			if (body.IsSleeping())
-				mPhysicsWorld->ApplyImpulse(body.ID(), -ray_cast.direction * 5.0f);
+				mPhysicsWorld->ActivateBodies(&body.ID(), 1);
+				//mPhysicsWorld->ApplyImpulse(body.ID(), -ray_cast.direction * 5.0f);
 
 			mBody = hit.body;
 			//transform point to body local

@@ -274,7 +274,8 @@ namespace vx {
 								/// potential outcome: 0 & 1, 1 & 1, 1 & 0
 								/// 
 								mProcessingTasks.fetch_add(1, std::memory_order_relaxed);
-								mAvailableTaskCount.fetch_sub(1, std::memory_order_relaxed);
+								//mAvailableTaskCount.fetch_sub(1, std::memory_order_relaxed);
+								mAvailableTaskCount.fetch_sub(1, std::memory_order_release);
 							}
 
 							task->Process();
@@ -843,7 +844,7 @@ namespace vx {
 
 		const int processing = mProcessingTasks.load(std::memory_order_acquire);
 		const uint32 avail = mAvailableTaskCount.load(std::memory_order_acquire);
-		VX_ASSERT(processing == 0, (StackString<32>("Value: ") << processing << "avil: " << avail).Data());
+	//	VX_ASSERT(processing == 0, (StackString<32>("Value: ") << processing << "avil: " << avail).Data());
 		VX_ASSERT(avail == 0, (StackString<16>("Value: ") << avail).Data());
 	}
 

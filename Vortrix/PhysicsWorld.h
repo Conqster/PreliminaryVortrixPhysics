@@ -142,7 +142,7 @@ namespace vx
 		}
 		void SetRestitutionCombineMode(ECombineMode restitution_combine_mode)
 		{
-			mContactConstraintSolver.SetRestitutionCombineMode(mSettings->solver.restitutionCombineMode);
+			mContactConstraintSolver.SetRestitutionCombineMode(restitution_combine_mode);
 			mSettings->solver.restitutionCombineMode = restitution_combine_mode;
 		}
 

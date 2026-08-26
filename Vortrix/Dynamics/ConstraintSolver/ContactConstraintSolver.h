@@ -169,6 +169,7 @@ namespace vx {
 				std::memset(mConstraints, 0, mNumConstraints * sizeof(ContactConstraint));
 			mNumConstraints = 0;
 
+
 			if (mWriteManifoldCacheIdx > 0)
 				std::memset(mStepWriteManifoldCache, 0, mWriteManifoldCacheIdx * sizeof(CachedManifold));
 			mWriteManifoldCacheIdx = 0;
@@ -261,6 +262,7 @@ namespace vx {
 		const ContactConstraintSolverStat& Stats() const { return mStats; }
 
 		void DebugDraw(DebugGizmosRenderer* debug_renderer, const class ConstraintSolver* constraint_solver, const BodyManager* body_manager, const DrawSettings& settings) const;
+		void OnDraw(class Renderer* debug_renderer, const DrawSettings& settings) const;
 	private:
 		PhysicsStepContext* mPhysicsContext = nullptr;
 		ContactConstraintSolverStat mStats;
@@ -289,12 +291,15 @@ namespace vx {
 		struct ContactConstraintAxesSetting
 		{
 			DebugGizmosRenderer* debug_renderer = nullptr;
-			float restitutionThreshold = 0.50f;
+			float restitutionThreshold = 1.0f;
 			float positionCorrectionSlop = 0.02f;
 			float baumgarte = 0.2f;// 0.45f; //0.1-0.8
 			float timeStep = 1.0f / 60.0f;
 			float maxSpeed = 2.0f;//2m/s
 			bool debugDrawAxes = false;
+
+			Vec3 gravity = Vec3(0.0f, -9.8f, 0.0f);
+			
 		}settings;
 
 
@@ -327,7 +332,7 @@ namespace vx {
 			{
 				Float3 axis;
 				float effMass = 0.0f; //inv_mass + point_inv_mass(due rotation)
-				float totalLamda = 0.0f;//lagrange multiplier / total accumulated impluse along axis
+				float totalLambda = 0.0f;//lagrange multiplier / total accumulated impluse along axis
 
 				Float3 r0XAxis{ 0.0f }; //relative point0 Cross axis 
 				//angular factor
@@ -583,13 +588,13 @@ namespace vx {
 				CacheContactPoint* cache = cpt_c->cacheLocalPoint;
 				if (cache)
 				{
-					VX_ASSERT(!VxIsInf(cpt_c->normal.totalLamda) && !VxIsNaN(cpt_c->normal.totalLamda));
-					VX_ASSERT(!VxIsInf(cpt_c->lateralTangent[0].totalLamda) && !VxIsNaN(cpt_c->lateralTangent[0].totalLamda));
-					VX_ASSERT(!VxIsInf(cpt_c->lateralTangent[1].totalLamda) && !VxIsNaN(cpt_c->lateralTangent[1].totalLamda));
+					VX_ASSERT(!VxIsInf(cpt_c->normal.totalLambda) && !VxIsNaN(cpt_c->normal.totalLambda));
+					VX_ASSERT(!VxIsInf(cpt_c->lateralTangent[0].totalLambda) && !VxIsNaN(cpt_c->lateralTangent[0].totalLambda));
+					VX_ASSERT(!VxIsInf(cpt_c->lateralTangent[1].totalLambda) && !VxIsNaN(cpt_c->lateralTangent[1].totalLambda));
 
-					cache->totalNormalLambda = cpt_c->normal.totalLamda;
-					cache->totalTangentLambda[0] = cpt_c->lateralTangent[0].totalLamda;
-					cache->totalTangentLambda[1] = cpt_c->lateralTangent[1].totalLamda;
+					cache->totalNormalLambda = cpt_c->normal.totalLambda;
+					cache->totalTangentLambda[0] = cpt_c->lateralTangent[0].totalLambda;
+					cache->totalTangentLambda[1] = cpt_c->lateralTangent[1].totalLambda;
 				}
 			}
 		}
@@ -740,6 +745,9 @@ namespace vx {
 		void SolverContactManifold(const SolverSettings& phy_settings);
 		void PositionalCorrection(ContactConstraint& constraint, float baumgarte, float slop, float min_limit, float max_limit, float limit_scale);
 #endif // CONTACT_USE_SOLVERBODY
+
+
+		void OnDebugDraw(DebugGizmosRenderer* debug_renderer, const DrawSettings& draw_settings);
 	};
 	
 }

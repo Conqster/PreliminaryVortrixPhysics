@@ -92,7 +92,7 @@ namespace vx {
 			{
 				return begin != nullptr &&
 					end != nullptr;//&&
-					end > begin; /// invariant; a valid range should contain at least one element
+					end > begin; //
 			}
 			uint32 Size() const
 			{
@@ -189,11 +189,11 @@ namespace vx {
 		{
 		public:
 
-			static const uint32 kLargeIslandSpitThreshold = 128;//64;
+			static const uint32 kLargeIslandSpitThreshold = 2;//128;//64;
 
 			using BinMask = uint32;
 			static constexpr uint32 kMaxBin = 16; // toal mask bit for 4 bytes (32 bits) int
-			static constexpr uint32 kBatchSize = 16;//32;//16;
+			static constexpr uint32 kBatchSize = 2;//16;//32;//16;
 
 
 
@@ -289,15 +289,11 @@ namespace vx {
 				std::atomic<bool> mComplete = false;
 				std::atomic<bool> mFirstIteration = false;
 
-				///uint32 
-
 				EStatus NextConstactConstraintBatchRange(
 					uint32& o_contact_start, uint32& o_contact_end,
 					uint32& o_noncontact_start, uint32& o_noncontact_end, int& first_iteration, uint32& debug_bin);
 
 				void MarkConstraintBatchRangeComplete(uint32 process_constraint, uint32 velocity_iteration, bool& last_iteration, uint32 debug_bin);
-
-
 
 				static uint64 MakeCurrBinNext(uint32 curr_bin, uint32 next)
 				{

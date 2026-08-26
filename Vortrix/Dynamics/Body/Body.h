@@ -209,6 +209,10 @@ namespace vx
 
 
 
+		void UpdateTransformState();
+
+
+
 		/// Static bodies is not allowed to go to sleep 
 		/// for optimisation 
 		/// Broad refits dynamic bodies node when aawake

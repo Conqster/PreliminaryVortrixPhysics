@@ -84,12 +84,12 @@ namespace vx
 
 
 		//3. gather nodes leaf and reinsert
-		bool rebuild = physics_ctx.forceBVHRebuild;
+		bool rebuild = physics_ctx.mSettings->collision.forceBVHRebuildEveryStep;
 
-		if (!rebuild && physics_ctx.BVH_rebuild_SAH)
+		if (!rebuild && physics_ctx.mSettings->collision.rebuildSAH)
 		{
 			float ratio = mTree.ComputeDepthImbalance();
-			rebuild = (ratio > physics_ctx.rebuildBVH_ImbalanceRatioTreshold);
+			rebuild = (ratio > physics_ctx.mSettings->collision.rebuildBVHimbalanceRatioTreshold);
 		}
 		//mTree.RebuildBruteforceInsertion();
 		if(rebuild)

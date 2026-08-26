@@ -245,10 +245,13 @@ namespace vx
 		mBroadphase->SetBoundThreshold(mSettings->collision.boundsMargin);
 		mBroadphase->Init(&mBodyManager, broad_init);
 
-		mContext.maxBroadphasePair = max_body_pairs;
+		mSettings->collision.maxPairs = max_body_pairs;
 
 		mContactConstraintSolver.Init(max_contact_constraint);
 		mContactConstraintSolver.SetPhysicsContext(&mContext);
+
+		mContactConstraintSolver.SetRestitutionCombineMode(mSettings->solver.restitutionCombineMode);
+		mContactConstraintSolver.SetFrictionCombineMode(mSettings->solver.frictionCombineMode);
 
 		mConstraintSolver = new ConstraintSolver;
 		mConstraintSolver->Init(mBodyManager);
@@ -322,12 +325,9 @@ namespace vx
 		Vec3 sample_gravity_vel = mSettings->gravity * mSettings->gravityScale;
 		sample_gravity_vel *= dt;
 		mSettings->frameGravityVelocity = sample_gravity_vel.ToFloat3();
-		mContext.stepDeltaTime = dt;
-		mContext.gravity = mSettings->gravity;
-		mContext.gravityScale = mSettings->gravityScale;
-		mContext.forceBVHRebuild = mSettings->forceBVHRebuild;
-		mContext.BVH_rebuild_SAH = mSettings->collision.BVH_rebuild_SAH;
-		mContext.rebuildBVH_ImbalanceRatioTreshold = mSettings->collision.rebuildBVH_ImbalanceRatioTreshold;
+		mContext.mDeltaTime = dt;
+		mContext.mGravity = mSettings->gravity * mSettings->gravityScale;
+		mContext.mSettings = mSettings;
 		mContext.mScratchAllocator = mScratchAllocator;
 		mContext.mIslandCoordinator = mIslandCoordinator;
 
@@ -336,7 +336,6 @@ namespace vx
 
 		//new 
 		mContext.mPhysicsWorld = this;
-		mContext.consistentManifold = mSettings->collision.consistentManifold;
 		mContext.constraintSolver = mConstraintSolver;
 		mContext.mDrawSettings = mSettings->drawSettings;
 
@@ -353,7 +352,7 @@ namespace vx
 		}
 
 		mSimStep.mPhysicsStepContext = &mContext;
-		mSimStep.broadphasePair = reinterpret_cast<BroadphasePair*>(mScratchAllocator->Allocate(sizeof(BroadphasePair) * mContext.maxBroadphasePair));
+		mSimStep.broadphasePair = reinterpret_cast<BroadphasePair*>(mScratchAllocator->Allocate(sizeof(BroadphasePair) * mSettings->collision.maxPairs));
 		mSimStep.broadphasePairCount = 0;
 		mSimStep.nextProcessPairIdx = { 0 };
 		mSimStep.solveVelocityNextIslandIdx = { 0 };
@@ -406,7 +405,7 @@ namespace vx
 								Body& body = step_ctx->bodyManager->GetBody(active_bodies[i]);
 								if (body.IsDynamic())
 								{
-									body.IntegrateAcceleration(step_ctx->stepDeltaTime, gravity);
+									body.IntegrateAcceleration(step_ctx->mDeltaTime, gravity);
 									body.ClearAccumulatedForces();
 								}
 							}
@@ -509,7 +508,7 @@ namespace vx
 
 
 		/// free broadphase data straight after narrowphase
-		mScratchAllocator->Free(mSimStep.broadphasePair, sizeof(BroadphasePair) * mContext.maxBroadphasePair);
+		mScratchAllocator->Free(mSimStep.broadphasePair, sizeof(BroadphasePair) * mSettings->collision.maxPairs);
 		mSimStep.broadphasePair = nullptr;
 		/// Prepare non contact constraint 
 		/// contact constraint should be done
@@ -1042,7 +1041,7 @@ namespace vx
 							for (uint32 i = active_body_begin; i < active_body_end; ++i)
 							{
 								Body& body = step_ctx->bodyManager->GetBody(active_bodies[i]);
-								body.IntegrateVelocity(step_ctx->stepDeltaTime);
+								body.IntegrateVelocity(step_ctx->mDeltaTime);
 
 								//simulation debugger
 								step_ctx->bodyManager->UpdateBodyVelocitySimStat(body);
@@ -1143,7 +1142,7 @@ namespace vx
 											VX_ASSERT(row_info.ConstraintIndex() < total_constraint);
 											VX_ASSERT(row_info.RowLocalIndex() == 0); //
 
-											physics_ctx->mPhysicsWorld->mConstraintCoordinator.GetConstraints()[row_info.ConstraintIndex()]->SolvePositionConstraint(physics_ctx->stepDeltaTime, baumgarte);
+											physics_ctx->mPhysicsWorld->mConstraintCoordinator.GetConstraints()[row_info.ConstraintIndex()]->SolvePositionConstraint(physics_ctx->mDeltaTime, baumgarte);
 
 											global_row_idx += row_info.RowCount();
 											continue;
@@ -1362,6 +1361,7 @@ namespace vx
 		VX_PROFILE_FUNCTION();
 		VX_ASSERT(draw_renderer, "Draw Renderer is null");
 
+		mContactConstraintSolver.OnDraw(draw_renderer, *mSettings->drawSettings);
 
 		const bool draw_bodies_with_tex = false;
 
@@ -1494,6 +1494,7 @@ namespace vx
 		const DrawSettings& draw_settings = *mSettings->drawSettings;
 		if(mBroadphase)
 			mBroadphase->DebugDraw(debug_renderer, draw_settings);
+
 
 		mContactConstraintSolver.DebugDraw(debug_renderer, mConstraintSolver, &mBodyManager, draw_settings);
 

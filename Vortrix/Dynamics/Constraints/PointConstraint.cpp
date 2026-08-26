@@ -71,7 +71,7 @@ namespace vx {
 		uint32 constraint_row_idx;
 
 		Linear1DRow* rows = solver->AllocateLinear1DRow(constraint_row_idx, 3);
-		BuildSplit1DJacobians(rows, ctx.stepDeltaTime);
+		BuildSplit1DJacobians(rows, ctx.mDeltaTime);
 
 		if (mBodyA->IsDynamic())
 			ctx.mIslandCoordinator->LinkNonConstactConstraint(constraint_row_idx, 3, mBodyA->GetIndexInActiveBodies());

@@ -36,23 +36,16 @@ namespace vx {
 		Vec3 r1 = p - body1.Position();
 
 
-		/// pos bias = beta / delta_time * max(0, penetration - slop)
-		float penetration = VxAbs((world_pos0 - world_pos1).Dot(normal));
+		Vec3 rel_vel = Vec3::Zero();
+		Vec3 potential_rel_acc = Vec3::Zero();
 
 
-			Vec3 rel_vel = Vec3::Zero();
+		Vec3 gravity_dt = settings.gravity * settings.timeStep;
+		float gravity_dt_along_nor = gravity_dt.Dot(normal);
+		//float gravity_dt_along_nor;
+
 		/// normal axis properties
 		{
-
-					//			if (dyn_a && dyn_b)
-					//	rel_vel = bodyB->GetPointVelocityRelCOM(rel_b) - bodyA->GetPointVelocityRelCOM(rel_a);
-					//else if (dyn_a)
-					//	rel_vel = -bodyA->GetPointVelocityRelCOM(rel_a);
-					//else if (dyn_b)
-					//	rel_vel = bodyB->GetPointVelocityRelCOM(rel_b);
-
-
-
 			/// inverse effective mass: K = J M^-1 J^T
 			float inv_effective_mass = total_inv_mass;
 
@@ -67,6 +60,8 @@ namespace vx {
 				inv_Ir0_n.Store(this->normal.invIr0XAxis);
 
 				inv_effective_mass += inv_Ir0_n.Dot(r0_X_n);
+
+				potential_rel_acc -= settings.gravity - (Vec3::LoadFloat3Raw(body0.AccumulatedForce()) * body0.InverseMass());
 			}
 
 
@@ -81,24 +76,26 @@ namespace vx {
 				inv_Ir1_n.Store(this->normal.invIr1XAxis);
 
 				inv_effective_mass += inv_Ir1_n.Dot(r1_X_n);
+
+				potential_rel_acc += settings.gravity + (Vec3::LoadFloat3Raw(body0.AccumulatedForce()) * body0.InverseMass());
 			}
 			if (inv_effective_mass > 0)
 				this->normal.effMass = 1.0f / inv_effective_mass;
-			//this->normal.totalLamda = 0.0f;
+
 			normal.Store(this->normal.axis);
 
 
-
+			float penetration = (world_pos0 - world_pos1).Dot(normal);
 
 			float restitution_bias = 0.0f;
 			//relative velocity along normal
 			float rel_velN = rel_vel.Dot(normal);
-			if (rel_velN < -settings.restitutionThreshold)
-				restitution_bias = e * rel_vel.Dot(normal);
+			//restitution_bias = VxMax(0.0f, -penetration / settings.timeStep);
+			if (e > 0 && rel_velN < -settings.restitutionThreshold)
+				restitution_bias = e * rel_velN * penetration;
 
-			float pos_bias = -(settings.baumgarte / settings.timeStep) * VxMax(0.0f, penetration - settings.positionCorrectionSlop);
-			pos_bias = VxClamp(pos_bias, -settings.maxSpeed, 0.0f);
-			this->normal.bias = restitution_bias+pos_bias;
+
+			this->normal.bias = restitution_bias;
 		}
 
 
@@ -130,8 +127,8 @@ namespace vx {
 			for (int i = 0; i < 2; ++i)
 			{
 				const Vec3& axis = tangent_axis[i];
-				ConstraintAxis& constaint_axis = lateralTangent[i];
-				axis.Store(constaint_axis.axis);
+				ConstraintAxis& constraint_axis = lateralTangent[i];
+				axis.Store(constraint_axis.axis);
 
 				/// inverse effective mass: K = J M^-1 J^T
 				float inv_effective_mass = total_inv_mass;
@@ -139,10 +136,10 @@ namespace vx {
 				if (body0_nonstatic)
 				{
 					Vec3 r0_X_axis = r0.Cross(axis);
-					r0_X_axis.Store(constaint_axis.r0XAxis);
+					r0_X_axis.Store(constraint_axis.r0XAxis);
 
 					Vec3 inv_Ir0_axis = body0.ComputeInvInteriaWorld().Multiply3x3(r0_X_axis);
-					inv_Ir0_axis.Store(constaint_axis.invIr0XAxis);
+					inv_Ir0_axis.Store(constraint_axis.invIr0XAxis);
 
 					inv_effective_mass += inv_Ir0_axis.Dot(r0_X_axis);
 				}
@@ -151,20 +148,31 @@ namespace vx {
 				if (body1_nonstatic)
 				{
 					Vec3 r1_X_axis = r1.Cross(axis);
-					r1_X_axis.Store(constaint_axis.r1XAxis);
+					r1_X_axis.Store(constraint_axis.r1XAxis);
 
 					Vec3 inv_Ir1_axis = body1.ComputeInvInteriaWorld().Multiply3x3(r1_X_axis);
-					inv_Ir1_axis.Store(constaint_axis.invIr1XAxis);
+					inv_Ir1_axis.Store(constraint_axis.invIr1XAxis);
 
 					inv_effective_mass += inv_Ir1_axis.Dot(r1_X_axis);
 				}
 
 				if(inv_effective_mass > 0)
-					constaint_axis.effMass = 1.0f / inv_effective_mass;
-				//constaint_axis.totalLamda = 0.0f;
+					constraint_axis.effMass = 1.0f / inv_effective_mass;
+				//constraint_axis.totalLambda = 0.0f;
 
 				/// surface does not have velocity
-				constaint_axis.bias = 0.0f;
+				constraint_axis.bias = 0.0f;
+				//constraint_axis.bias = -1.0f;
+
+				/////surface velicuty
+				//if (!body1_nonstatic)
+				//{
+				//	Vec3 local_space_vel = Vec3::Forward() * 2.0f;
+				//	Vec3 linear_surface_vel = body1.Orientation() * local_space_vel;
+
+				//	constraint_axis.bias = axis.Dot(linear_surface_vel);
+				//}
+
 			}
 		}
 
@@ -237,24 +245,22 @@ namespace vx {
 		/// 2. if both dynamic, for consitency id a < b
 		/// 
 		/// ensure that the A is the dynamic while B is the static 
-		if (mPhysicsContext->consistentManifold)
+		int priority_a = static_cast<int>(manifold.a->MotionType());
+		int priority_b = static_cast<int>(manifold.b->MotionType());
+
+		/// 1. dynamic > static
+		if (priority_a < priority_b)
+			manifold.Swap();
+		else if (priority_a == priority_b)
 		{
-			int priority_a = static_cast<int>(manifold.a->MotionType());
-			int priority_b = static_cast<int>(manifold.b->MotionType());
+			/// 2. dynamic - dynamic 
+			//if (manifold.a->ID() < manifold.b->ID())
+			//	manifold.Swap();
 
-			/// 1. dynamic > static
-			if (priority_a < priority_b)
+			if (manifold.a->ID() > manifold.b->ID())
 				manifold.Swap();
-			else if (priority_a == priority_b)
-			{
-				/// 2. dynamic - dynamic 
-				//if (manifold.a->ID() < manifold.b->ID())
-				//	manifold.Swap();
-
-				if (manifold.a->ID() > manifold.b->ID())
-					manifold.Swap();
-			}
 		}
+		
 
 		VX_ASSERT_WARN_VOID(manifold.a && manifold.b, "Either Bodies to not exists");
 
@@ -386,8 +392,13 @@ namespace vx {
 		constraint_axes_setting.debug_renderer = mPhysicsContext->mDebugRenderer;
 		constraint_axes_setting.debugDrawAxes = mPhysicsContext->mDrawSettings->drawContactConstraintSolverTBNs;
 #endif // VX_DEBUG_DRAW
-		constraint_axes_setting.timeStep = mPhysicsContext->stepDeltaTime;
+		constraint_axes_setting.timeStep = mPhysicsContext->mDeltaTime;
 
+		const auto& physics_setting = mPhysicsContext->mPhysicsWorld->Settings();
+		constraint_axes_setting.restitutionThreshold = physics_setting->solver.restitutionThreshold;
+		constraint_axes_setting.positionCorrectionSlop = physics_setting->solver.positionCorrectionSlop;
+		constraint_axes_setting.baumgarte = physics_setting->solver.baumgarte;
+		//constraint_axes_setting.maxSpeed = physics_setting->solver
 
 		//create cache constrain
 		//allocate mem
@@ -421,9 +432,9 @@ namespace vx {
 				if (p0_ls.IsApprox(Vec3::LoadFloat3Raw(cache_pt->localPoint0), VxSqr(0.01)) &&
 					p1_ls.IsApprox(Vec3::LoadFloat3Raw(cache_pt->localPoint1), VxSqr(0.01)))
 				{
-					point_constraint.normal.totalLamda = cache_pt->totalNormalLambda;
-					point_constraint.lateralTangent[0].totalLamda = cache_pt->totalTangentLambda[0];
-					point_constraint.lateralTangent[1].totalLamda = cache_pt->totalTangentLambda[1];
+					point_constraint.normal.totalLambda = cache_pt->totalNormalLambda;
+					point_constraint.lateralTangent[0].totalLambda = cache_pt->totalTangentLambda[0];
+					point_constraint.lateralTangent[1].totalLambda = cache_pt->totalTangentLambda[1];
 
 					was_close = true;
 					mStats.actualPersistentPointCounts++;
@@ -433,9 +444,9 @@ namespace vx {
 
 			if (!was_close)
 			{
-				point_constraint.normal.totalLamda = 0.0f;
-				point_constraint.lateralTangent[0].totalLamda = 0.0f;
-				point_constraint.lateralTangent[1].totalLamda = 0.0f;
+				point_constraint.normal.totalLambda = 0.0f;
+				point_constraint.lateralTangent[0].totalLambda = 0.0f;
+				point_constraint.lateralTangent[1].totalLambda = 0.0f;
 			}
 
 			/// now only copy the local points 
@@ -448,11 +459,11 @@ namespace vx {
 			point_constraint.cacheLocalPoint = &cp;
 
 
-			Vec3 pt = mp.pointB;
-			//hack to ensure right penetration for now
-			float depth_sq = (mp.pointA - mp.pointB).LengthSq();
-			if (depth_sq < mp.peneration)
-				pt = mp.pointA + manifold.normal * mp.peneration;
+			//Vec3 pt = mp.pointB;
+			////hack to ensure right penetration for now
+			//float depth_sq = (mp.pointA - mp.pointB).LengthSq();
+			//if (depth_sq < mp.peneration)
+			//	pt = mp.pointA + manifold.normal * mp.peneration;
 
 			point_constraint.SetupAxesVelocityConstraints(*manifold.a, *manifold.b, mp.pointA, mp.pointB, manifold.normal, restitution_coff, fricition_coeff, constraint_axes_setting);
 		}
@@ -472,23 +483,20 @@ namespace vx {
 		/// 2. if both dynamic, for consitency id a < b
 		/// 
 		/// ensure that the A is the dynamic while B is the static 
-		if (mPhysicsContext->consistentManifold)
+		int priority_a = static_cast<int>(manifold.a->MotionType());
+		int priority_b = static_cast<int>(manifold.b->MotionType());
+
+		/// 1. dynamic > static
+		if (priority_a < priority_b)
+			manifold.Swap();
+		else if (priority_a == priority_b)
 		{
-			int priority_a = static_cast<int>(manifold.a->MotionType());
-			int priority_b = static_cast<int>(manifold.b->MotionType());
+			/// 2. dynamic - dynamic 
+			//if (manifold.a->ID() < manifold.b->ID())
+			//	manifold.Swap();
 
-			/// 1. dynamic > static
-			if (priority_a < priority_b)
+			if (manifold.a->ID() > manifold.b->ID())
 				manifold.Swap();
-			else if (priority_a == priority_b)
-			{
-				/// 2. dynamic - dynamic 
-				//if (manifold.a->ID() < manifold.b->ID())
-				//	manifold.Swap();
-
-				if (manifold.a->ID() > manifold.b->ID())
-					manifold.Swap();
-			}
 		}
 
 		VX_ASSERT_WARN_VOID(manifold.a && manifold.b, "Either Bodies to not exists");
@@ -570,7 +578,7 @@ namespace vx {
 
 		CacheContactPoint* contact_pt_head_pt = &mCacheContactPoint[contact_pt_head_idx];
 		new_manifold_cache.SetContactPointPtr(contact_pt_head_pt);
-
+		//VX_ASSERT(contact_pt_head_pt->totalNormalLambda == 0.0f, (StackString<8>()<< contact_pt_head_pt->totalNormalLambda).Data());
 
 
 		/// since body 2 is less dominates to 1 either static if static is part of 
@@ -682,9 +690,13 @@ namespace vx {
 		constraint_axes_setting.debug_renderer = mPhysicsContext->mDebugRenderer;
 		constraint_axes_setting.debugDrawAxes = mPhysicsContext->mDrawSettings->drawContactConstraintSolverTBNs;
 #endif // VX_DEBUG_DRAW
-		constraint_axes_setting.timeStep = mPhysicsContext->stepDeltaTime;
+		constraint_axes_setting.timeStep = mPhysicsContext->mDeltaTime;
 
-
+		const auto& physics_setting = mPhysicsContext->mPhysicsWorld->Settings();
+		constraint_axes_setting.restitutionThreshold = physics_setting->solver.restitutionThreshold;
+		constraint_axes_setting.positionCorrectionSlop = physics_setting->solver.positionCorrectionSlop;
+		constraint_axes_setting.baumgarte = physics_setting->solver.baumgarte;
+		//constraint_axes_setting.maxSpeed = physics_setting->solver
 
 
 		//transfer points 
@@ -709,9 +721,9 @@ namespace vx {
 				if (p0_ls.IsApprox(Vec3::LoadFloat3Raw(cache_pt->localPoint0), VxSqr(0.01)) &&
 					p1_ls.IsApprox(Vec3::LoadFloat3Raw(cache_pt->localPoint1), VxSqr(0.01)))
 				{
-					point_constraint.normal.totalLamda = cache_pt->totalNormalLambda;
-					point_constraint.lateralTangent[0].totalLamda = cache_pt->totalTangentLambda[0];
-					point_constraint.lateralTangent[1].totalLamda = cache_pt->totalTangentLambda[1];
+					point_constraint.normal.totalLambda = cache_pt->totalNormalLambda;
+					point_constraint.lateralTangent[0].totalLambda = cache_pt->totalTangentLambda[0];
+					point_constraint.lateralTangent[1].totalLambda = cache_pt->totalTangentLambda[1];
 
 					was_close = true;
 					mStats.actualPersistentPointCounts++;
@@ -721,9 +733,9 @@ namespace vx {
 
 			if (!was_close)
 			{
-				point_constraint.normal.totalLamda = 0.0f;
-				point_constraint.lateralTangent[0].totalLamda = 0.0f;
-				point_constraint.lateralTangent[1].totalLamda = 0.0f;
+				point_constraint.normal.totalLambda = 0.0f;
+				point_constraint.lateralTangent[0].totalLambda = 0.0f;
+				point_constraint.lateralTangent[1].totalLambda = 0.0f;
 			}
 
 
@@ -733,16 +745,20 @@ namespace vx {
 			p0_ls.Store(cp.localPoint0);
 			p1_ls.Store(cp.localPoint1);
 
+			cp.totalNormalLambda = point_constraint.normal.totalLambda;
+			cp.totalTangentLambda[0] = point_constraint.lateralTangent[0].totalLambda;
+			cp.totalTangentLambda[1] = point_constraint.lateralTangent[1].totalLambda;
+
 
 			//solving constraint point also points to the cache 
 			point_constraint.cacheLocalPoint = &cp; ///later make this const to prevent modification outside
 
 
-			Vec3 pt = mp.pointB;
-			//hack to ensure right penetration for now
-			float depth_sq = (mp.pointA - mp.pointB).LengthSq();
-			if (depth_sq < mp.peneration)
-				pt = mp.pointA + manifold.normal * mp.peneration;
+			//Vec3 pt = mp.pointB;
+			////hack to ensure right penetration for now
+			//float depth_sq = (mp.pointA - mp.pointB).LengthSq();
+			//if (depth_sq < mp.peneration)
+			//	pt = mp.pointA + manifold.normal * mp.peneration;
 
 			point_constraint.SetupAxesVelocityConstraints(*manifold.a, *manifold.b, mp.pointA, mp.pointB, manifold.normal, restitution_coff, fricition_coeff, constraint_axes_setting);
 		}
@@ -791,9 +807,9 @@ namespace vx {
 
 				tangents[0] = Vec3::LoadFloat3Raw(pt.lateralTangent[0].axis);
 				tangents[1] = Vec3::LoadFloat3Raw(pt.lateralTangent[1].axis);
-				Vec3 impluse = (n * pt.normal.totalLamda) +
-					(tangents[0] * pt.lateralTangent[0].totalLamda) +
-					(tangents[1] * pt.lateralTangent[1].totalLamda);
+				Vec3 impluse = (n * pt.normal.totalLambda) +
+					(tangents[0] * pt.lateralTangent[0].totalLambda) +
+					(tangents[1] * pt.lateralTangent[1].totalLambda);
 
 
 				//handle this differenely make use of the arm for right displacement
@@ -935,7 +951,7 @@ auto draw_contact_manifold = [&](const ContactConstraint& constraint) {
 		debug_renderer->DrawAABB(aabb.mMin, aabb.mMax, settings.collidingPairIncColour, false);
 	}
 
-	if (!settings.drawContacts)return;
+	if (!settings.drawContacts && !settings.drawContactConstraintSolverTBNs)return;
 
 	Vec3 n = constraint.Normal();
 
@@ -948,62 +964,102 @@ auto draw_contact_manifold = [&](const ContactConstraint& constraint) {
 		Vec3 pointA = transform0.Transform(Vec3::LoadFloat3Raw(contact_point.cacheLocalPoint->localPoint0));
 		Vec3 pointB = transform1.Transform(Vec3::LoadFloat3Raw(contact_point.cacheLocalPoint->localPoint1));
 
+
+
+
 		//const Vec3 p0 = transform0.Transform(Vec3::LoadFloat3Raw(contact_point.cacheLocalPoint->localPoint0));
 		//const Vec3 p1 = transform1.Transform(Vec3::LoadFloat3Raw(contact_point.cacheLocalPoint->localPoint1));
 
 		//hack penetration 
 		float penetration = (pointA - pointB).Dot(n);
 
-		//if draw as aabb
-		//Vec3 min = point - half_extent;
-		//Vec3 max = point + half_extent;
 
-		//debug_renderer->DrawAABB(min.AsGLM(), max.AsGLM(), ColourToGLM(mSettings.drawContactPointColour));
-		Colour col = settings.drawContactPointColour;
-		//glm::vec3 col = ColourToGLM(mSettings.drawContactPointColour);
-
-		/// point A
-		debug_renderer->DrawLine(
-			(pointA - Vec3(settings.drawContactPointSize, 0.0f, 0.0f)),
-			(pointA + Vec3(settings.drawContactPointSize, 0.0f, 0.0f)),
-			col);
-		debug_renderer->DrawLine(
-			(pointA - Vec3(0.0f, settings.drawContactPointSize, 0.0f)),
-			(pointA + Vec3(0.0f, settings.drawContactPointSize, 0.0f)),
-			col);
-
-		col = Colour::sMagenta;
-		/// point B
-		debug_renderer->DrawLine(
-			(pointB - Vec3(settings.drawContactPointSize, 0.0f, 0.0f)),
-			(pointB + Vec3(settings.drawContactPointSize, 0.0f, 0.0f)),
-			col);
-		debug_renderer->DrawLine(
-			(pointB - Vec3(0.0f, settings.drawContactPointSize, 0.0f)),
-			(pointB + Vec3(0.0f, settings.drawContactPointSize, 0.0f)),
-			col);
-
-		if (settings.drawContactsNormals)
+		if (settings.drawContactConstraintSolverTBNs)
 		{
-			float depth = penetration;
-			if (ManifoldPoint::kUseNewManifoldPt)
-				//depth = (pointB - point).Length();
-				depth = (pointA - pointB).Length();
-			const float size = (settings.drawContactsNormalsWithPeneration) ? depth * settings.drawContactNormalSize :
-				settings.drawContactNormalSize;
+			Vec3 normal = Vec3::LoadFloat3Raw(contact_point.normal.axis);
+			Vec3 t0 = Vec3::LoadFloat3Raw(contact_point.lateralTangent[0].axis);
+			Vec3 t1 = Vec3::LoadFloat3Raw(contact_point.lateralTangent[1].axis);
 
-			//debug_renderer->DrawLine(point.AsGLM(), end.AsGLM(), ColourToGLM(mSettings.drawContactNormalsColour));
-			//debug_renderer->DrawLine(point, end, mSettings.drawContactNormalsColour);
+			Vec3 p = (pointA + pointA) * 0.5f;
 
-			//just for old manifold point 
-			const Vec3 pt0 = pointA;
-			const Vec3 pt1 = (ManifoldPoint::kUseNewManifoldPt) ? pointB : pointA - n * penetration;
+			float scale = 1.0f;
+			{
 
-			const Vec3 end = pt0 + n * size;
+				if (settings.scaleAxesWithDepth)
+					//scale = VxAbs((pointB - pointA).Length());
+					scale = VxAbs(penetration);
+				else
+					scale = settings.drawContactConstraintSolverTBNsScale;
+			}
 
-			debug_renderer->DrawArrowCone(pt0, end, 0.02f, 0.05f, 0.02f, 3, settings.drawContactNormalsColour);
-			//This line need to match or almost match he above
-			debug_renderer->DrawLine(pt1, pt0, vx::Colour::sTurquoise);
+			debug_renderer->DrawArrowCone(p,
+				p + (normal * scale),
+				0.05f, 0.1, 0.05f, 3, Colour::sGreen);
+
+			debug_renderer->DrawArrowCone(p,
+				p + (t0 * scale),
+				0.05f, 0.1, 0.05f, 3, Colour::sBlue);
+
+			debug_renderer->DrawArrowCone(p,
+				p + (t1 * scale),
+				0.05f, 0.1, 0.05f, 3, Colour::sRed);
+		}
+
+
+		if (settings.drawContacts)
+		{
+			//if draw as aabb
+			//Vec3 min = point - half_extent;
+			//Vec3 max = point + half_extent;
+
+			//debug_renderer->DrawAABB(min.AsGLM(), max.AsGLM(), ColourToGLM(mSettings.drawContactPointColour));
+			Colour col = settings.drawContactPointColour;
+			//glm::vec3 col = ColourToGLM(mSettings.drawContactPointColour);
+
+			/// point A
+			debug_renderer->DrawLine(
+				(pointA - Vec3(settings.drawContactPointSize, 0.0f, 0.0f)),
+				(pointA + Vec3(settings.drawContactPointSize, 0.0f, 0.0f)),
+				col);
+			debug_renderer->DrawLine(
+				(pointA - Vec3(0.0f, settings.drawContactPointSize, 0.0f)),
+				(pointA + Vec3(0.0f, settings.drawContactPointSize, 0.0f)),
+				col);
+
+			col = Colour::sMagenta;
+			/// point B
+			debug_renderer->DrawLine(
+				(pointB - Vec3(settings.drawContactPointSize, 0.0f, 0.0f)),
+				(pointB + Vec3(settings.drawContactPointSize, 0.0f, 0.0f)),
+				col);
+			debug_renderer->DrawLine(
+				(pointB - Vec3(0.0f, settings.drawContactPointSize, 0.0f)),
+				(pointB + Vec3(0.0f, settings.drawContactPointSize, 0.0f)),
+				col);
+
+			if (settings.drawContactsNormals)
+			{
+				float depth = penetration;
+				//if (ManifoldPoint::kUseNewManifoldPt)
+				//	//depth = (pointB - point).Length();
+				//	depth = (pointA - pointB).Length();
+				const float size = (settings.drawContactsNormalsWithPeneration) ? depth * settings.drawContactNormalSize :
+					settings.drawContactNormalSize;
+
+				//debug_renderer->DrawLine(point.AsGLM(), end.AsGLM(), ColourToGLM(mSettings.drawContactNormalsColour));
+				//debug_renderer->DrawLine(point, end, mSettings.drawContactNormalsColour);
+
+				//just for old manifold point 
+				const Vec3 pt0 = pointA;
+				//const Vec3 pt1 = (ManifoldPoint::kUseNewManifoldPt) ? pointB : pointA - n * penetration;
+				const Vec3 pt1 = pointB;
+
+				const Vec3 end = pt0 + n * size;
+
+				debug_renderer->DrawArrowCone(pt0, end, 0.02f, 0.05f, 0.02f, 3, settings.drawContactNormalsColour);
+				//This line need to match or almost match he above
+				debug_renderer->DrawLine(pt1, pt0, vx::Colour::sTurquoise);
+			}
 		}
 	}
 	};
@@ -1014,6 +1070,44 @@ for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
 	draw_contact_manifold(mConstraints[contact_idx]);
 }
 #endif // !CONTACT_USE_SOLVERBODY
+	}
+
+	void ContactConstraintSolver::OnDraw(Renderer* renderer, const DrawSettings& settings) const
+	{
+		if (!settings.drawPenetrationText)
+			return;
+		for (const ContactConstraint* constraint = mConstraints, *constraint_end = mConstraints + mNumConstraints;
+			constraint < constraint_end; ++constraint)
+		{
+			const Body* body_a = &mPhysicsContext->constraintSolver->AttemptGetBody(mPhysicsContext->bodyManager, constraint->BodyA());
+			const Body* body_b = &mPhysicsContext->constraintSolver->AttemptGetBody(mPhysicsContext->bodyManager, constraint->BodyB());
+
+			Mat44 transform_a = body_a->ComputeWorldTransform();
+			Mat44 transform_b = body_b->ComputeWorldTransform();
+
+			for (const ContactPointConstraint* contact_point = constraint->PointConstraintPtr(),
+				*contact_point_end = constraint->PointConstraintPtr() + constraint->NumConstraintPoints();
+				contact_point < contact_point_end; ++contact_point)
+			{
+				Vec3 normal = Vec3::LoadFloat3Raw(contact_point->normal.axis);
+
+
+				Vec3 p;
+
+				float depth = 1.0f;
+				{
+					Vec3 p0 = transform_a.Transform(Vec3::LoadFloat3Raw(contact_point->cacheLocalPoint->localPoint0));
+					Vec3 p1 = transform_b.Transform(Vec3::LoadFloat3Raw(contact_point->cacheLocalPoint->localPoint1));
+
+					p = (p0 + p1) * 0.5f;
+
+					depth = (p0 - p1).Dot(normal);
+				}
+
+				renderer->DrawText3D((StackString<5>() << depth).Data(), p, 0.0025f, Colour::sGreen, ETextAlignment::Right);
+				//renderer->DrawText3D((StackString<64>("depth along nor: ") << depth).Data(), p, 0.00125f, Colour::sGreen, ETextAlignment::Right);
+			}
+		}
 	}
 
 
@@ -1109,6 +1203,7 @@ for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
 			}
 		}
 	}
+
 #endif // CONTACT_USE_SOLVERBODY
 
 
@@ -1126,19 +1221,12 @@ for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
 			*cpt_c_end = contact_constraint.PointConstraintPtr() + contact_constraint.NumConstraintPoints();
 			cpt_c < cpt_c_end; ++cpt_c)
 		{
-
-			float impluse = cpt_c->normal.totalLamda;
-
-			body0.v -= impluse * body0.invMass * Vec3::LoadFloat3Raw(cpt_c->normal.axis);
-			body0.w -= impluse * Vec3::LoadFloat3Raw(cpt_c->normal.invIr0XAxis);
-
-			body1.v += impluse * body1.invMass * Vec3::LoadFloat3Raw(cpt_c->normal.axis);
-			body1.w += impluse * Vec3::LoadFloat3Raw(cpt_c->normal.invIr1XAxis);
+			float impluse;
 
 			//tangents 
 			for (int i = 0; i < 2; ++i)
 			{
-				impluse = cpt_c->lateralTangent[i].totalLamda;
+				impluse = cpt_c->lateralTangent[i].totalLambda;
 
 				body0.v -= impluse * body0.invMass * Vec3::LoadFloat3Raw(cpt_c->lateralTangent[i].axis);
 				body0.w -= impluse * Vec3::LoadFloat3Raw(cpt_c->lateralTangent[i].invIr0XAxis);
@@ -1146,7 +1234,19 @@ for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
 				body1.v += impluse * body1.invMass * Vec3::LoadFloat3Raw(cpt_c->lateralTangent[i].axis);
 				body1.w += impluse * Vec3::LoadFloat3Raw(cpt_c->lateralTangent[i].invIr1XAxis);
 			}
+
+			impluse = cpt_c->normal.totalLambda;
+
+			body0.v -= impluse * body0.invMass * Vec3::LoadFloat3Raw(cpt_c->normal.axis);
+			body0.w -= impluse * Vec3::LoadFloat3Raw(cpt_c->normal.invIr0XAxis);
+
+			body1.v += impluse * body1.invMass * Vec3::LoadFloat3Raw(cpt_c->normal.axis);
+			body1.w += impluse * Vec3::LoadFloat3Raw(cpt_c->normal.invIr1XAxis);
 		}
+
+
+
+
 	}
 	void ContactConstraintSolver::WarmStart(ContactConstraint* contact_constraints, size_t count, SolverBody* bodies)
 	{
@@ -1186,9 +1286,7 @@ for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
 		bool dyn_b = (sbB.invMass > 0);
 
 		Vec3 n = constraint_info.Normal();
-		n.Normalise();
-		//contact basis
-		Vec3 tangents[2];
+		VX_ASSERT(n.IsNormalised());
 
 		//////Get velocities 
 		Vec3 lin_vel0;
@@ -1214,75 +1312,14 @@ for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
 		{
 			auto& pt = constraint_info.PointConstraint(i);
 
-			tangents[0] = Vec3::LoadFloat3Raw(pt.lateralTangent[0].axis);
-			tangents[1] = Vec3::LoadFloat3Raw(pt.lateralTangent[1].axis);
-
-
-			///check closeness 
-			//VX_ASSERT_WARN(n.IsApprox(Vec3::LoadFloat3Raw(pt.normal.axis)), "normal is bad");
-			//VX_ASSERT_WARN(tangents[0].IsApprox(Vec3::LoadFloat3Raw(pt.tangent[0].axis)), "tangent0 is bad");
-			//VX_ASSERT_WARN(tangents[1].IsApprox(Vec3::LoadFloat3Raw(pt.tangent[1].axis)), "tangent1 is bad");
-
-			///this could be solve in simd parallel n, t0, t1
-			///
-			//////////////////////////
-			//// Solve normal/penetration axis
-			//////////////////////////
-			ContactPointConstraint::ConstraintAxis& nor_axis_contraint = pt.normal;
-			// 
-			{
-				/// curreny relative velocity (J * v) 
-				float jn;
-				if (dyn_a && dyn_b)
-					jn = (lin_vel0 - lin_vel1).Dot(n);
-				else if (dyn_a)
-					jn = lin_vel0.Dot(n);
-				else if (dyn_b)
-					jn = (-lin_vel1).Dot(n);
-				else
-				{
-					VX_ASSERT_WARN(false, "Static vs static this should not be possible");
-					jn = 0.0f;
-				}
-				//simplify 
-				if (dyn_a)
-					jn += Vec3::LoadFloat3Raw(nor_axis_contraint.r0XAxis).Dot(ang_vel0);
-				if (dyn_b)
-					jn -= Vec3::LoadFloat3Raw(nor_axis_contraint.r1XAxis).Dot(ang_vel1);
-
-				/// -K^-1(Jv + b)
-				/// -K^-1((1-e)Jv)
-				/// nor_axis_contraint.effectiveMass = 1/inv effective mass
-				//float lambda = (nor_axis_contraint.bias - jn) * nor_axis_contraint.effectiveMass;
-				float lambda = (jn - nor_axis_contraint.bias) * nor_axis_contraint.effMass;
-
-				float old_lambda = nor_axis_contraint.totalLamda;
-				//ensure non negative
-				nor_axis_contraint.totalLamda = VxMax(old_lambda + lambda, 0.0f);
-				//updated jn
-				float impluse = nor_axis_contraint.totalLamda - old_lambda;
-
-				//store changes
-				if (dyn_a)
-				{
-					lin_vel0 -= impluse * sbA.invMass * n;
-					ang_vel0 -= impluse * Vec3::LoadFloat3Raw(nor_axis_contraint.invIr0XAxis);
-				}
-				if (dyn_b)
-				{
-					lin_vel1 += impluse * sbB.invMass * n;
-					ang_vel1 += impluse * Vec3::LoadFloat3Raw(nor_axis_contraint.invIr1XAxis);
-				}
-
-			}
-
-
 			////////////////////////////
 			////// Solve tangential axis
 			////////////////////////////
+			const float prev_nor_axis_total_lambda = pt.normal.totalLambda;
+			VX_ASSERT(!VxIsNaN(prev_nor_axis_total_lambda) && !VxIsInf(prev_nor_axis_total_lambda));
 			if (constraint_info.FrictionCoeff() > 0.0f)
 			{
-				float max_friction = constraint_info.FrictionCoeff() * nor_axis_contraint.totalLamda;
+				float max_friction = constraint_info.FrictionCoeff() * prev_nor_axis_total_lambda;
 
 				for (int i = 0; i < 2; ++i)
 				{
@@ -1313,13 +1350,15 @@ for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
 					//float lambda = contact_info.friction * 0.5f * axis_contraint.effectiveMass * jv;
 
 					//ignore surface relative velocity
-					float lambda = jv * axis_contraint.effMass;
+					//float lambda = jv * axis_contraint.effMass;
+					float lambda = (jv - axis_contraint.bias) * axis_contraint.effMass;
 
-					float old_lambda = axis_contraint.totalLamda;
+
+					float old_lambda = axis_contraint.totalLambda;
 					//ensure non negative
-					axis_contraint.totalLamda = VxClamp(old_lambda + lambda, -max_friction, max_friction);
+					axis_contraint.totalLambda = VxClamp(old_lambda + lambda, -max_friction, max_friction);
 					//updated jn
-					float impluse = axis_contraint.totalLamda - old_lambda;
+					float impluse = axis_contraint.totalLambda - old_lambda;
 
 					//store changes
 					if (dyn_a)
@@ -1336,6 +1375,57 @@ for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
 			}
 
 
+			//////////////////////////
+			//// Solve normal/penetration axis
+			//////////////////////////
+			ContactPointConstraint::ConstraintAxis& nor_axis_contraint = pt.normal;
+			// 
+			{
+				VX_ASSERT(Vec3::LoadFloat3Raw(nor_axis_contraint.axis).IsApprox(n));
+				/// curreny relative velocity (J * v) 
+				float jn;
+				if (dyn_a && dyn_b)
+					jn = (lin_vel0 - lin_vel1).Dot(n);
+				else if (dyn_a)
+					jn = lin_vel0.Dot(n);
+				else if (dyn_b)
+					jn = (-lin_vel1).Dot(n);
+				else
+				{
+					VX_ASSERT_WARN(false, "Static vs static this should not be possible");
+					jn = 0.0f;
+				}
+				//simplify 
+				if (dyn_a)
+					jn += Vec3::LoadFloat3Raw(nor_axis_contraint.r0XAxis).Dot(ang_vel0);
+				if (dyn_b)
+					jn -= Vec3::LoadFloat3Raw(nor_axis_contraint.r1XAxis).Dot(ang_vel1);
+
+				/// -K^-1(Jv + b)
+				/// -K^-1((1-e)Jv)
+				/// nor_axis_contraint.effectiveMass = 1/inv effective mass
+				//float lambda = (nor_axis_contraint.bias - jn) * nor_axis_contraint.effectiveMass;
+				float lambda = (jn - nor_axis_contraint.bias) * nor_axis_contraint.effMass;
+
+				float old_lambda = nor_axis_contraint.totalLambda;
+				//ensure non negative
+				nor_axis_contraint.totalLambda = VxMax(old_lambda + lambda, 0.0f);
+				//updated jn
+				float impluse = nor_axis_contraint.totalLambda - old_lambda;
+
+				//store changes
+				if (dyn_a)
+				{
+					lin_vel0 -= impluse * sbA.invMass * n;
+					ang_vel0 -= impluse * Vec3::LoadFloat3Raw(nor_axis_contraint.invIr0XAxis);
+				}
+				if (dyn_b)
+				{
+					lin_vel1 += impluse * sbB.invMass * n;
+					ang_vel1 += impluse * Vec3::LoadFloat3Raw(nor_axis_contraint.invIr1XAxis);
+				}
+
+			}
 
 
 			////set velocities; prevent multiple bodies value value changes
@@ -1454,7 +1544,8 @@ for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
 			/// dist along normal + slop 
 			/// to avoid jittering between bodies
 			//float C = VxMax(seperation + slop, -kEpsilon);
-			float C = seperation + slop;
+			//float C = seperation + slop;
+			float C = seperation + 0.02f;
 
 			if (C < 0.0f)
 			{
@@ -1478,25 +1569,33 @@ for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
 					inv_effective_mass += r1_X_n.Dot(inv_Ir1_Xn);
 				}
 
-				if (inv_effective_mass < 1e-9f)
-					continue;
-
-				C = VxMax(C, -correction_limit);
-				float lambda = -(baumgarte * C) / inv_effective_mass;
-				Vec3 lambda_vector = lambda * n;
-
-				if (dyn_a)
+				//if (inv_effective_mass < 1e-9f)
+				if (inv_effective_mass > 0)
 				{
-					bodyA->ApplyLinearDisplacement(-lambda_vector * bodyA->InverseMass());
-					bodyA->ApplyAngularDisplacement(-lambda * inv_Ir0_Xn);
-				}
-				if (dyn_b)
-				{
-					bodyB->ApplyLinearDisplacement(lambda_vector * bodyB->InverseMass());
-					bodyB->ApplyAngularDisplacement(lambda * inv_Ir1_Xn);
+					//continue;
+
+					//C = VxMax(C, -correction_limit);
+					float lambda = -(baumgarte * C) / inv_effective_mass;
+					Vec3 lambda_vector = lambda * n;
+
+					if (dyn_a)
+					{
+						bodyA->ApplyLinearDisplacement(-lambda_vector * bodyA->InverseMass());
+						bodyA->ApplyAngularDisplacement(-lambda * inv_Ir0_Xn);
+					}
+					if (dyn_b)
+					{
+						bodyB->ApplyLinearDisplacement(lambda_vector * bodyB->InverseMass());
+						bodyB->ApplyAngularDisplacement(lambda * inv_Ir1_Xn);
+					}
 				}
 			}
 		}
+
+		if (dyn_a)
+			bodyA->UpdateTransformState();
+		if (dyn_b)
+			bodyB->UpdateTransformState();
 	}
 
 	void ContactConstraintSolver::SolvePositionCorrections(SolverBody* bodies, BodyManager& body_manager, float baumgarte, float slop, float min_limit, float max_limit, float limit_scale)
@@ -1641,11 +1740,11 @@ for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
 						//float lambda = (nor_axis_contraint.bias - jn) * nor_axis_contraint.effectiveMass;
 						float lambda = (jn - nor_axis_contraint.bias) * nor_axis_contraint.effMass;
 
-						float old_lambda = nor_axis_contraint.totalLamda;
+						float old_lambda = nor_axis_contraint.totalLambda;
 						//ensure non negative
-						nor_axis_contraint.totalLamda = VxMax(old_lambda + lambda, 0.0f);
+						nor_axis_contraint.totalLambda = VxMax(old_lambda + lambda, 0.0f);
 						//updated jn
-						float impluse = nor_axis_contraint.totalLamda - old_lambda;
+						float impluse = nor_axis_contraint.totalLambda - old_lambda;
 			
 						//store changes
 						if(dyn_a)
@@ -1667,7 +1766,7 @@ for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
 					////////////////////////////
 					if(constraint_info.friction > 0.0f)
 					{
-						float max_friction = constraint_info.friction * nor_axis_contraint.totalLamda;
+						float max_friction = constraint_info.friction * nor_axis_contraint.totalLambda;
 
 						for (int i = 0; i < 2; ++i)
 						{
@@ -1700,11 +1799,11 @@ for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
 							//ignore surface relative velocity
 							float lambda = jv * axis_contraint.effMass;
 
-							float old_lambda = axis_contraint.totalLamda;
+							float old_lambda = axis_contraint.totalLambda;
 							//ensure non negative
-							axis_contraint.totalLamda = VxClamp(old_lambda + lambda, -max_friction, max_friction);
+							axis_contraint.totalLambda = VxClamp(old_lambda + lambda, -max_friction, max_friction);
 							//updated jn
-							float impluse = axis_contraint.totalLamda - old_lambda;
+							float impluse = axis_contraint.totalLambda - old_lambda;
 
 							//store changes
 							if (dyn_a)
@@ -1767,4 +1866,57 @@ for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
 #endif // CONTACT_USE_SOLVERBODY
 
 
+
+
+
+	void ContactConstraintSolver::OnDebugDraw(DebugGizmosRenderer* debug_renderer, const DrawSettings& draw_settings)
+	{
+		if (!draw_settings.drawContactConstraintSolverTBNs)
+			return;
+
+		for (const ContactConstraint* constraint = mConstraints, *constraint_end = mConstraints + mNumConstraints;
+			constraint < constraint_end; ++constraint)
+		{
+
+
+			for (const ContactPointConstraint* contact_point = constraint->PointConstraintPtr(),
+				*contact_point_end = constraint->PointConstraintPtr() + constraint->NumConstraintPoints();
+				contact_point < contact_point_end; ++contact_point)
+			{
+				Vec3 normal = Vec3::LoadFloat3Raw(contact_point->normal.axis);
+
+				Vec3 t0 = Vec3::LoadFloat3Raw(contact_point->lateralTangent[0].axis);
+				Vec3 t1 = Vec3::LoadFloat3Raw(contact_point->lateralTangent[1].axis);
+
+				Vec3 p;
+
+				float scale = 1.0f;
+				{
+					Vec3 p0 = Vec3::LoadFloat3Raw(contact_point->cacheLocalPoint->localPoint0);
+					Vec3 p1 = Vec3::LoadFloat3Raw(contact_point->cacheLocalPoint->localPoint1);
+
+					p = (p0 + p1) * 0.5f;
+
+					if (draw_settings.scaleAxesWithDepth)
+						scale = VxAbs((p0 - p1).Length());
+					else
+						scale = draw_settings.drawContactConstraintSolverTBNsScale;
+				}
+
+				settings.debug_renderer->DrawArrowCone(p,
+					p + (normal * scale),
+					0.05f, 0.1, 0.05f, 3, Colour::sGreen);
+
+				settings.debug_renderer->DrawArrowCone(p,
+					p + (t0 * scale),
+						0.05f, 0.1, 0.05f, 3, Colour::sBlue);
+
+				settings.debug_renderer->DrawArrowCone(p,
+					p + (t1 * scale),
+					0.05f, 0.1, 0.05f, 3, Colour::sRed);
+			}
+		}
+
+
+	}
 } //namespace vx

@@ -55,7 +55,7 @@ namespace vx
 
 					if (aAABB.Overlaps(bAABB))
 					{
-						VX_ASSERT(io_sim_step.broadphasePairCount < physics_ctx.maxBroadphasePair);
+						VX_ASSERT(io_sim_step.broadphasePairCount < physics_ctx.mSettings->collision.maxPairs);
 						io_sim_step.broadphasePair[io_sim_step.broadphasePairCount++] = BroadphasePair(&bodies[i], &bodies[j]);
 					}
 				}

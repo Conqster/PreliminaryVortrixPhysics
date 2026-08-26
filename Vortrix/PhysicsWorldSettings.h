@@ -25,29 +25,28 @@ namespace vx
 
 	struct PhysicsStepContext
 	{
-		Vec3 gravity = Vec3(0.0f, -9.81f, 0.0f);
+		Vec3 mGravity = Vec3(0.0f, -9.81f, 0.0f);
 
 		class BodyManager* bodyManager = nullptr;
 
+		const struct PhysicsWorldSettings* mSettings = nullptr;
+
 		uint64 mStepIndex = 0;
 
-		float gravityScale = 1.0f;
-
-		float stepDeltaTime = 1.0f / 60.0f;
+		float mDeltaTime = 1.0f / 60.0f;
 
 		class ScratchAllocator* mScratchAllocator = nullptr;
 		class IslandCoordinator* mIslandCoordinator = nullptr;
 
 		/// rebuild BVH, when imbalance ration grows
 		/// above treshold
-		float rebuildBVH_ImbalanceRatioTreshold = 0.6f;
-		uint32 maxBroadphasePair = 10240;
+		//float rebuildBVH_ImbalanceRatioTreshold = 0.6f;
+		//uint32 maxBroadphasePair = 10240;
 
-		bool forceBVHRebuild = true;
+		//bool forceBVHRebuild = true;
 
-		bool BVH_rebuild_SAH = false;
+		//bool BVH_rebuild_SAH = false;
 
-		bool consistentManifold = false;
 		class ConstraintSolver* constraintSolver = nullptr;
 
 		class DebugGizmosRenderer* mDebugRenderer = nullptr;
@@ -103,15 +102,15 @@ namespace vx
 	/// 
 	struct CollisionSettings
 	{
-		float boundsMargin = 0.1; //10cm 
-		bool consistentManifold = true;
+		float boundsMargin = 0.1f; //10cm 
 
-		bool forceBVHRebuild = true;
+		uint32 maxPairs = 10240;
 
-		bool BVH_rebuild_SAH = true;
-		/// rebuild BVH, when imbalance ration grows
-		/// above treshold
-		float rebuildBVH_ImbalanceRatioTreshold = 0.6f;
+		bool forceBVHRebuildEveryStep = false;
+		bool rebuildSAH = true;
+
+		/// rebuild BVH, when imbalance ration grows, above treshold
+		float rebuildBVHimbalanceRatioTreshold = 0.6f;
 	};
 
 	struct SleepingSettings
@@ -125,7 +124,7 @@ namespace vx
 
 	struct SolverSettings
 	{
-		int velocityIterations = 10; // 8;
+		int velocityIterations = 9;
 
 		bool enable = true;
 		bool enableContact = true;
@@ -142,7 +141,7 @@ namespace vx
 		Vec2 positionCorrectionGlobalLimits = Vec2(0.01, 4.0f);
 		float positionCorrectionBodyLimitScale = 0.8f;
 
-		ECombineMode frictionCombineMode;
+		ECombineMode frictionCombineMode = ECombineMode::SquareRoot;
 		ECombineMode restitutionCombineMode = ECombineMode::Maximum;
 	};
 
@@ -216,6 +215,7 @@ namespace vx
 		/// narrowphase
 		bool drawContacts = false;
 		bool drawContactsNormals = true;
+		bool drawPenetrationText = false;
 		Colour drawContactPointColour = Colour::sGreen;
 		Colour drawContactNormalsColour = Colour::sRed;// Colour::sYellow;
 		float drawContactPointSize = 0.15f;
@@ -230,6 +230,8 @@ namespace vx
 		/// 
 		/// solver
 		bool drawContactConstraintSolverTBNs = false;
+		bool scaleAxesWithDepth = true;
+		float drawContactConstraintSolverTBNsScale = 1.0f;
 		/// island 
 		bool drawPerIslandConstraintGroup = false;
 		bool drawPerIslandConstraintGroupPoint = true;
@@ -305,7 +307,7 @@ namespace vx
 		Vec3 gravity = Vec3(0.0f, -9.81f, 0.0f);
 		float gravityScale = 1.0f;
 
-		bool forceBVHRebuild = false;
+		//bool forceBVHRebuild = false;
 
 		// === SOLVER ===
 		SolverSettings solver;

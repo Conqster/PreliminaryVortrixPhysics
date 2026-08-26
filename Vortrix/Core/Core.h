@@ -12,7 +12,7 @@
 
 #define VX_DEBUG_DRAW 1
 
-#define VX_PROFILING 1
+#define VX_PROFILING 0
 #if VX_PROFILING
 	#if defined(TRACY_ENABLE)
 		#define VX_USE_TRACY 1

@@ -200,6 +200,11 @@ namespace vx
 		}
 		mOrientation.Normalise();
 	}
+	void Body::UpdateTransformState()
+	{
+		ComputeWorldSpaceBoundsInternal();
+		mMotionState.lastUpdateStep = PhysicsWorld::CurrentSimStepIndex();
+	}
 	bool Body::CanBodiesCollide(const Body& b0, const Body& b1)
 	{
 		VX_ASSERT(&b1 != &b0, "b0 & b1 are of the same object should not try to collide!!!.");

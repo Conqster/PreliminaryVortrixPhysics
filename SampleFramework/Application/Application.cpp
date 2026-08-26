@@ -575,6 +575,7 @@ void Application::ResetWorld(bool& reset_flag)
 	/// note this resets camera, 
 	/// but could be overwritten in Scenario if needed
 	//ResetCamera();
+	mSelectedBodyToApplyForce = vx::BodyID();
 
 	mPhysicsWorld = new PhysicsWorld(mPhysicsWorldSettings);
 
@@ -2276,12 +2277,11 @@ void Application::PhysicsSettingItemOverlays()
 
 		if (ImGui::TreeNodeEx("COLLISION"))
 		{
-			ImGui::Checkbox("Force BVH Rebuild", &phy_settings.forceBVHRebuild);
-			ImGui::Checkbox("Rebuild BVH SAH", &phy_settings.collision.BVH_rebuild_SAH);
+			ImGui::Checkbox("Force BVH Rebuild Every step", &phy_settings.collision.forceBVHRebuildEveryStep);
+			ImGui::Checkbox("Rebuild BVH SAH", &phy_settings.collision.rebuildSAH);
 			if (ImGui::SliderFloat("Collision Bounds Margin (m)", &phy_settings.collision.boundsMargin, 0.01f, 0.6f))
 				mPhysicsWorld->SetBroadphaseNodeBoundThreshold(phy_settings.collision.boundsMargin);
-			ImGui::SliderFloat("Imbalance ratio treshold rebuild", &phy_settings.collision.rebuildBVH_ImbalanceRatioTreshold, 0.0f, 1.0f);
-			ImGui::Checkbox("Use New Manifold pt", &vx::ManifoldPoint::kUseNewManifoldPt);
+			ImGui::SliderFloat("Imbalance ratio treshold rebuild", &phy_settings.collision.rebuildBVHimbalanceRatioTreshold, 0.0f, 1.0f);
 			ImGui::Checkbox("Debug Box - Box contacts", &phy_settings.drawSettings->drawAABBContactManifoldInFrame);
 			ImGui::Checkbox("Debug Box - Box contacts with plane", &phy_settings.drawSettings->drawAABBContactManifoldInFrameWcPlane);
 			if (ImGui::TreeNode("Narrowphase Stats"))
@@ -2305,7 +2305,6 @@ void Application::PhysicsSettingItemOverlays()
 			ImGui::Checkbox("Enable Solver", &phy_settings.solver.enable);
 			ImGui::Checkbox("Enable Contact Solver", &phy_settings.solver.enableContact);
 			ImGui::Checkbox("Enable Warm Start", &phy_settings.solver.warmstart);
-			ImGui::Checkbox("Ensure Contact Manifold Consistent", &phy_settings.collision.consistentManifold);
 			ImGui::SliderInt("Contact Constraint Interations", &phy_settings.solver.velocityIterations, 0, 25);
 			ImGui::SliderInt("Contact Position Interations", &phy_settings.solver.positionIterations, 0, 10);
 			int v = (int)phy_settings.solver.restitutionCombineMode;
@@ -2407,6 +2406,7 @@ void Application::PhysicsSettingItemOverlays()
 		if (ImGui::TreeNodeEx("Narrowphase"))
 		{
 			ImGui::Checkbox("draw Contacts", &draw_settings.drawContacts);
+			ImGui::Checkbox("draw Contacts poitn pentration text", &draw_settings.drawPenetrationText);
 			ImGui::SameLine(); ImGui::SliderFloat("contact size", &draw_settings.drawContactPointSize, 0.01f, 1.5f, "%.2f");
 			ImGui::Checkbox("draw Contacts Normals", &draw_settings.drawContactsNormals);
 			ImGui::Checkbox("draw Contacts Normals With Penetration", &draw_settings.drawContactsNormalsWithPeneration);
@@ -2423,6 +2423,8 @@ void Application::PhysicsSettingItemOverlays()
 		if (ImGui::TreeNodeEx("Solver"))
 		{
 			ImGui::Checkbox("draw Contact Constraint Solver TBNs", &draw_settings.drawContactConstraintSolverTBNs);
+			ImGui::Checkbox("draw Contact Constraint TBNs with Depth", &draw_settings.scaleAxesWithDepth);
+			ImGui::DragFloat("TBN Scale", &draw_settings.drawContactConstraintSolverTBNsScale, 0.01f);
 			ImGui::TreePop();
 		}
 
@@ -5190,6 +5192,8 @@ void Application::ApplyForceToSelectedBody()
 			static vx::Vec3 apply_dir = -vx::Vec3::Forward();
 
 			ImGui::SliderFloat3("Dir", &apply_dir[0], -1.0f, 1.0f);
+			if (ImGui::DragFloat3("Dir", &apply_dir[0], 0.1f, - 1.0f, 1.0f))
+				apply_dir = vx::Vec3::Clamp(apply_dir, vx::Vec3(-1.0f), vx::Vec3(1.0f));
 			static bool use_body_frame_forward = false;
 			ImGui::Checkbox("Use Body Frame Forward", &use_body_frame_forward);
 			static bool invert_fwd = false;
