@@ -43,6 +43,10 @@ namespace vx
 		//float rebuildBVH_ImbalanceRatioTreshold = 0.6f;
 		//uint32 maxBroadphasePair = 10240;
 
+		uint32 contactConstraintCount = 0;
+		uint32 nonContactConstraintCount = 0;
+		uint32 nonContactJacobianRowCount = 0;
+
 		//bool forceBVHRebuild = true;
 
 		//bool BVH_rebuild_SAH = false;

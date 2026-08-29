@@ -276,7 +276,7 @@ namespace vx
 
 
 		mIslandCoordinator = new IslandCoordinator;
-		mIslandCoordinator->Init(mBodyManager.MaxBodies(), mContactConstraintSolver.MaxConstraints(), 512);
+		mIslandCoordinator->Init(mBodyManager.MaxBodies(), mContactConstraintSolver.MaxConstraints(), 10800);
 	}
 
 	Body* PhysicsWorld::CreateBody(const BodySettings& body_setting, bool activate_body)
@@ -361,77 +361,80 @@ namespace vx
 		// Broadphase
 		////////////////////////////////////
 
-		VX_ASSERT(mBroadphase != nullptr);
-		//// broadphase could happen before gravity + acceleration intergration 
-		/// broadphase only reads bodies (position, and type), and write debug data to body manager
-		/// a thread start work immediately
-		mTaskCoordinator->ConstructTask([broadphase = mBroadphase, ctx = &mContext, sim_step = &mSimStep]()
-			{
-				broadphase->ComputeCollidingPair(*ctx, *sim_step);
-			}, 0);
-
-
 		{
-			VX_PROFILE_SCOPE("Integrate bodies acceleration");
+			VX_PROFILE_SCOPE("Broadphase acceleration Integration");
+			VX_ASSERT(mBroadphase != nullptr);
+			//// broadphase could happen before gravity + acceleration intergration 
+			/// broadphase only reads bodies (position, and type), and write debug data to body manager
+			/// a thread start work immediately
+			mTaskCoordinator->ConstructTask([broadphase = mBroadphase, ctx = &mContext, sim_step = &mSimStep]()
+				{
+					broadphase->ComputeCollidingPair(*ctx, *sim_step);
+				}, 0);
 
-			/// clamp acceleration & gravity tasks count to max concurrency - 1 (leaving the a thread for working broadphase)
-			const int max_acceleration_workers = VxMax(1, int(mTaskCoordinator->MaxConcurrency() - 1));
-			uint32 num_acceleration_gravity_tasks = VxMin(int((NumActiveBodies() + (SimStep::kAcclerationGravityTaskBatch - 1)) / SimStep::kAcclerationGravityTaskBatch), max_acceleration_workers);
 
-			std::atomic<uint32> next_active_body_idx = 0;
-			for (uint32 i = 0; i < num_acceleration_gravity_tasks; ++i)
 			{
-				mTaskCoordinator->ConstructTask([step_ctx = &mContext, &next_active_body_idx, 
-					world_gravity = mSettings->gravity, gravity_scale = mSettings->gravityScale]()
-					{
-						uint32 num_active_bodies = step_ctx->bodyManager->NumActiveBodies();
-						BodyID* active_bodies = step_ctx->bodyManager->ActiveBodies();
+				VX_PROFILE_SCOPE("Integrate bodies acceleration");
 
-						const vx::Vec3 gravity = world_gravity * gravity_scale;
+				/// clamp acceleration & gravity tasks count to max concurrency - 1 (leaving the a thread for working broadphase)
+				const int max_acceleration_workers = VxMax(1, int(mTaskCoordinator->MaxConcurrency() - 1));
+				uint32 num_acceleration_gravity_tasks = VxMin(int((NumActiveBodies() + (SimStep::kAcclerationGravityTaskBatch - 1)) / SimStep::kAcclerationGravityTaskBatch), max_acceleration_workers);
 
-						/// atomically fetch batch and process
-						for (;;)
+				std::atomic<uint32> next_active_body_idx = 0;
+				for (uint32 i = 0; i < num_acceleration_gravity_tasks; ++i)
+				{
+					mTaskCoordinator->ConstructTask([step_ctx = &mContext, &next_active_body_idx,
+						world_gravity = mSettings->gravity, gravity_scale = mSettings->gravityScale]()
 						{
-							const uint32 active_body_begin = next_active_body_idx.fetch_add(SimStep::kAcclerationGravityTaskBatch);
+							uint32 num_active_bodies = step_ctx->bodyManager->NumActiveBodies();
+							BodyID* active_bodies = step_ctx->bodyManager->ActiveBodies();
 
-							/// at the end of broadphase pair
-							if (active_body_begin >= num_active_bodies)
-								break;
+							const vx::Vec3 gravity = world_gravity * gravity_scale;
 
-							uint32 active_body_end = VxMin(num_active_bodies, active_body_begin + SimStep::kAcclerationGravityTaskBatch);
-
-							for (uint32 i = active_body_begin; i < active_body_end; ++i)
+							/// atomically fetch batch and process
+							for (;;)
 							{
-								Body& body = step_ctx->bodyManager->GetBody(active_bodies[i]);
-								if (body.IsDynamic())
+								const uint32 active_body_begin = next_active_body_idx.fetch_add(SimStep::kAcclerationGravityTaskBatch);
+
+								/// at the end of broadphase pair
+								if (active_body_begin >= num_active_bodies)
+									break;
+
+								uint32 active_body_end = VxMin(num_active_bodies, active_body_begin + SimStep::kAcclerationGravityTaskBatch);
+
+								for (uint32 i = active_body_begin; i < active_body_end; ++i)
 								{
-									body.IntegrateAcceleration(step_ctx->mDeltaTime, gravity);
-									body.ClearAccumulatedForces();
+									Body& body = step_ctx->bodyManager->GetBody(active_bodies[i]);
+									if (body.IsDynamic())
+									{
+										body.IntegrateAcceleration(step_ctx->mDeltaTime, gravity);
+										body.ClearAccumulatedForces();
+									}
 								}
 							}
-						}
-					}, 0);
+						}, 0);
+				}
 			}
+
+
+
+			/// Allow main thread to compute this before waiting 
+			//////////////////////////////////
+			// Reset/clear sub systems
+			//////////////////////////////////
+			mContactConstraintSolver.PreFrameSetup(); //for per frame transient allcation for now
+			/// for now need to invalidate previous frame local bodies 
+			/// so the bodies could be update for use by narrowphase handshake 
+			/// with contact constraint, fix later 
+			{
+				VX_PROFILE_SCOPE("Clear Non contact constraint");
+				mConstraintSolver->HackClear();
+			}
+			mIslandCoordinator->PrepareIslands((uint32)mBodyManager.GetBodies().size());
+
+			/////wait for acceleration, gravity, broadphase, clearing sub systems 
+			mTaskCoordinator->WaitForTasks();
 		}
-
-
-
-		/// Allow main thread to compute this before waiting 
-		//////////////////////////////////
-		// Reset/clear sub systems
-		//////////////////////////////////
-		mContactConstraintSolver.PreFrameSetup(); //for per frame transient allcation for now
-		/// for now need to invalidate previous frame local bodies 
-		/// so the bodies could be update for use by narrowphase handshake 
-		/// with contact constraint, fix later 
-		{
-			VX_PROFILE_SCOPE("Clear Non contact constraint");
-			mConstraintSolver->HackClear();
-		}
-		mIslandCoordinator->PrepareIslands((uint32)mBodyManager.GetBodies().size());
-
-		/////wait for acceleration, gravity, broadphase, clearing sub systems 
-		mTaskCoordinator->WaitForTasks();
 
 #if USE_MULTITHREAD
 		{
@@ -507,6 +510,8 @@ namespace vx
 #endif // TEST_CONTACT_CONSTRAINT_MT
 
 
+		mContext.contactConstraintCount = mContactConstraintSolver.NumContactConstraints();
+		mContext.nonContactConstraintCount = 0;
 		/// free broadphase data straight after narrowphase
 		mScratchAllocator->Free(mSimStep.broadphasePair, sizeof(BroadphasePair) * mSettings->collision.maxPairs);
 		mSimStep.broadphasePair = nullptr;
@@ -633,6 +638,7 @@ namespace vx
 								SolverBody* solver_bodies = io_physics_ctx->mPhysicsWorld->mConstraintSolver->GetBodiesPtr();
 
 								//if(solving_island_ctx.splitLargeIsland)
+								//if(!large_island_complete && sim_split_large_island)
 								if(sim_split_large_island)
 								{
 									///try splitting island 
@@ -657,7 +663,7 @@ namespace vx
 										VX_PROFILE_SCOPE("Solving Large Island Batch");
 										worked = true;
 
-										/// perform warm starts
+										///// perform warm starts
 										//if ((batch_first_iteration == 0) && warm_start)
 										//{
 										//	if (island_noncontact_range.Valid())
@@ -679,12 +685,19 @@ namespace vx
 										//}
 
 										//solve batch
+										uint32 processed_count = 0;
 										if (island_noncontact_range.Valid())
+										{
 											io_physics_ctx->constraintSolver->SolverVelocityLinear1DRowsIndices(island_noncontact_range.begin, island_noncontact_range.Size());
+											processed_count += island_noncontact_range.Size();
+										}
 
 
 										if (io_physics_ctx->enableContact && island_contact_range.Valid())
+										{
 											io_physics_ctx->mPhysicsWorld->mContactConstraintSolver.SolveVelocityConstraint(island_contact_range.begin, island_contact_range.Size(), solver_bodies);
+											processed_count += island_contact_range.Size();
+										}
 
 
 										/// couple of issues 
@@ -692,7 +705,6 @@ namespace vx
 										/// 2. submitting/marking batch but bin as already processed
 
 										///mark batch as processed 
-										uint32 processed_count = island_contact_range.Size() + island_noncontact_range.Size();
 										bool batch_last_iteration = false;
 										io_physics_ctx->mIslandCoordinator->GetSplitter().MarkConstactConstraintBatchRangeComplete(solving_split_island_idx, processed_count, velocity_iteration_count, batch_last_iteration, debug_bin);
 
@@ -749,7 +761,7 @@ namespace vx
 										IslandCoordinator::IslandRange<uint32> constraint_island_indices_range = io_physics_ctx->mIslandCoordinator->IslandNonContactConstraintRowIndicesRange(normal_island_idx);
 										IslandCoordinator::IslandRange<uint32> contact_constraint_island_indices_range = io_physics_ctx->mIslandCoordinator->ContactConstraintIndicesIslandRange(normal_island_idx);
 
-										/// perform warm starts
+										///// perform warm starts
 										//if (warm_start)
 										//{
 										//	if (constraint_island_indices_range.Valid())

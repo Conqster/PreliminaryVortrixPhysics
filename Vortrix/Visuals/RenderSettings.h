@@ -6,7 +6,7 @@
 namespace vx {
 	struct RenderSettings
 	{
-		ERenderInstanceFlags sphereInstanceFlags = ERenderInstanceFlags::CastShadow | ERenderInstanceFlags::ReceiveShadow | ERenderInstanceFlags::UseTexture;
+		ERenderInstanceFlags sphereInstanceFlags = ERenderInstanceFlags::CastShadow | ERenderInstanceFlags::ReceiveShadow;// | ERenderInstanceFlags::UseTexture;
 		ERenderInstanceFlags boxInstanceFlags = ERenderInstanceFlags::CastShadow | ERenderInstanceFlags::ReceiveShadow;
 		ERenderInstanceFlags planeInstanceFlags = ERenderInstanceFlags::ReceiveShadow;
 		ERenderInstanceFlags capsuleInstanceFlags = ERenderInstanceFlags::CastShadow | ERenderInstanceFlags::ReceiveShadow;

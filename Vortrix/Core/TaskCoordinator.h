@@ -209,13 +209,13 @@ namespace vx {
 		}
 
 
+		/// if thread count is 0 or less, 
+		/// the coordinator use max hardward supported count
+		void BeginThreads(int thread_count);
 		void WaitForTasks() override;
 	private:
 		void ThreadsMainLoop(int thread_worker_idx);
 
-		/// if thread count is 0 or less, 
-		/// the coordinator use max hardward supported count
-		void BeginThreads(int thread_count);
 		/// Terminates threads
 		void EndThreads();
 

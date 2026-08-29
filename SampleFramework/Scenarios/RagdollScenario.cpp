@@ -21,34 +21,46 @@ void RagdollScenario::Init(vx::PhysicsWorld* i_world)
 
 	vx::RagdollBuilder ragdoll_builder(mPhysicsWorld);
 
+	const vx::uint32 multiples = 30;
 	mRagdolls.clear();
-	mRagdolls.resize(6);
+	mRagdolls.resize(6 * multiples);
+	vx::uint32 created = 0;
+	float y_offset = 0;
+	float x_offset = 0;
+	for(vx::uint32 i = 0; i < multiples; ++i)
+	{
+		vx::RagdollSettings rag_settings;
+		rag_settings.position = vx::Vec3(-5.0f + x_offset, 2.0f + y_offset, 0.0f);
+		rag_settings.limbsOffset = 0.1f;
+		CreateRagdoll(rag_settings, &mRagdolls[created++]);
 
-	vx::RagdollSettings rag_settings;
-	rag_settings.position = vx::Vec3(-5.0f, 2.0f, 0.0f);
-	rag_settings.limbsOffset = 0.1f;
-	CreateRagdoll(rag_settings, &mRagdolls[0]);
+		rag_settings.position = vx::Vec3(0.0f + x_offset, 2.0f + y_offset, 0.0f);
+		CreateRagdoll(rag_settings, &mRagdolls[created++]);
 
-	rag_settings.position = vx::Vec3(0.0f, 2.0f, 0.0f);
-	CreateRagdoll(rag_settings, &mRagdolls[1]);
+		rag_settings.position = vx::Vec3(5.0f + x_offset, 2.0f + y_offset, 0.0f);
+		rag_settings.splitTorso = false;
+		rag_settings.mShapesType = vx::EShapeType::Capsule;
+		CreateRagdoll(rag_settings, &mRagdolls[created++]);
 
-	rag_settings.position = vx::Vec3(5.0f, 2.0f, 0.0f);
-	rag_settings.splitTorso = false;
-	rag_settings.mShapesType = vx::EShapeType::Capsule;
-	CreateRagdoll(rag_settings, &mRagdolls[2]);
+		rag_settings = vx::RagdollSettings();
+		rag_settings.position = vx::Vec3(-5.0f + x_offset, 2.0f + y_offset, -4.0f);
+		CreateRagdoll(rag_settings, &mRagdolls[created++]);
 
-	rag_settings = vx::RagdollSettings();
-	rag_settings.position = vx::Vec3(-5.0f, 2.0f, -4.0f);
-	CreateRagdoll(rag_settings, &mRagdolls[3]);
+		rag_settings.position = vx::Vec3(5.0f + x_offset, 2.0f + y_offset, -4.0f);
+		CreateRagdoll(rag_settings, &mRagdolls[created++]);
 
-	rag_settings.position = vx::Vec3(5.0f, 2.0f, -4.0f);
-	CreateRagdoll(rag_settings, &mRagdolls[4]);
+		rag_settings.position = vx::Vec3(0.0f + x_offset, 2.0f + y_offset, -4.0f);
+		CreateRagdoll(rag_settings, &mRagdolls[created++]);
 
-	rag_settings.position = vx::Vec3(0.0f, 2.0f, -4.0f);
-	CreateRagdoll(rag_settings, &mRagdolls[5]);
+		if ((i % 3) == 0)
+		{
+			x_offset += 10.0f;
+			y_offset += 3.0f;
+		}
+	}
 
 
-	CreateGroundPlane(100.0f);
+	CreateGroundPlane(300.0f);
 }
 
 void RagdollScenario::PostPhysicsStep(float dt)

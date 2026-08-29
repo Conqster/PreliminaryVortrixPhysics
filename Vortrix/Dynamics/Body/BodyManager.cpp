@@ -17,7 +17,7 @@ namespace vx
 		mBodiesDebugInfo.reserve(mMaxBodies);
 
 		//may be pass active body ratio
-		mMaxActiveBodies = max_bodies * 0.5f;
+		mMaxActiveBodies = max_bodies;// *0.5f;
 		mActiveBodies = new BodyID[mMaxActiveBodies];
 
 		uint32 min_free_list = 64;
@@ -293,7 +293,7 @@ namespace vx
 
 		for (uint32 i = 0; i < count; ++i)
 		{
-			VX_ASSERT_WARN(mNumActiveBodies < mMaxActiveBodies, "Reach max bodies limits");
+			VX_ASSERT(mNumActiveBodies < mMaxActiveBodies, "Reach max active bodies limits");
 			if (mNumActiveBodies >= mMaxActiveBodies) return;
 
 			BodyID id = body_ids[i];

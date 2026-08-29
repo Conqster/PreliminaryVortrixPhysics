@@ -92,7 +92,7 @@ namespace vx {
 			float rel_velN = rel_vel.Dot(normal);
 			//restitution_bias = VxMax(0.0f, -penetration / settings.timeStep);
 			if (e > 0 && rel_velN < -settings.restitutionThreshold)
-				restitution_bias = e * rel_velN * penetration;
+				restitution_bias = e * rel_velN;// *penetration;
 
 
 			this->normal.bias = restitution_bias;

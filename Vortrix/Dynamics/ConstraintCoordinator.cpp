@@ -53,7 +53,7 @@ namespace vx{
 		}
 	}
 
-	uint32 ConstraintCoordinator::PrepConstraintSolving(ConstraintSolver& solver, const PhysicsStepContext& ctx)
+	uint32 ConstraintCoordinator::PrepConstraintSolving(ConstraintSolver& solver, PhysicsStepContext& ctx)
 	{
 		VX_PROFILE_FUNCTION();
 		//for now just all constraint might need position correction 
@@ -63,12 +63,17 @@ namespace vx{
 
 		uint32 active_constraints = 0;
 		for (auto& c : mConstraints)
+		{
 			active_constraints += c->PrepSolver(&solver, ctx);
+			if (active_constraints > 0)
+				ctx.nonContactConstraintCount++;
+		}
 		//{
 		//	if (c->PrepSolver(&solver, ctx))
 		//		active_constraints++;
 		//}
 
+		ctx.nonContactJacobianRowCount = active_constraints;
 		return active_constraints;
 	}
 

@@ -189,11 +189,11 @@ namespace vx {
 		{
 		public:
 
-			static const uint32 kLargeIslandSpitThreshold = 2;//128;//64;
+			static const uint32 kLargeIslandSpitThreshold = 128;//64;
 
 			using BinMask = uint32;
 			static constexpr uint32 kMaxBin = 16; // toal mask bit for 4 bytes (32 bits) int
-			static constexpr uint32 kBatchSize = 2;//16;//32;//16;
+			static constexpr uint32 kBatchSize = 32;//16;
 
 
 
@@ -225,19 +225,6 @@ namespace vx {
 			void MarkConstactConstraintBatchRangeComplete(uint32 island_idx, uint32 process_count, uint32 velocity_iteration, bool& last_iteration, uint32 debug_bin);
 
 
-			/// old need to remove
-			struct IslandSplitBins
-			{
-				std::vector<uint32> mConstraintIndicesBins[kMaxBin + 1];
-				std::vector<uint32> mNonConstraintIndicesBins[kMaxBin + 1];
-
-				//uint32 mContactConstraintPerBinBatchCount[kMaxBin];
-
-				//uint32* mConstraintIndicesBinBatches[kMaxBin];
-				//uint32* mConstraintIndicesBinBatchEnds[kMaxBin];
-
-			};
-
 
 			class BinConstraintsOffsetRange
 			{
@@ -266,12 +253,16 @@ namespace vx {
 
 
 
-			class IslandSplitBins2
+			class IslandSplitBins
 			{
 			public:
 				uint32 NumBins() const { return mNumActiveBins; }
 
 				BinConstraintsOffsetRange mBins[kMaxBin + 1]{};
+				
+				/// bin index must be less than the number of active bins 
+				/// unless accessing the non parallel bin (last bin) if available
+				/// 
 				uint32 mNumActiveBins = 0;
 
 				/// |a0|a1|a2|b0|b1|c0|c1|c2|c3|c4|non parallel
@@ -279,6 +270,9 @@ namespace vx {
 				/// a, b, c..... bins 
 				/// ..0, ..1 batches in bin
 				/// mTotalBatchProcessed spendle to progress the Bins
+				/// if another thread mark this bin as processed then the total batch for bin equals bin_range.TotalConstraintCount()
+				/// this is only true, if mtotalBathProcess is [0, sum bin constraint)
+				/// but in occur state it is reset
 				std::atomic<uint32> mTotalBatchProcessed{ 0 };
 				//std::atomic<uint32> mNext{ 0 };
 				//std::atomic<uint32> mCurrBin = 0;
@@ -318,30 +312,31 @@ namespace vx {
 
 
 			/// debug 
-			const IslandSplitBins2* IslandsSplitBins() const { return mIslandSplitBins2; }
+			const IslandSplitBins* IslandsSplitBins() const { return mIslandSplitBins2; }
 #if VX_DEBUG_ISLAND_SPLITTER
 			const uint32* ConstraintIndicesBuffer() const { return mConstraintIndices.data(); }
 #else
 			const uint32* ConstraintIndicesBuffer() const { return mConstraintIndices; }
 #endif // VX_DEBUG_ISLAND_SPLITTER
-
-
 			IslandRange<uint32> ContactConstraintIndicesIslandRange(uint32 island_idx, uint32 bin) const;
+			IslandRange<uint32> NonContactConstraintIndicesIslandRange(uint32 island_idx, uint32 bin) const;
 
 		private:
 			unsigned int SplitParticipatingBodies(uint32 body_active_idxA, uint32 body_active_idxB);
 
-			IslandSplitBins& GetIslandSplitBin(uint32 island_idx)
-			{
-				VX_ASSERT(island_idx < mIslandCacheBins.size());
-				return mIslandCacheBins[island_idx];
-			}
+			//IslandSplitBins& GetIslandSplitBin(uint32 island_idx)
+			//{
+			//	VX_ASSERT(island_idx < mIslandCacheBins.size());
+			//	return mIslandCacheBins[island_idx];
+			//}
 
-			const IslandSplitBins& GetIslandSplitBin(uint32 island_idx) const
-			{
-				VX_ASSERT(island_idx < mIslandCacheBins.size());
-				return mIslandCacheBins[island_idx];
-			}
+			//const IslandSplitBins& GetIslandSplitBin(uint32 island_idx) const
+			//{
+			//	VX_ASSERT(island_idx < mIslandCacheBins.size());
+			//	return mIslandCacheBins[island_idx];
+			//}
+			/// need to remove; just for debugging
+			//std::vector<IslandSplitBins> mIslandCacheBins;
 
 #if VX_DEBUG_ISLAND_SPLITTER
 			std::vector<BinMask> mBodyBinMasks;
@@ -358,8 +353,6 @@ namespace vx {
 			uint32 mConstaintIndicesCount = 0;
 #endif // VX_DEBUG_SPLITTER
 
-			/// need to remove; just for debugging
-			std::vector<IslandSplitBins> mIslandCacheBins;
 
 
 			uint32 mStepLargeIslandCount = 0;
@@ -367,10 +360,24 @@ namespace vx {
 			/// for now mIslandSplitBins2 == num of island; 
 			/// later mIslandSplitBins2 should equal num of large island and 
 			/// inorder of sorted island indices
-			IslandSplitBins2* mIslandSplitBins2 = nullptr;
+			IslandSplitBins* mIslandSplitBins2 = nullptr;
+			/// island count
 			uint32 mIslandSplitBins2Size = 0;
 
 
+
+
+
+			/// old need to remove
+			///QUICK HACK
+			/// REMOVE LATER, USE AS A TEMP ALLOCATION 
+			/// TO MANAGE ISLAND DECOMPOSITION
+			std::vector<uint32> mTempConstraintIndicesBins[kMaxBin + 1];
+			/// old need to remove
+			///QUICK HACK
+			/// REMOVE LATER, USE AS A TEMP ALLOCATION 
+			/// TO MANAGE ISLAND DECOMPOSITION
+			std::vector<uint32> mTempNonConstraintIndicesBins[kMaxBin + 1];
 		};
 
 		const Splitter& GetSplitter() const { return mSplitter; }

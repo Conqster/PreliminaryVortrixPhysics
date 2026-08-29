@@ -55,6 +55,9 @@
 #include "SampleFramework/Scenarios/LoadedFromDiskScenario.h"
 
 
+#include "SampleFramework/Instrumentation/ExportingInstrumentation.h"
+
+
 #include "Vortrix/Core/ScratchAllocator.h"
 
 #include "Vortrix/Dynamics/IslandCoordinator.h"
@@ -281,12 +284,70 @@ void Application::ScenarioInspectionWindow()
 	ImGui::End();
 }
 
+void Application::InstrumentationCaptureWindow()
+{
+
+	if (ImGui::Begin("Instrumentation Capture Window", &mPhysicsImGuiWindows.instrumentationCaptureWindow))
+	{
+		///quick hack 
+		static Scenario* curr_scenario;
+		if (curr_scenario != mCurrScenario)
+		{
+			mInstrumentationCaptureSettings.name.Clear();
+			mInstrumentationCaptureSettings.name << mCurrScenario->Name();
+			//	vx::StackString<128> log_name("Logs/");
+			//	log_name << mCurrScenario->Name() << "-Complexity" << mApplicationLaunchTime << ".csv";
+
+			mInstrumentationCaptureSettings.filename.Clear();
+			mInstrumentationCaptureSettings.filename << InstrumentationCaptureSettings::kPath <<
+				mInstrumentationCaptureSettings.name.Data() << "-Complexity" << mApplicationLaunchTime << ".csv";
+			curr_scenario = mCurrScenario;
+		}
+
+
+		if (ImGui::InputText("Filename", mInstrumentationCaptureSettings.name.BufferHead(),
+			sizeof(char) * mInstrumentationCaptureSettings.name.Capacity()))
+		{
+			mInstrumentationCaptureSettings.filename.Clear();
+			mInstrumentationCaptureSettings.filename << InstrumentationCaptureSettings::kPath <<
+				mInstrumentationCaptureSettings.name.Data() << "-Complexity" << mApplicationLaunchTime << ".csv";
+		}
+
+		ImGui::Text("Full path: %s", mInstrumentationCaptureSettings.filename.Data());
+
+		int v = mInstrumentationCaptureSettings.captureEveryPhysicsStep;
+		if (ImGui::SliderInt("Capture Every Physics Step", &v, 15, 360))
+			mInstrumentationCaptureSettings.captureEveryPhysicsStep = v;
+
+		EditorImGui::HelpInformation("iteration loops through vel iterations 4, 8, 16, 32, repeat");
+		v = mInstrumentationCaptureSettings.iterationCountPerSequence;
+		ImGui::SliderInt("Iteration Count Per Sequence", &v, 1, 18);
+			mInstrumentationCaptureSettings.iterationCountPerSequence = v;
+
+
+		if(ImGui::Button("Trigger New Capture"))
+			mInstrumentationCaptureSettings.triggerNewCapture = true;
+
+		ImGui::Text("Current Thread Sequence: %d", (int)mInstrumentationCaptureSettings.threadCountSequence);
+
+		ImGui::Checkbox("Close App On Complete", &mInstrumentationCaptureSettings.closeAppOnComplete);
+		ImGui::Checkbox("Reload Physics Every thread sequence", &mInstrumentationCaptureSettings.reloadPhysicsEveryThreadSequence);
+	}
+	ImGui::End();
+}
+
 
 
 
 Application::Application(const ApplicationSpecification& app_spec)
 {
 	mLastFrameTime = glfwGetTime();
+
+	std::time_t t = std::time(nullptr);
+	std::tm time_info;
+	localtime_s(&time_info, &t);
+
+	int count = std::strftime(mApplicationLaunchTime, sizeof(mApplicationLaunchTime), "%H%M", &time_info);
 
 	VX_LOG_INFO("Launching Application Program, \n\tName: ",
 		app_spec.name, "\n\tWindow Size: {", 
@@ -399,6 +460,7 @@ Application::~Application()
 	mUI.Shutdown();
 	mRenderer.Destroy();
 
+	ExportInstrumentationToCSV("Vortrix_Complexity_Validation.csv", mPhysicsWorldSettings->maxConcurrency, 9, 153535);
 	delete mLoadedFromDiskScenario;
 
 	delete mDebugGizmos;
@@ -410,6 +472,7 @@ Application::~Application()
 	VX_LOG_DEBUG("Closing application program...");
 	mWindow.Destroy();
 	mPtrInputEventHandle = nullptr;
+
 }
 
 void Application::Run()
@@ -458,7 +521,7 @@ void Application::Run()
 		/// Physics simulation Update
 		bool physics_scenario_world = mPhysicsWorld && mCurrScenario;
 		bool simulated_physics_world = false;
-		if (mPhysicsAppSetting.AllowStep())
+		if (mPhysicsWorld && mPhysicsAppSetting.AllowStep())
 		{
 
 			if (!CheckInputsBlocked())
@@ -516,7 +579,32 @@ void Application::Run()
 		if (mPhysicsDebugState.triggerParticleReset)
 			ResetParticleWorld(mPhysicsDebugState.triggerParticleReset);
 
+		
+		//constexpr vx::uint32 capture_complexity_every_physics_step = 120;
+		//if (mPhysicsWorld)
+		//{
+		//	const vx::uint32 physics_step = mPhysicsWorld->Context()->mStepIndex;
 
+		//	constexpr std::array<vx::uint32, 4> sweep = {
+		//		4, 8, 16, 32,
+		//	};
+
+		//	static uint32 swept = 0;
+		//	if (physics_step == 0)
+		//		swept = 0;
+
+
+		//	if(physics_step != 0 && (physics_step % 120) == 0)
+		//	{
+		//		const vx::uint32 vel_iteration = mPhysicsWorld->Context()->velocityIterations;
+		//		///const vx::uint32 vel_iteration = mPhysicsWorld->Context()->velocityIterations;
+		//		ExportInstrumentationToCSV("Logs/VortrixComplexityValidation.csv", mPhysicsWorld->GetTaskCoordinator()->MaxConcurrency(), vel_iteration, 153535);
+
+
+		//		swept++;
+		//	}
+		//	mPhysicsWorld->Settings()->solver.velocityIterations = sweep[swept % 4];
+		//}
 
 
 		/// Debug frame times
@@ -652,6 +740,9 @@ void Application::PhysicsStep(double frame_dt)
 			curr_state.subSteps++;
 			auto end = Clock::now();
 			mPhysicsStepDuration = std::chrono::duration<double, std::milli>(end - start).count();
+
+
+			PhysicsSubstepInstrumentionCapture();
 		}
 	}
 
@@ -671,6 +762,166 @@ void Application::PhysicsStep(double frame_dt)
 	}
 
 	curr_state.maxAttainedSubStep = vx::VxMax(curr_state.maxAttainedSubStep, curr_state.subSteps);
+}
+
+void Application::PhysicsSubstepInstrumentionCapture()
+{
+
+	///Profiling
+#define VX_OUTPUT_PROFILE 1
+#if VX_OUTPUT_PROFILE
+
+	//constexpr vx::uint32 capture_complexity_every_physics_step = 120;
+	//const vx::uint32 physics_step = mPhysicsWorld->Context()->mStepIndex;
+
+	//constexpr std::array<vx::uint32, 4> sweep = {
+	//	4, 8, 16, 32,
+	//};
+
+	//constexpr std::array<vx::uint32, 12> thread_count = {
+	//	//0, 2, 4, 6, 8, 12
+	//	//0, 1, 3, 5, 7, 11 // + 1 (main thread
+	//	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 // + 1 (main thread
+	//};
+
+	//static uint32 swept = 0;
+	//static bool hack_first = true;
+	//if (hack_first)
+	//{
+	//	mPhysicsDebugState.triggerReset = true;
+	//	mPhysicsWorldSettings->maxConcurrency = 0;
+	//	mPhysicsWorld->Settings()->maxConcurrency = 0;
+	//	hack_first = false;
+	//	break;
+	//}
+
+	//static uint32 thread_count_idx;
+	//if (physics_step != 0 && (physics_step % capture_complexity_every_physics_step) == 0)
+	//{
+	//	const vx::uint32 vel_iteration = mPhysicsWorld->Context()->velocityIterations;
+	//	const int constraint_count = mPhysicsWorld->Context()->contactConstraintCount + mPhysicsWorld->Context()->nonContactJacobianRowCount;
+
+	//	vx::StackString<128> log_name("Logs/");
+	//	log_name << mCurrScenario->Name() << "-Complexity" << mApplicationLaunchTime << ".csv";
+	//	///const vx::uint32 vel_iteration = mPhysicsWorld->Context()->velocityIterations;
+	//	ExportInstrumentationToCSV(log_name.Data(), mPhysicsWorld->GetTaskCoordinator()->MaxConcurrency(), vel_iteration, constraint_count);
+
+	//	swept++;
+
+	//	if ((swept % 4) == 0)
+	//	{
+	//		///reset task coordinator 
+	//		vx::TaskCoordinatorMt* t = (vx::TaskCoordinatorMt*)(mPhysicsWorld->GetTaskCoordinator());
+	//		t->Quit();
+	//		const vx::uint32 max_hardware_concurrency = std::thread::hardware_concurrency() - 1;
+
+	//		thread_count_idx++;
+	//		t->BeginThreads(thread_count[thread_count_idx % 12]);
+	//		vx::Profiler::ProfilerCollector::Instance().ResetProfiles();
+	//		mPhysicsDebugState.triggerReset = true;
+	//		mPhysicsWorldSettings->maxConcurrency = thread_count[thread_count_idx % 12];
+	//		mPhysicsWorld->Settings()->maxConcurrency = thread_count[thread_count_idx % 12];
+
+	//		if (thread_count_idx > 11)
+	//			mWindow.Close();
+	//	}
+	//}
+	//mPhysicsWorld->Settings()->solver.velocityIterations = sweep[swept % 4];
+
+
+	if (mPhysicsWorld == nullptr)
+		return;
+
+
+	static bool complete_curr_capture = true;
+
+	///this should be called along physicas sub step 
+	static vx::uint32 steps = 0;
+	static vx::uint32 capturedCount = 0;
+
+	if (mInstrumentationCaptureSettings.triggerNewCapture)
+	{
+		steps = 0; 
+		capturedCount = 0;
+
+		mInstrumentationCaptureSettings.threadCountSequence = 0;
+
+		complete_curr_capture = false;
+		mInstrumentationCaptureSettings.triggerNewCapture = false;
+
+		if(mInstrumentationCaptureSettings.reloadPhysicsEveryThreadSequence)
+		{
+			mPhysicsDebugState.triggerReset = true;
+			mPhysicsWorldSettings->maxConcurrency = 0;
+			mPhysicsWorld->Settings()->maxConcurrency = 0;
+		}
+	}
+
+	if (complete_curr_capture)
+		return;
+
+	constexpr std::array<vx::uint32, 4> sweep = {
+			4, 8, 16, 32,
+	};
+
+	if (steps > 0 && (steps % mInstrumentationCaptureSettings.captureEveryPhysicsStep) == 0)
+	{
+		/// mInstrumentationCaptureSettings step 
+		const vx::uint32 vel_iteration = mPhysicsWorld->Context()->velocityIterations;
+		const int constraint_count = mPhysicsWorld->Context()->contactConstraintCount + mPhysicsWorld->Context()->nonContactJacobianRowCount;
+
+		vx::StackString<128> log_name = mInstrumentationCaptureSettings.filename;
+		//log_name << "-Complexity" << mApplicationLaunchTime << ".csv";
+		ExportInstrumentationToCSV(log_name.Data(), mPhysicsWorld->GetTaskCoordinator()->MaxConcurrency(), vel_iteration, constraint_count);
+		
+		capturedCount++;
+
+		///update physics world
+		//mPhysicsWorld->Settings()->solver.velocityIterations = sweep[(capturedCount) % mInstrumentationCaptureSettings.iterationCountPerSequence];
+		mPhysicsWorld->Settings()->solver.velocityIterations = sweep[(capturedCount) % sweep.size()];
+
+		if ((capturedCount % mInstrumentationCaptureSettings.iterationCountPerSequence) == 0)
+		{
+			mInstrumentationCaptureSettings.threadCountSequence++;
+
+			/// complete instrumentation
+			if (mInstrumentationCaptureSettings.threadCountSequence > 11)
+			{
+				if (mInstrumentationCaptureSettings.closeAppOnComplete)
+					mWindow.Close();
+				else
+					complete_curr_capture = true;
+			}
+			else
+			{
+				/// reset 
+				steps = 0;
+				capturedCount = 0;
+
+				///reset task coordinator 
+				vx::TaskCoordinatorMt* t = (vx::TaskCoordinatorMt*)(mPhysicsWorld->GetTaskCoordinator());
+				t->Quit();
+				const vx::uint32 max_hardware_concurrency = std::thread::hardware_concurrency() - 1;
+
+				t->BeginThreads(mInstrumentationCaptureSettings.threadCountSequence % 12);
+				vx::Profiler::ProfilerCollector::Instance().ResetProfiles();
+				if(mInstrumentationCaptureSettings.reloadPhysicsEveryThreadSequence)
+				{
+					mPhysicsDebugState.triggerReset = true;
+					mPhysicsWorldSettings->maxConcurrency = mInstrumentationCaptureSettings.threadCountSequence % 12;
+					mPhysicsWorld->Settings()->maxConcurrency = mInstrumentationCaptureSettings.threadCountSequence % 12;
+				}
+
+			}
+		}
+
+	}
+	steps++;
+
+
+
+
+#endif // VX_OUTPUT_PROFILE
 }
 
 void Application::UpdateCamera(float dt)
@@ -1593,6 +1844,7 @@ void Application::OnDrawImGuiOverlays()
 
 			if (ImGui::MenuItem("Application")) open_app_win = !open_app_win;
 			if (ImGui::MenuItem("Scenario Window Management")) mPhysicsImGuiWindows.scenarioWindowManagement = !mPhysicsImGuiWindows.scenarioWindowManagement;
+			if (ImGui::MenuItem("Instrumentation Capture Window")) mPhysicsImGuiWindows.instrumentationCaptureWindow = !mPhysicsImGuiWindows.instrumentationCaptureWindow;
 
 			ImGui::Separator();
 
@@ -1714,6 +1966,8 @@ void Application::OnDrawImGuiOverlays()
 	if(mPhysicsImGuiWindows.showSolverBodyPhysicsBodyWindow)
 		SolverBodyPhysicsBodyWindow();
 
+	if (mPhysicsImGuiWindows.instrumentationCaptureWindow)
+		InstrumentationCaptureWindow();
 
 
 	if (open_phy_debug)
@@ -2265,11 +2519,12 @@ void Application::PhysicsSettingItemOverlays()
 		ImGui::SliderFloat("Gravity Scale", &phy_settings.gravityScale, 0.0f, 1.0f, "%.2f");
 
 
-		vx::uint32 curr_thread_count = mPhysicsWorld->GetTaskCoordinator()->MaxConcurrency() - 1;
+		const vx::uint32 curr_thread_count = mPhysicsWorld->GetTaskCoordinator()->MaxConcurrency() - 1;
 		const int max_threads = std::thread::hardware_concurrency() - 1;
 		ImGui::SliderInt("Max Concurrency", &phy_settings.maxConcurrency, -1, max_threads);
 		if (curr_thread_count != phy_settings.maxConcurrency && !(phy_settings.maxConcurrency == - 1 && curr_thread_count == max_threads))
 			ImGui::TextColored(ImVec4(1, 0, 0, 1), "Task Coordinator, thread count miss match reset physics world");
+		ImGui::Text("Physics Task Corrdinator Worker Count: %d", curr_thread_count + 1);
 		ImGui::Checkbox("Split large Islands", &phy_settings.splitLargeIsland);
 		ImGui::SliderFloat("Scratch Allocation", &phy_settings.scratchAllocationMiB, 0.0f, 32.0f, "%.1f MiB");
 
@@ -2491,7 +2746,8 @@ void Application::DrawProfileOverlay()
 	static std::unordered_map<std::string_view, std::vector<float>> profile_samples;
 	static int frame_index = 0;
 
-	auto& profiles = ProfilerCollector::Instance().GetProfiles();
+	//auto& profiles = ProfilerCollector::Instance().CopyProfiles();
+	auto& profiles = ProfilerCollector::Instance().SnapshotProfiles();
 
 
 	auto Filter_Pass = [&](const std::string_view name, const char* filter)
@@ -4713,11 +4969,12 @@ void Application::PhysicsIslandCoordSplitterTab()
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////
-	/// Per Island Constraint Binned Group (Graph Coloured)
+	/// Per Island Contact Constraint Binned Group (Graph Coloured)
 	/////////////////////////////////////////////////////////////////////////////////////
-	if (ImGui::TreeNodeEx("Per Island Constraint Binned Group (Graph Coloured)"))
+	if (ImGui::TreeNodeEx("Per Island Contact Constraint Binned Group (Graph Coloured)"))
 	{
-		if (ImGui::BeginTable("table1", 17, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+		static constexpr uint32 k_total_max_bin = vx::IslandCoordinator::Splitter::kMaxBin + 1;
+		if (ImGui::BeginTable("table1", k_total_max_bin + 1, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
 		{
 			// Display headers so we can inspect their interaction with borders
 			// (Headers are not the main purpose of this section of the demo, so we are not elaborating on them now. See other sections for details)
@@ -4725,7 +4982,7 @@ void Application::PhysicsIslandCoordSplitterTab()
 			{
 				ImGui::TableSetupColumn("No\Bins");
 				/// bins
-				for (vx::uint32 i = 0; i < 16; ++i)
+				for (vx::uint32 i = 0; i < k_total_max_bin; ++i)
 					ImGui::TableSetupColumn((vx::StackString<6>("") << i).Data());
 
 				ImGui::TableHeadersRow();
@@ -4753,8 +5010,9 @@ void Application::PhysicsIslandCoordSplitterTab()
 				}
 
 				//could sort with indices 
-				vx::IslandCoordinator::IslandRange<vx::uint32> constraint_island_grps[vx::IslandCoordinator::Splitter::kMaxBin] =
+				vx::IslandCoordinator::IslandRange<vx::uint32> constraint_island_grps[k_total_max_bin] =
 				{
+						vx::IslandCoordinator::IslandRange<vx::uint32>(nullptr, nullptr),
 						vx::IslandCoordinator::IslandRange<vx::uint32>(nullptr, nullptr),
 						vx::IslandCoordinator::IslandRange<vx::uint32>(nullptr, nullptr),
 						vx::IslandCoordinator::IslandRange<vx::uint32>(nullptr, nullptr),
@@ -4774,7 +5032,7 @@ void Application::PhysicsIslandCoordSplitterTab()
 				};
 
 				uint32 largest_bin_count = 0;
-				for (uint32 i = 0; i < vx::IslandCoordinator::Splitter::kMaxBin; ++i)
+				for (uint32 i = 0; i < k_total_max_bin; ++i)
 				{
 					constraint_island_grps[i] = mPhysicsWorld->GetIslandCoordinator()->GetSplitter().ContactConstraintIndicesIslandRange(island, i);
 					if (constraint_island_grps[i].Valid())
@@ -4790,7 +5048,7 @@ void Application::PhysicsIslandCoordSplitterTab()
 					ImGui::Text("%d", i);
 
 					//constraint at i per bin
-					for (uint32 bin_grp = 0; bin_grp < vx::IslandCoordinator::Splitter::kMaxBin; ++bin_grp)
+					for (uint32 bin_grp = 0; bin_grp < k_total_max_bin; ++bin_grp)
 					{
 						vx::IslandCoordinator::IslandRange<vx::uint32>& constraint_island_grp = constraint_island_grps[bin_grp];
 
@@ -4814,6 +5072,111 @@ void Application::PhysicsIslandCoordSplitterTab()
 		ImGui::TreePop();
 	}
 
+
+
+	/////////////////////////////////////////////////////////////////////////////////////
+	/// Per Island Non Contact Constraint Binned Group (Graph Coloured)
+	/////////////////////////////////////////////////////////////////////////////////////
+	if (ImGui::TreeNodeEx("Per Island Non Contact Constraint Binned Group (Graph Coloured)"))
+	{
+		static constexpr uint32 k_total_max_bin = vx::IslandCoordinator::Splitter::kMaxBin + 1;
+		if (ImGui::BeginTable("table1", k_total_max_bin + 1, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+		{
+			// Display headers so we can inspect their interaction with borders
+			// (Headers are not the main purpose of this section of the demo, so we are not elaborating on them now. See other sections for details)
+			//if (display_headers)
+			{
+				ImGui::TableSetupColumn("No\Bins");
+				/// bins
+				for (vx::uint32 i = 0; i < k_total_max_bin; ++i)
+					ImGui::TableSetupColumn((vx::StackString<6>("") << i).Data());
+
+				ImGui::TableHeadersRow();
+			}
+
+			for (uint32 island = 0; island < mPhysicsWorld->GetIslandCoordinator()->IslandCount(); ++island)
+			{
+				ImGui::TableNextRow();
+
+				ImGui::TableSetColumnIndex(0);
+				ImGui::Text("Island %d", island);
+
+				for (vx::uint32 i = 0; i < 16; ++i)
+				{
+					vx::Colour col = vx::Colour::RandomColour(i);
+
+					ImGui::TableSetColumnIndex(1 + i);
+					ImVec4 _col(col.R(), col.G(), col.B(), 1.0f);
+					if (island > 0)
+					{
+						ImGui::Text("%d:", i);
+						ImGui::SameLine();
+					}
+					ImGui::ColorButton("##", _col);
+				}
+
+				//could sort with indices 
+				vx::IslandCoordinator::IslandRange<vx::uint32> constraint_island_grps[k_total_max_bin] =
+				{
+						vx::IslandCoordinator::IslandRange<vx::uint32>(nullptr, nullptr),
+						vx::IslandCoordinator::IslandRange<vx::uint32>(nullptr, nullptr),
+						vx::IslandCoordinator::IslandRange<vx::uint32>(nullptr, nullptr),
+						vx::IslandCoordinator::IslandRange<vx::uint32>(nullptr, nullptr),
+						vx::IslandCoordinator::IslandRange<vx::uint32>(nullptr, nullptr),
+						vx::IslandCoordinator::IslandRange<vx::uint32>(nullptr, nullptr),
+						vx::IslandCoordinator::IslandRange<vx::uint32>(nullptr, nullptr),
+						vx::IslandCoordinator::IslandRange<vx::uint32>(nullptr, nullptr),
+						vx::IslandCoordinator::IslandRange<vx::uint32>(nullptr, nullptr),
+						vx::IslandCoordinator::IslandRange<vx::uint32>(nullptr, nullptr),
+						vx::IslandCoordinator::IslandRange<vx::uint32>(nullptr, nullptr),
+						vx::IslandCoordinator::IslandRange<vx::uint32>(nullptr, nullptr),
+						vx::IslandCoordinator::IslandRange<vx::uint32>(nullptr, nullptr),
+						vx::IslandCoordinator::IslandRange<vx::uint32>(nullptr, nullptr),
+						vx::IslandCoordinator::IslandRange<vx::uint32>(nullptr, nullptr),
+						vx::IslandCoordinator::IslandRange<vx::uint32>(nullptr, nullptr),
+						vx::IslandCoordinator::IslandRange<vx::uint32>(nullptr, nullptr)
+				};
+
+				uint32 largest_bin_count = 0;
+				for (uint32 i = 0; i < k_total_max_bin; ++i)
+				{
+					constraint_island_grps[i] = mPhysicsWorld->GetIslandCoordinator()->GetSplitter().NonContactConstraintIndicesIslandRange(island, i);
+					if (constraint_island_grps[i].Valid())
+						largest_bin_count = vx::VxMax(constraint_island_grps[i].Size(), largest_bin_count);
+				}
+
+
+				vx::uint32 curr_body_count = 0;
+				for (uint32 i = 0; i < largest_bin_count; ++i)
+				{
+					ImGui::TableNextRow();
+					ImGui::TableSetColumnIndex(0);
+					ImGui::Text("%d", i);
+
+					//constraint at i per bin
+					for (uint32 bin_grp = 0; bin_grp < k_total_max_bin; ++bin_grp)
+					{
+						vx::IslandCoordinator::IslandRange<vx::uint32>& constraint_island_grp = constraint_island_grps[bin_grp];
+
+						if (!constraint_island_grp.Valid() || i >= constraint_island_grp.Size())
+							continue;
+
+						uint32 constraint_idx = *(constraint_island_grp.begin + i);
+						//auto* constraint = mPhysicsWorld->ContactConstraintCoordinator()->GetContactConstraint(*(constraint_island_grp.begin + i));
+
+						ImGui::TableSetColumnIndex(1 + bin_grp);
+						ImGui::Text("%d", constraint_idx);
+					}
+				}
+
+			}
+
+
+			ImGui::EndTable();
+		}
+
+		ImGui::TreePop();
+	}
 
 
 
@@ -4964,7 +5327,9 @@ void Application::PhysicsIslandCoordSplitterTab()
 
 
 
-					uint32 largest_bin_range = 0;
+					uint32 largest_contact_bin_range = 0;
+					uint32 largest_non_contact_bin_range = 0;
+
 					uint32 total_constraint_in_island = 0;
 					{
 						ImGui::TableSetupColumn("No\Bins");
@@ -4974,12 +5339,16 @@ void Application::PhysicsIslandCoordSplitterTab()
 							ImGui::TableSetupColumn((vx::StackString<6>("") << i).Data());
 							island_splitter_bin_range[i] = island_split_bins.mBins[i];
 
-							largest_bin_range = vx::VxMax(largest_bin_range, island_splitter_bin_range[i].TotalConstraintCount());
+							largest_contact_bin_range = vx::VxMax(largest_contact_bin_range, island_splitter_bin_range[i].NumContactConstraint());
+							largest_non_contact_bin_range = vx::VxMax(largest_non_contact_bin_range, island_splitter_bin_range[i].NumNonContactConstraint());
+
 							total_constraint_in_island += island_splitter_bin_range[i].TotalConstraintCount();
 						}
 						/// non parallel bin
 						island_splitter_bin_range[island_split_bins.mNumActiveBins] = island_split_bins.mBins[vx::IslandCoordinator::Splitter::kMaxBin];
-						largest_bin_range = vx::VxMax(largest_bin_range, island_splitter_bin_range[island_split_bins.mNumActiveBins].TotalConstraintCount());
+						largest_contact_bin_range = vx::VxMax(largest_contact_bin_range, island_splitter_bin_range[island_split_bins.mNumActiveBins].NumContactConstraint());
+						largest_non_contact_bin_range = vx::VxMax(largest_non_contact_bin_range, island_splitter_bin_range[island_split_bins.mNumActiveBins].NumNonContactConstraint());
+
 						total_constraint_in_island += island_splitter_bin_range[island_split_bins.mNumActiveBins].TotalConstraintCount();
 
 
@@ -4989,7 +5358,7 @@ void Application::PhysicsIslandCoordSplitterTab()
 					}
 
 
-					for (vx::uint32 i = 0; i < largest_bin_range; ++i)
+					for (vx::uint32 i = 0; i < largest_contact_bin_range; ++i)
 					{
 						ImGui::TableNextRow();
 
@@ -5000,7 +5369,7 @@ void Application::PhysicsIslandCoordSplitterTab()
 						{
 							const auto& curr_island_splitter_bin_range = island_splitter_bin_range[bin_idx];
 
-							if (curr_island_splitter_bin_range.TotalConstraintCount() <= i)
+							if (curr_island_splitter_bin_range.NumContactConstraint() <= i)
 								continue;
 
 
@@ -5010,6 +5379,40 @@ void Application::PhysicsIslandCoordSplitterTab()
 							const auto* contact_corrd = mPhysicsWorld->ContactConstraintCoordinator()->GetContactConstraint(constraint_solver_idx);
 
 							ImGui::Text("%d; %d", contact_corrd->BodyA().Value(), contact_corrd->BodyB().Value());
+						}
+					}
+
+					ImGui::TableNextRow();
+					ImGui::TableNextRow();
+
+
+					if (!mPhysicsWorld->GetConstraintSolver()->GetLinearRowPtr())
+						ImGui::TextColored(ImVec4(1, 0, 0, 1), "Missing persistent buffer information for constraint solver linera row");
+					else
+					{
+						for (vx::uint32 i = 0; i < largest_non_contact_bin_range; ++i)
+						{
+							ImGui::TableNextRow();
+
+							ImGui::TableSetColumnIndex(0);
+							ImGui::Text("%d", i);
+
+							for (vx::uint32 bin_idx = 0; bin_idx < island_split_bins.mNumActiveBins + 1; ++bin_idx)
+							{
+								const auto& curr_island_splitter_bin_range = island_splitter_bin_range[bin_idx];
+
+								if (curr_island_splitter_bin_range.NumNonContactConstraint() <= i)
+									continue;
+
+
+								ImGui::TableSetColumnIndex(bin_idx + 1);
+
+								uint32 constraint_solver_idx = mPhysicsWorld->GetIslandCoordinator()->GetSplitter().ConstraintIndicesBuffer()[curr_island_splitter_bin_range.nonContactStart + i];
+
+								const auto* contact_corrd = mPhysicsWorld->GetConstraintSolver()->GetLinearRowPtr() + constraint_solver_idx;
+
+								ImGui::Text("%d; %d", contact_corrd->bodyAidx, contact_corrd->bodyBidx);
+							}
 						}
 					}
 

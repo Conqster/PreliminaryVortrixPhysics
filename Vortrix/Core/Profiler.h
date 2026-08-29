@@ -14,6 +14,8 @@
 #include "EProfileMode.h"
 #include <unordered_map>
 
+#include "Vortrix/Core/Atomics.h"
+
 #if defined(TRACY_ENABLE)
 #if VX_USE_TRACY
 #include "external/TracyProfiler/tracy/Tracy.hpp"
@@ -30,7 +32,7 @@ namespace vx
 	{
 #ifdef VX_ENABLE_PROFILING
 
-		struct ProfileData
+		struct alignas(32) ProfileData
 		{
 			uint64 samples = 0;
 			float lastMs = 0.0f;
@@ -50,18 +52,178 @@ namespace vx
 
 			void AddSample(const std::string_view& name, float ms)
 			{
-				ProfileData& data = mProfiles[name];
-				data.lastMs = ms;
-				data.avgMs = data.avgMs * 0.9 + ms * 0.1;
-				data.samples++;
-				if (ms > data.maxMs)
-					data.maxMs = ms;
+				std::string key(name);
+
+				bool found = false;
+				std::atomic<ProfileData>* target_profile_slot = nullptr;
+
+				/// attempt to read 
+				do
+				{
+
+					if (mSafeRead.load(std::memory_order_acquire))
+					{
+						auto it = mProfiles.find(key);
+						if (it != mProfiles.end())
+						{
+							target_profile_slot = it->second.get();
+							found = true;
+						}
+						else
+							found = false;
+
+						break;
+					}
+
+					_mm_pause; ///overspinnign cpu clock, slice time
+				}
+				///try again if we cant read
+				while (true);
+
+
+				if (!found)
+				{
+					/// extra caveat, more than one thread might fail to find a slot 
+					/// so one should attempt allocation while other loops, for turn
+					/// 
+					
+					bool safe_read_write = true;
+					for (;;)
+					{
+
+						if (mSafeRead.compare_exchange_weak(safe_read_write, false, std::memory_order_acquire))
+						{
+							/// new profile data
+							/// one thread, could particpate at a time
+							/// 
+							/// but a caveat, a thread could have beaten us to new allocation
+							/// 
+							//ProfileData& data = mProfiles[name]; //<- support caveat, since one thread a time, this gets/create based on condition
+
+							auto it = mProfiles.find(key);
+							if (it == mProfiles.end())
+							{
+								/// new data
+								ProfileData data;
+								data.lastMs = ms;
+								data.avgMs = ms;
+								data.samples = 1;
+								data.maxMs = ms;
+
+								/// could allocate & assign value 
+								/// since this would be the only thread during allocation
+								/// during 
+								mProfiles[name] = vx::MakeScope<std::atomic<ProfileData>>(data);
+
+								/// no we publish, so other threads can attempt read/write
+								//re open atomic gate for all subsequent concureent readers
+								mSafeRead.store(true, std::memory_order_release);
+								return; ///allocation and sample adding complete
+							}
+							
+							/// another thread beat us, 
+							/// break out for sample update
+							target_profile_slot = it->second.get();
+							mSafeRead.store(true, std::memory_order_release);
+							break;
+						}
+						safe_read_write = true;
+						_mm_pause; ///overspinnign cpu clock, slice time
+					}
+				}
+
+
+				VX_ASSERT(target_profile_slot);
+				ProfileData old_profile_data = target_profile_slot->load(std::memory_order_acquire);
+				for (;;)
+				{
+					ProfileData data;
+					data.lastMs = ms;
+					data.avgMs = old_profile_data.avgMs * 0.9 + ms * 0.1;
+					data.samples = old_profile_data.samples + 1;
+					data.maxMs = vx::VxMax(old_profile_data.maxMs, ms);
+
+					if(target_profile_slot->compare_exchange_weak(old_profile_data, data, std::memory_order_release))
+						return;
+
+					/// failed 
+					_mm_pause; ///overspinnign cpu clock, slice time
+					old_profile_data = target_profile_slot->load(std::memory_order_acquire);
+				}
+				
 			}
 
-			const std::unordered_map<std::string_view, ProfileData>& GetProfiles() const { return mProfiles; }
+			const std::unordered_map<std::string_view, vx::Scope<std::atomic<ProfileData>>>& UnsafeProfiles() const { return mProfiles; }
+
+			void ResetProfiles()
+			{
+				mProfiles.clear();
+			}
+			std::unordered_map<std::string_view, ProfileData> CopyProfiles()
+			{
+				bool safe_read = true;
+				std::unordered_map<std::string_view, ProfileData> snapshots;
+				snapshots.reserve(mProfiles.size());
+				for (;;)
+				{
+					if (mSafeRead.compare_exchange_weak(safe_read, false, std::memory_order_acquire))
+					{
+
+						for (const auto& [name, atomic_profile_ptr] : mProfiles)
+						{
+							if (atomic_profile_ptr)
+							{
+								snapshots[name] = atomic_profile_ptr->load(std::memory_order_relaxed);
+							}
+						}
+
+
+						//re open atomic gate for all subsequent concureent readers
+						mSafeRead.store(true, std::memory_order_release);
+						return snapshots;
+					}
+
+					safe_read = true;
+					_mm_pause(); ///cpu yield
+				}
+			}
+
+			struct ExportSnapshot
+			{
+				std::string_view name;
+				ProfileData metrics;
+			};
+			
+			std::vector<ExportSnapshot> SnapshotProfiles()
+			{
+				bool safe_read = true;
+				std::vector<ExportSnapshot> snapshots;
+				snapshots.reserve(mProfiles.size());
+				for (;;)
+				{
+					if (mSafeRead.compare_exchange_weak(safe_read, false, std::memory_order_acquire))
+					{
+
+						for (const auto& [name, atomic_profile_ptr] : mProfiles)
+						{
+							if (atomic_profile_ptr)
+								snapshots.push_back({ name, atomic_profile_ptr->load(std::memory_order_relaxed) });
+						}
+
+
+						//re open atomic gate for all subsequent concureent readers
+						mSafeRead.store(true, std::memory_order_release);
+						return snapshots;
+					}
+
+					safe_read = true;
+					_mm_pause(); ///cpu yield
+				}
+			}
 
 		private:
-			std::unordered_map<std::string_view, ProfileData> mProfiles;
+			std::atomic<bool> mSafeRead = true;
+			std::unordered_map<std::string_view, vx::Scope<std::atomic<ProfileData>>> mProfiles;
 		};
 
 

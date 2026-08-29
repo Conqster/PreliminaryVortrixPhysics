@@ -123,6 +123,7 @@ namespace vx {
 		SolverBody* GetBodiesPtr() { return mBodies.data(); }
 		size_t GetBodiesCount() { return mBodies.size(); }
 		Linear1DRow* GetLinearRowPtr() { return mLinear1DRows; }
+		const Linear1DRow* GetLinearRowPtr() const{ return mLinear1DRows; }
 		size_t LinearRowCount() const { return mLinear1DRowsCounts; }
 		size_t Linear1DRowBufferCount() const { return mLinear1DRowBufferCount; }
 

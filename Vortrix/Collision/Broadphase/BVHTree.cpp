@@ -495,7 +495,7 @@ namespace vx
 						mBodyManager->GetBodySimStats(*b0).phase |= EBodySimphaseFlags::InBroadphase;
 						mBodyManager->GetBodySimStats(*b1).phase |= EBodySimphaseFlags::InBroadphase;
 					}
-					VX_ASSERT(io_sim_step.broadphasePairCount < physics_ctx.mSettings->collision.maxPairs);
+       					VX_ASSERT(io_sim_step.broadphasePairCount < physics_ctx.mSettings->collision.maxPairs);
 					io_sim_step.broadphasePair[io_sim_step.broadphasePairCount++] = BroadphasePair(b0, b1);
 					//potential_pair.emplace_back(b0, b1);
 				}

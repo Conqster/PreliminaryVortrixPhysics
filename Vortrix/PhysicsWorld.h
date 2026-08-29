@@ -119,6 +119,8 @@ namespace vx
 		const PhysicsWorldSettings* Settings() const { return mSettings; }
 		PhysicsWorldSettings* Settings() { return mSettings; }
 
+		const PhysicsStepContext* Context() const { return &mContext; }
+
 		const TaskCoordinator* GetTaskCoordinator() const { return mTaskCoordinator; }
 
 		const ScratchAllocator* GetScratchAllocator() const { return mScratchAllocator; }

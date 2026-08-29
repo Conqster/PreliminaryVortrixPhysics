@@ -112,6 +112,33 @@ private:
 	ApplicationWindow mWindow;
 
 
+	char mApplicationLaunchTime[16];
+
+	struct InstrumentationCaptureSettings
+	{
+		vx::uint32 captureEveryPhysicsStep = 120;
+
+		static constexpr const char* kPath = "Logs/";
+		vx::StackString<64> name;
+
+		//vx::uint32 threadIdxSequence = 0;
+		vx::uint32 threadCountSequence = 0;
+
+		vx::uint32 iterationCountPerSequence = 4;
+
+		bool reloadPhysicsEveryThreadSequence = false;
+
+		bool closeAppOnComplete = false;
+
+		bool triggerNewCapture = false;
+
+	//private:
+		//optimise later
+		vx::StackString<128> filename = vx::StackString<128>("Logs/");
+	};
+
+	InstrumentationCaptureSettings mInstrumentationCaptureSettings;
+
 	//Remove later
 	RendererImpl mRenderer;
 	vx::DebugGizmosRenderer* mDebugGizmos = nullptr;
@@ -145,6 +172,8 @@ private:
 	void LoadScenarioWindow();
 	void ScenarioInspectionWindow();
 
+	void InstrumentationCaptureWindow();
+
 	vx::RenderSettings mPhysicsRenderSettings{};
 
 	EditorImGui mUI;
@@ -163,6 +192,8 @@ public:
 private:
 
 	void PhysicsStep(double frame_dt);
+
+	void PhysicsSubstepInstrumentionCapture();
 
 	bool bFailLaunch = false;
 
@@ -254,6 +285,7 @@ private:
 		bool createNewCustomPhysicsObject = false;
 		bool createConstraints = false;
 		bool showSolverBodyPhysicsBodyWindow = false;
+		bool instrumentationCaptureWindow = false;
 	}mPhysicsImGuiWindows;
 
 
