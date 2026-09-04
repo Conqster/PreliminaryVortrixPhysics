@@ -328,6 +328,8 @@ namespace vx {
 			///use pointer to point cached buffer
 			CacheContactPoint* cacheLocalPoint = nullptr;
 
+			static constexpr uint32 kConstraintAxisCount = 3;
+
 			struct ConstraintAxis //ConstraintRow
 			{
 				Float3 axis;
@@ -357,10 +359,12 @@ namespace vx {
 			//}
 		};
 
+		
 		/// what is the best caching method
 		///
 		/// what is required 
 		public:
+		static constexpr uint32 kContactConstraintAxisCount = ContactPointConstraint::kConstraintAxisCount;
 		class ContactConstraint
 		{
 		public:

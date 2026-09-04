@@ -55,7 +55,7 @@
 #include "SampleFramework/Scenarios/LoadedFromDiskScenario.h"
 
 
-#include "SampleFramework/Instrumentation/ExportingInstrumentation.h"
+#include "SampleFramework/Instrumentation/ExportProfilingData.h"
 
 
 #include "Vortrix/Core/ScratchAllocator.h"
@@ -284,54 +284,90 @@ void Application::ScenarioInspectionWindow()
 	ImGui::End();
 }
 
-void Application::InstrumentationCaptureWindow()
+void Application::ProfilingCaptureWindow()
 {
 
-	if (ImGui::Begin("Instrumentation Capture Window", &mPhysicsImGuiWindows.instrumentationCaptureWindow))
+	if (ImGui::Begin("Profiling Capture Window", &mPhysicsImGuiWindows.profilingCaptureWindow))
 	{
 		///quick hack 
 		static Scenario* curr_scenario;
 		if (curr_scenario != mCurrScenario)
 		{
-			mInstrumentationCaptureSettings.name.Clear();
-			mInstrumentationCaptureSettings.name << mCurrScenario->Name();
+			mProfilingCaptureSettings.name.Clear();
+			mProfilingCaptureSettings.name << mCurrScenario->Name();
 			//	vx::StackString<128> log_name("Logs/");
 			//	log_name << mCurrScenario->Name() << "-Complexity" << mApplicationLaunchTime << ".csv";
 
-			mInstrumentationCaptureSettings.filename.Clear();
-			mInstrumentationCaptureSettings.filename << InstrumentationCaptureSettings::kPath <<
-				mInstrumentationCaptureSettings.name.Data() << "-Complexity" << mApplicationLaunchTime << ".csv";
+			mProfilingCaptureSettings.filename.Clear();
+			mProfilingCaptureSettings.filename << ProfilingCaptureSettings::kPath <<
+				mProfilingCaptureSettings.name.Data() << "-Complexity" << mApplicationLaunchTime << ".csv";
 			curr_scenario = mCurrScenario;
 		}
 
 
-		if (ImGui::InputText("Filename", mInstrumentationCaptureSettings.name.BufferHead(),
-			sizeof(char) * mInstrumentationCaptureSettings.name.Capacity()))
+		if (ImGui::InputText("Filename", mProfilingCaptureSettings.name.BufferHead(),
+			sizeof(char) * mProfilingCaptureSettings.name.Capacity()))
 		{
-			mInstrumentationCaptureSettings.filename.Clear();
-			mInstrumentationCaptureSettings.filename << InstrumentationCaptureSettings::kPath <<
-				mInstrumentationCaptureSettings.name.Data() << "-Complexity" << mApplicationLaunchTime << ".csv";
+			mProfilingCaptureSettings.filename.Clear();
+			mProfilingCaptureSettings.filename << ProfilingCaptureSettings::kPath <<
+				mProfilingCaptureSettings.name.Data() << "-Complexity" << mApplicationLaunchTime << ".csv";
 		}
 
-		ImGui::Text("Full path: %s", mInstrumentationCaptureSettings.filename.Data());
+		ImGui::Text("Full path: %s", mProfilingCaptureSettings.filename.Data());
 
-		int v = mInstrumentationCaptureSettings.captureEveryPhysicsStep;
+		int v = mProfilingCaptureSettings.captureEveryPhysicsStep;
 		if (ImGui::SliderInt("Capture Every Physics Step", &v, 15, 360))
-			mInstrumentationCaptureSettings.captureEveryPhysicsStep = v;
+			mProfilingCaptureSettings.captureEveryPhysicsStep = v;
 
 		EditorImGui::HelpInformation("iteration loops through vel iterations 4, 8, 16, 32, repeat");
-		v = mInstrumentationCaptureSettings.iterationCountPerSequence;
+		v = mProfilingCaptureSettings.iterationCountPerSequence;
 		ImGui::SliderInt("Iteration Count Per Sequence", &v, 1, 18);
-			mInstrumentationCaptureSettings.iterationCountPerSequence = v;
+			mProfilingCaptureSettings.iterationCountPerSequence = v;
 
 
 		if(ImGui::Button("Trigger New Capture"))
-			mInstrumentationCaptureSettings.triggerNewCapture = true;
+		{
+			mProfilingCaptureSettings.triggerNewCapture = true;
+			mPhysicsDebugState.triggerReset = true;
+			mPhysicsAppSetting.StateStats().paused = false;
+		}
 
-		ImGui::Text("Current Thread Sequence: %d", (int)mInstrumentationCaptureSettings.threadCountSequence);
+		ImGui::Text("Current Thread Sequence: %d", (int)mProfilingCaptureSettings.threadCountSequence);
 
-		ImGui::Checkbox("Close App On Complete", &mInstrumentationCaptureSettings.closeAppOnComplete);
-		ImGui::Checkbox("Reload Physics Every thread sequence", &mInstrumentationCaptureSettings.reloadPhysicsEveryThreadSequence);
+		ImGui::Checkbox("Close App On Complete", &mProfilingCaptureSettings.closeAppOnComplete);
+		ImGui::Checkbox("Reload Physics Every thread sequence", &mProfilingCaptureSettings.reloadPhysicsEveryThreadSequence);
+
+
+
+		if (mPhysicsWorld != nullptr && ImGui::BeginTable("", 12))
+		{
+
+			/// bins
+			for (vx::uint32 i = 0; i < 12; ++i)
+				ImGui::TableSetupColumn((vx::StackString<18>("Rank_") << i << "(Avg)").Data());
+
+			ImGui::TableHeadersRow();
+
+			ImGui::TableNextRow();
+
+			const auto& profile = mPhysicsWorld->mVelocitySolveProfile;
+
+			for (vx::uint32 i = 0; i < 12; ++i)
+			{
+				ImGui::TableSetColumnIndex(i);
+				ImGui::Text("%d (%f)", profile.total_jacobian_solved[i], float(profile.total_jacobian_solved[i]) / float(profile.sampleCount));
+			}
+
+			ImGui::TableNextRow();
+			for (vx::uint32 i = 0; i < 12; ++i)
+			{
+				ImGui::TableSetColumnIndex(i);
+				ImGui::Text("(%f)", float(profile.total_jacobian_solved[i]) / float(profile.contributionSampleCount[i]));
+			}
+			ImGui::EndTable();
+
+		}
+
 	}
 	ImGui::End();
 }
@@ -460,7 +496,21 @@ Application::~Application()
 	mUI.Shutdown();
 	mRenderer.Destroy();
 
-	ExportInstrumentationToCSV("Vortrix_Complexity_Validation.csv", mPhysicsWorldSettings->maxConcurrency, 9, 153535);
+	if(mPhysicsWorldSettings)
+		ExportProfilingDataToCSV("Vortrix_Complexity_Validation.csv", mPhysicsWorldSettings->maxConcurrency, 9, 153535);
+
+	if (mPhysicsWorld)
+	{
+		ExportSortedLoadBalancingToCSV(
+			(vx::StackString("LoadBalancing_") << mApplicationLaunchTime << ".csv").Data(),
+			mCurrScenario->Name(), mPhysicsWorld->mVelocitySolveProfile, mPhysicsWorld->GetTaskCoordinator()->MaxConcurrency());
+
+		ExportSortedLoadBalancingToCSV(
+			(vx::StackString("Test_LoadBalancing_") << mApplicationLaunchTime << ".csv").Data(),
+			mPhysicsWorld->GetTaskCoordinator()->MaxConcurrency(), mPhysicsWorld->Settings()->solver.velocityIterations,
+			mPhysicsWorld->mVelocitySolveProfile,
+			std::thread::hardware_concurrency());
+	}
 	delete mLoadedFromDiskScenario;
 
 	delete mDebugGizmos;
@@ -598,7 +648,7 @@ void Application::Run()
 		//	{
 		//		const vx::uint32 vel_iteration = mPhysicsWorld->Context()->velocityIterations;
 		//		///const vx::uint32 vel_iteration = mPhysicsWorld->Context()->velocityIterations;
-		//		ExportInstrumentationToCSV("Logs/VortrixComplexityValidation.csv", mPhysicsWorld->GetTaskCoordinator()->MaxConcurrency(), vel_iteration, 153535);
+		//		ExportProfilingDataToCSV("Logs/VortrixComplexityValidation.csv", mPhysicsWorld->GetTaskCoordinator()->MaxConcurrency(), vel_iteration, 153535);
 
 
 		//		swept++;
@@ -742,7 +792,7 @@ void Application::PhysicsStep(double frame_dt)
 			mPhysicsStepDuration = std::chrono::duration<double, std::milli>(end - start).count();
 
 
-			PhysicsSubstepInstrumentionCapture();
+			PhysicsSubstepProfilingDataCapture();
 		}
 	}
 
@@ -764,7 +814,7 @@ void Application::PhysicsStep(double frame_dt)
 	curr_state.maxAttainedSubStep = vx::VxMax(curr_state.maxAttainedSubStep, curr_state.subSteps);
 }
 
-void Application::PhysicsSubstepInstrumentionCapture()
+void Application::PhysicsSubstepProfilingDataCapture()
 {
 
 	///Profiling
@@ -804,7 +854,7 @@ void Application::PhysicsSubstepInstrumentionCapture()
 	//	vx::StackString<128> log_name("Logs/");
 	//	log_name << mCurrScenario->Name() << "-Complexity" << mApplicationLaunchTime << ".csv";
 	//	///const vx::uint32 vel_iteration = mPhysicsWorld->Context()->velocityIterations;
-	//	ExportInstrumentationToCSV(log_name.Data(), mPhysicsWorld->GetTaskCoordinator()->MaxConcurrency(), vel_iteration, constraint_count);
+	//	ExportProfilingDataToCSV(log_name.Data(), mPhysicsWorld->GetTaskCoordinator()->MaxConcurrency(), vel_iteration, constraint_count);
 
 	//	swept++;
 
@@ -839,56 +889,73 @@ void Application::PhysicsSubstepInstrumentionCapture()
 	static vx::uint32 steps = 0;
 	static vx::uint32 capturedCount = 0;
 
-	if (mInstrumentationCaptureSettings.triggerNewCapture)
-	{
-		steps = 0; 
-		capturedCount = 0;
-
-		mInstrumentationCaptureSettings.threadCountSequence = 0;
-
-		complete_curr_capture = false;
-		mInstrumentationCaptureSettings.triggerNewCapture = false;
-
-		if(mInstrumentationCaptureSettings.reloadPhysicsEveryThreadSequence)
-		{
-			mPhysicsDebugState.triggerReset = true;
-			mPhysicsWorldSettings->maxConcurrency = 0;
-			mPhysicsWorld->Settings()->maxConcurrency = 0;
-		}
-	}
-
-	if (complete_curr_capture)
-		return;
 
 	constexpr std::array<vx::uint32, 4> sweep = {
 			4, 8, 16, 32,
 	};
 
-	if (steps > 0 && (steps % mInstrumentationCaptureSettings.captureEveryPhysicsStep) == 0)
+	if (mProfilingCaptureSettings.triggerNewCapture)
 	{
-		/// mInstrumentationCaptureSettings step 
+		steps = 0; 
+		capturedCount = 0;
+
+		mProfilingCaptureSettings.threadCountSequence = 0;
+
+		complete_curr_capture = false;
+		mProfilingCaptureSettings.triggerNewCapture = false;
+
+		if(mProfilingCaptureSettings.reloadPhysicsEveryThreadSequence)
+		{
+			mPhysicsDebugState.triggerReset = true;
+			mPhysicsWorldSettings->maxConcurrency = 0;
+			mPhysicsWorld->Settings()->maxConcurrency = 0;
+		
+		}
+
+		mPhysicsWorld->Settings()->solver.velocityIterations = sweep[(capturedCount) % sweep.size()];
+	}
+
+	if (complete_curr_capture)
+		return;
+
+	if (steps > 0 && (steps % mProfilingCaptureSettings.captureEveryPhysicsStep) == 0)
+	{
+		/// mProfilingCaptureSettings step 
 		const vx::uint32 vel_iteration = mPhysicsWorld->Context()->velocityIterations;
 		const int constraint_count = mPhysicsWorld->Context()->contactConstraintCount + mPhysicsWorld->Context()->nonContactJacobianRowCount;
 
-		vx::StackString<128> log_name = mInstrumentationCaptureSettings.filename;
+		vx::StackString<128> log_name = mProfilingCaptureSettings.filename;
 		//log_name << "-Complexity" << mApplicationLaunchTime << ".csv";
-		ExportInstrumentationToCSV(log_name.Data(), mPhysicsWorld->GetTaskCoordinator()->MaxConcurrency(), vel_iteration, constraint_count);
+		ExportProfilingDataToCSV(log_name.Data(), mPhysicsWorld->GetTaskCoordinator()->MaxConcurrency(), vel_iteration, constraint_count);
 		
+		vx::SolverWorkloadStats stats = vx::CollectSolverWorkloadStats(*mPhysicsWorld->Context());
+		ExportProfilingDataToCSV((vx::StackString("Logs/Test_COM_") << mApplicationLaunchTime << ".csv").Data(),
+			mPhysicsWorld->GetTaskCoordinator()->MaxConcurrency(),
+			vel_iteration, stats);
+
+		ExportSortedLoadBalancingToCSV(
+			(vx::StackString("Logs/Test_LoadBalancing_") << mApplicationLaunchTime << ".csv").Data(),
+			mPhysicsWorld->GetTaskCoordinator()->MaxConcurrency(), mPhysicsWorld->Settings()->solver.velocityIterations,
+			mPhysicsWorld->mVelocitySolveProfile,
+			std::thread::hardware_concurrency());
+
+		mPhysicsWorld->mVelocitySolveProfile.ResetAccumulation();
+
 		capturedCount++;
 
 		///update physics world
-		//mPhysicsWorld->Settings()->solver.velocityIterations = sweep[(capturedCount) % mInstrumentationCaptureSettings.iterationCountPerSequence];
+		//mPhysicsWorld->Settings()->solver.velocityIterations = sweep[(capturedCount) % mProfilingCaptureSettings.iterationCountPerSequence];
 		mPhysicsWorld->Settings()->solver.velocityIterations = sweep[(capturedCount) % sweep.size()];
 
-		if ((capturedCount % mInstrumentationCaptureSettings.iterationCountPerSequence) == 0)
+		if ((capturedCount % mProfilingCaptureSettings.iterationCountPerSequence) == 0)
 		{
-			mInstrumentationCaptureSettings.threadCountSequence++;
+			mProfilingCaptureSettings.threadCountSequence++;
 
-			/// complete instrumentation
-			if (mInstrumentationCaptureSettings.threadCountSequence > 11)
+			/// complete profiline
+			if (mProfilingCaptureSettings.threadCountSequence > 11)
 			{
-				if (mInstrumentationCaptureSettings.closeAppOnComplete)
-					mWindow.Close();
+				if (mProfilingCaptureSettings.closeAppOnComplete)
+					Quit();
 				else
 					complete_curr_capture = true;
 			}
@@ -903,15 +970,15 @@ void Application::PhysicsSubstepInstrumentionCapture()
 				t->Quit();
 				const vx::uint32 max_hardware_concurrency = std::thread::hardware_concurrency() - 1;
 
-				t->BeginThreads(mInstrumentationCaptureSettings.threadCountSequence % 12);
+				t->BeginThreads(mProfilingCaptureSettings.threadCountSequence % 12);
 				vx::Profiler::ProfilerCollector::Instance().ResetProfiles();
-				if(mInstrumentationCaptureSettings.reloadPhysicsEveryThreadSequence)
+				if(mProfilingCaptureSettings.reloadPhysicsEveryThreadSequence)
 				{
 					mPhysicsDebugState.triggerReset = true;
-					mPhysicsWorldSettings->maxConcurrency = mInstrumentationCaptureSettings.threadCountSequence % 12;
-					mPhysicsWorld->Settings()->maxConcurrency = mInstrumentationCaptureSettings.threadCountSequence % 12;
+					mPhysicsWorldSettings->maxConcurrency = mProfilingCaptureSettings.threadCountSequence % 12;
+					mPhysicsWorld->Settings()->maxConcurrency = mProfilingCaptureSettings.threadCountSequence % 12;
 				}
-
+				mPhysicsWorld->Settings()->solver.velocityIterations = sweep[0];
 			}
 		}
 
@@ -1844,7 +1911,7 @@ void Application::OnDrawImGuiOverlays()
 
 			if (ImGui::MenuItem("Application")) open_app_win = !open_app_win;
 			if (ImGui::MenuItem("Scenario Window Management")) mPhysicsImGuiWindows.scenarioWindowManagement = !mPhysicsImGuiWindows.scenarioWindowManagement;
-			if (ImGui::MenuItem("Instrumentation Capture Window")) mPhysicsImGuiWindows.instrumentationCaptureWindow = !mPhysicsImGuiWindows.instrumentationCaptureWindow;
+			if (ImGui::MenuItem("Profiling Data Capture Window")) mPhysicsImGuiWindows.profilingCaptureWindow = !mPhysicsImGuiWindows.profilingCaptureWindow;
 
 			ImGui::Separator();
 
@@ -1966,8 +2033,8 @@ void Application::OnDrawImGuiOverlays()
 	if(mPhysicsImGuiWindows.showSolverBodyPhysicsBodyWindow)
 		SolverBodyPhysicsBodyWindow();
 
-	if (mPhysicsImGuiWindows.instrumentationCaptureWindow)
-		InstrumentationCaptureWindow();
+	if (mPhysicsImGuiWindows.profilingCaptureWindow)
+		ProfilingCaptureWindow();
 
 
 	if (open_phy_debug)
@@ -2072,6 +2139,7 @@ void Application::OnDrawImGuiOverlays()
 						ImGui::CheckboxFlags("Cast Shadow", (vx::uint32*)&flags, vx::uint32(ERenderInstanceFlags::CastShadow));
 						ImGui::CheckboxFlags("Receive Shadow", (vx::uint32*)&flags, vx::uint32(ERenderInstanceFlags::ReceiveShadow));
 						ImGui::CheckboxFlags("Use Texture", (vx::uint32*)&flags, vx::uint32(ERenderInstanceFlags::UseTexture));
+						ImGui::CheckboxFlags("Wireframe", (vx::uint32*)&flags, vx::uint32(ERenderInstanceFlags::Wireframe));
 					};
 
 				ERenderInstanceFlags* render_inst_flags[4] =

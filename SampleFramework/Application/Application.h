@@ -114,7 +114,7 @@ private:
 
 	char mApplicationLaunchTime[16];
 
-	struct InstrumentationCaptureSettings
+	struct ProfilingCaptureSettings
 	{
 		vx::uint32 captureEveryPhysicsStep = 120;
 
@@ -137,7 +137,7 @@ private:
 		vx::StackString<128> filename = vx::StackString<128>("Logs/");
 	};
 
-	InstrumentationCaptureSettings mInstrumentationCaptureSettings;
+	ProfilingCaptureSettings mProfilingCaptureSettings;
 
 	//Remove later
 	RendererImpl mRenderer;
@@ -172,7 +172,7 @@ private:
 	void LoadScenarioWindow();
 	void ScenarioInspectionWindow();
 
-	void InstrumentationCaptureWindow();
+	void ProfilingCaptureWindow();
 
 	vx::RenderSettings mPhysicsRenderSettings{};
 
@@ -193,7 +193,7 @@ private:
 
 	void PhysicsStep(double frame_dt);
 
-	void PhysicsSubstepInstrumentionCapture();
+	void PhysicsSubstepProfilingDataCapture();
 
 	bool bFailLaunch = false;
 
@@ -285,7 +285,7 @@ private:
 		bool createNewCustomPhysicsObject = false;
 		bool createConstraints = false;
 		bool showSolverBodyPhysicsBodyWindow = false;
-		bool instrumentationCaptureWindow = false;
+		bool profilingCaptureWindow = false;
 	}mPhysicsImGuiWindows;
 
 

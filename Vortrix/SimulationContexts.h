@@ -34,8 +34,45 @@ namespace vx {
 		std::atomic<uint32> solvePositionNextIslandSortedIdx = { 0 };
 
 
+
+
+		struct SimulationStepProfilingData
+		{
+			std::atomic<uint32> writeStepTotalJacobianSolved{ 0 };
+			uint32 total_jacobian_solved[12]; //<-- later max thread or hardware concurrency
+		};
+
+		SimulationStepProfilingData mSimStepProfiling;
+
+
 		///probably hold pointer to active constraint (non contact)
 		//Constraint** constraints
 	};
+
+
+
+	struct VelocitySolveProfile
+	{
+		uint32 total_jacobian_solved[12]{ 0 }; //<-- later max thread or hardware concurrency
+		/// write on main thread, zero data races
+		uint32 sampleCount = 0;
+		uint32 contributionSampleCount[12] = { 0 };
+
+		double totalLoadBalanceEff = 0;
+
+		void ResetAccumulation()
+		{
+			for (uint32 i = 0; i < 12; ++i)
+			{
+				total_jacobian_solved[i] = 0;
+				contributionSampleCount[i] = 0;
+			}
+
+			sampleCount = 0;
+			totalLoadBalanceEff = 0.0;
+		}
+	};
+
+
 
 }

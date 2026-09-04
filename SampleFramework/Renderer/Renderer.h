@@ -54,6 +54,7 @@ public:
 
 	//This is just test renderable entity functionality 
 	//Helpers
+	/// 
 	void SubmitSpherePrimitive(const vx::RenderableEntity entity, const vx::ERenderInstanceFlags flags) override 
 	{
 		DrawGeometry(entity.transform, entity.colour, mSphereGeometry, (entity.plainTexture) ? mPlainTexSamplerBindless : mCheckersTexSamplerBindless, flags);
@@ -115,6 +116,7 @@ public:
 	void ShadowPass();
 	void DrawPass();
 	void EndFrame();
+
 
 
 
@@ -280,6 +282,18 @@ private:
 				glDrawArraysInstanced(GL_TRIANGLES, 0, count, instance_count);
 		}
 
+		void DrawWireFrameInstanced(size_t instance_count)
+		{
+			BindArray();
+			if (indexBuffer.IsValid())
+			{
+				indexBuffer.Bind(0);
+				glDrawElementsInstanced(GL_LINES, indexBuffer.count, GL_UNSIGNED_INT, (void*)0, instance_count);
+			}
+			else
+				glDrawArraysInstanced(GL_LINES, 0, count, instance_count);
+		}
+
 		void Draw()
 		{
 			BindArray();
@@ -427,6 +441,7 @@ private:
 		std::vector<Instance>	buffer = {};
 		bool					isDirty = false;
 		bool					disableCulling = false;
+		bool					wireFrame = false;
 	};
 	/// bucket/buffer accompany with UBO
 	/// for easy instance GPU dump
@@ -476,6 +491,7 @@ private:
 		mSolidGeometries[ref_geometry].buffer.push_back({ matrix, matrix.Inverse(), col,  use_tex, flags});
 		mSolidGeometries[ref_geometry].isDirty = true;
 		mSolidGeometries[ref_geometry].disableCulling = disable_culling;
+		mSolidGeometries[ref_geometry].wireFrame = (int(flags & vx::ERenderInstanceFlags::Wireframe) != 0);
 		//mSolidGeometries[ref_geometry].push_back({ matrix, matrix.Inverse(), col });
 	}
 

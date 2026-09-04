@@ -219,8 +219,6 @@ void RendererImpl::DrawPass()
 	//DrawObjects(mMeshShader);
 
 
-
-
 	//draw geometries instances
 	mGeometryShader->Bind();
 	RenderGeometriesInstances();
@@ -530,15 +528,23 @@ void RendererImpl::RenderGeometriesInstances(bool only_depth)
 		//	instances.isDirty = false;
 		}
 		
-		//draw 
+		//draw
 		if (!only_depth && instances.disableCulling)
 		{
 			glDisable(GL_CULL_FACE);
-			ref_geometry->GetBatch()->DrawInstances(instances.buffer.size());
+			if(instances.wireFrame)
+				ref_geometry->GetBatch()->DrawWireFrameInstanced(instances.buffer.size());
+			else
+				ref_geometry->GetBatch()->DrawInstances(instances.buffer.size());
 			glEnable(GL_CULL_FACE);
 		}
 		else
-			ref_geometry->GetBatch()->DrawInstances(instances.buffer.size());
+		{
+			if(instances.wireFrame)
+				ref_geometry->GetBatch()->DrawWireFrameInstanced(instances.buffer.size());
+			else
+				ref_geometry->GetBatch()->DrawInstances(instances.buffer.size());
+		}
 		//auto ref_tri_batch = ref_geometry->GetBatch();
 		//ref_tri_batch->BindArray();
 		////no need to bind the buffer only is write/upload is needed

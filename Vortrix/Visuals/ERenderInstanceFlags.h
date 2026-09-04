@@ -19,8 +19,8 @@ namespace vx {
 		ReceiveShadow = Bit32(1), //2(0010)
 		Emissive = Bit32(2), //4 (0100)
 
-		UseTexture = Bit32(3)
-		//Wireframe
+		UseTexture = Bit32(3),
+		Wireframe = Bit32(4)
 	};
 
 	constexpr const char* RenderInstanceFlagsNames = "Cast Shadow\0""Recieve Shadow\0""Emissive\0""\0";

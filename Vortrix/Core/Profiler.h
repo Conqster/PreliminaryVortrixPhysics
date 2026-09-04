@@ -34,10 +34,28 @@ namespace vx
 
 		struct alignas(32) ProfileData
 		{
+			static constexpr float kEwmaOldWeight = 0.9f;
+			static constexpr float kEwmaNewWeight = 0.1f;
+
+			/// Lifetime profile statistics
 			uint64 samples = 0;
+			double totalMs = 0.0;
+
+			/// most recent sample
 			float lastMs = 0.0f;
+
+			/// smoothed real-time profiler v
 			float avgMs = 0.0f;
+
+			/// lifetime maxmimum
 			float maxMs = 0.0f;
+
+			double ArithmeticAvg() const { return (samples > 0) ? totalMs / double(samples) : 0.0; }
+			void ResetAccumulation()
+			{
+				samples = 0;
+				totalMs = 0.0;
+			}
 		};
 
 		class ProfilerCollector
@@ -75,7 +93,7 @@ namespace vx
 						break;
 					}
 
-					_mm_pause; ///overspinnign cpu clock, slice time
+					_mm_pause(); ///overspinnign cpu clock, slice time
 				}
 				///try again if we cant read
 				while (true);
@@ -105,6 +123,7 @@ namespace vx
 							{
 								/// new data
 								ProfileData data;
+								data.totalMs = double(ms);
 								data.lastMs = ms;
 								data.avgMs = ms;
 								data.samples = 1;
@@ -128,7 +147,7 @@ namespace vx
 							break;
 						}
 						safe_read_write = true;
-						_mm_pause; ///overspinnign cpu clock, slice time
+						_mm_pause(); ///overspinnign cpu clock, slice time
 					}
 				}
 
@@ -139,7 +158,8 @@ namespace vx
 				{
 					ProfileData data;
 					data.lastMs = ms;
-					data.avgMs = old_profile_data.avgMs * 0.9 + ms * 0.1;
+					data.totalMs = old_profile_data.totalMs + double(ms);
+					data.avgMs = old_profile_data.avgMs * ProfileData::kEwmaOldWeight + ms * ProfileData::kEwmaNewWeight;
 					data.samples = old_profile_data.samples + 1;
 					data.maxMs = vx::VxMax(old_profile_data.maxMs, ms);
 
@@ -147,7 +167,7 @@ namespace vx
 						return;
 
 					/// failed 
-					_mm_pause; ///overspinnign cpu clock, slice time
+					_mm_pause(); ///overspinnign cpu clock, slice time
 					old_profile_data = target_profile_slot->load(std::memory_order_acquire);
 				}
 				

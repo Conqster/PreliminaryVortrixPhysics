@@ -271,6 +271,8 @@ namespace vx
 		WorldQuery mWorldQuery;
 
 
+	public:
+		VelocitySolveProfile mVelocitySolveProfile;
 #if defined(VX_DEBUG_ALLOCATOR)
 		///debug allocator
 		void* testAllocation;

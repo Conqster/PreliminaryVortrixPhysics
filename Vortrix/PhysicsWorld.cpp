@@ -321,7 +321,8 @@ namespace vx
 
 	void PhysicsWorld::StepSimulation(float dt)
 	{
-		VX_PROFILE_FUNCTION();
+		//VX_PROFILE_FUNCTION();
+		VX_PROFILE_SCOPE("Simulation Step");
 		Vec3 sample_gravity_vel = mSettings->gravity * mSettings->gravityScale;
 		sample_gravity_vel *= dt;
 		mSettings->frameGravityVelocity = sample_gravity_vel.ToFloat3();
@@ -369,51 +370,51 @@ namespace vx
 			/// a thread start work immediately
 			mTaskCoordinator->ConstructTask([broadphase = mBroadphase, ctx = &mContext, sim_step = &mSimStep]()
 				{
+					VX_PROFILE_SCOPE("Broadphase Computing Pairs");
 					broadphase->ComputeCollidingPair(*ctx, *sim_step);
 				}, 0);
 
 
+			
+
+			/// clamp acceleration & gravity tasks count to max concurrency - 1 (leaving the a thread for working broadphase)
+			const int max_acceleration_workers = VxMax(1, int(mTaskCoordinator->MaxConcurrency() - 1));
+			uint32 num_acceleration_gravity_tasks = VxMin(int((NumActiveBodies() + (SimStep::kAcclerationGravityTaskBatch - 1)) / SimStep::kAcclerationGravityTaskBatch), max_acceleration_workers);
+
+			std::atomic<uint32> next_active_body_idx = 0;
+			for (uint32 i = 0; i < num_acceleration_gravity_tasks; ++i)
 			{
-				VX_PROFILE_SCOPE("Integrate bodies acceleration");
+				mTaskCoordinator->ConstructTask([step_ctx = &mContext, &next_active_body_idx,
+					world_gravity = mSettings->gravity, gravity_scale = mSettings->gravityScale]()
+					{
+						VX_PROFILE_SCOPE("Integrate bodies acceleration");
+						uint32 num_active_bodies = step_ctx->bodyManager->NumActiveBodies();
+						BodyID* active_bodies = step_ctx->bodyManager->ActiveBodies();
 
-				/// clamp acceleration & gravity tasks count to max concurrency - 1 (leaving the a thread for working broadphase)
-				const int max_acceleration_workers = VxMax(1, int(mTaskCoordinator->MaxConcurrency() - 1));
-				uint32 num_acceleration_gravity_tasks = VxMin(int((NumActiveBodies() + (SimStep::kAcclerationGravityTaskBatch - 1)) / SimStep::kAcclerationGravityTaskBatch), max_acceleration_workers);
+						const vx::Vec3 gravity = world_gravity * gravity_scale;
 
-				std::atomic<uint32> next_active_body_idx = 0;
-				for (uint32 i = 0; i < num_acceleration_gravity_tasks; ++i)
-				{
-					mTaskCoordinator->ConstructTask([step_ctx = &mContext, &next_active_body_idx,
-						world_gravity = mSettings->gravity, gravity_scale = mSettings->gravityScale]()
+						/// atomically fetch batch and process
+						for (;;)
 						{
-							uint32 num_active_bodies = step_ctx->bodyManager->NumActiveBodies();
-							BodyID* active_bodies = step_ctx->bodyManager->ActiveBodies();
+							const uint32 active_body_begin = next_active_body_idx.fetch_add(SimStep::kAcclerationGravityTaskBatch);
 
-							const vx::Vec3 gravity = world_gravity * gravity_scale;
+							/// at the end of broadphase pair
+							if (active_body_begin >= num_active_bodies)
+								break;
 
-							/// atomically fetch batch and process
-							for (;;)
+							uint32 active_body_end = VxMin(num_active_bodies, active_body_begin + SimStep::kAcclerationGravityTaskBatch);
+
+							for (uint32 i = active_body_begin; i < active_body_end; ++i)
 							{
-								const uint32 active_body_begin = next_active_body_idx.fetch_add(SimStep::kAcclerationGravityTaskBatch);
-
-								/// at the end of broadphase pair
-								if (active_body_begin >= num_active_bodies)
-									break;
-
-								uint32 active_body_end = VxMin(num_active_bodies, active_body_begin + SimStep::kAcclerationGravityTaskBatch);
-
-								for (uint32 i = active_body_begin; i < active_body_end; ++i)
+								Body& body = step_ctx->bodyManager->GetBody(active_bodies[i]);
+								if (body.IsDynamic())
 								{
-									Body& body = step_ctx->bodyManager->GetBody(active_bodies[i]);
-									if (body.IsDynamic())
-									{
-										body.IntegrateAcceleration(step_ctx->mDeltaTime, gravity);
-										body.ClearAccumulatedForces();
-									}
+									body.IntegrateAcceleration(step_ctx->mDeltaTime, gravity);
+									body.ClearAccumulatedForces();
 								}
 							}
-						}, 0);
-				}
+						}
+					}, 0);
 			}
 
 
@@ -438,29 +439,7 @@ namespace vx
 
 #if USE_MULTITHREAD
 		{
-			VX_PROFILE_SCOPE("Processing and contact constraint setup multithreading");
-
-			//mTaskCoordinator->ParallelFor(
-			//	collision_ctx.broadphasePairCount,
-			//	k_pair_per_task,
-			//	///Range Task
-			//	{
-			//		&pair_process_and_constraint_setup_ctx,
-			//		[](void* user_data, uint32 begin, uint32 end)
-			//		{
-			//			VX_PROFILE_SCOPE("Parallel For Broadphase pair; Thread execution");
-			//			auto& ctx = *static_cast<QuickPairProcessAndConstraintSetupContext*>(user_data);
-			//			for (uint32 i = begin; i < end; ++i)
-			//			{
-			//				auto& pair = ctx.pairs[i];
-
-			//				ctx.narrowphase_query.ProcessPairAndTrySetupContactConstraint(
-			//					pair.a,
-			//					pair.b,
-			//					ctx.contact_solver, ctx.collision_ctx);
-			//			}
-			//		}
-			//	});
+			VX_PROFILE_SCOPE("Narrowphase Process Pair and Island Building");
 
 			/// use max possible concurrency
 			uint32 num_process_pair_try_setup_constraint_tasks = VxMin(int((mSimStep.broadphasePairCount + (SimStep::kProcessBodyPairBatch - 1)) / SimStep::kProcessBodyPairBatch), int(mTaskCoordinator->MaxConcurrency()));
@@ -618,6 +597,7 @@ namespace vx
 #define VX_SPLIT_ISLAND 1
 							const uint32 velocity_iteration_count = io_physics_ctx->velocityIterations;
 
+							uint32 total_jacobian_row_solved = 0;
 
 #if VX_SPLIT_ISLAND
 							const uint32 island_count = io_physics_ctx->mIslandCoordinator->IslandCount();
@@ -690,6 +670,7 @@ namespace vx
 										{
 											io_physics_ctx->constraintSolver->SolverVelocityLinear1DRowsIndices(island_noncontact_range.begin, island_noncontact_range.Size());
 											processed_count += island_noncontact_range.Size();
+											total_jacobian_row_solved += island_noncontact_range.Size();
 										}
 
 
@@ -697,8 +678,8 @@ namespace vx
 										{
 											io_physics_ctx->mPhysicsWorld->mContactConstraintSolver.SolveVelocityConstraint(island_contact_range.begin, island_contact_range.Size(), solver_bodies);
 											processed_count += island_contact_range.Size();
+											total_jacobian_row_solved += island_contact_range.Size() * ContactConstraintSolver::kContactConstraintAxisCount;
 										}
-
 
 										/// couple of issues 
 										/// 1. range of value, null return 2 as size instead of 1
@@ -784,11 +765,17 @@ namespace vx
 										for (int i = 0; i < velocity_iteration_count; ++i)
 										{
 											if (constraint_island_indices_range.Valid())
+											{
 												io_physics_ctx->constraintSolver->SolverVelocityLinear1DRowsIndices(constraint_island_indices_range.begin, constraint_island_indices_range.Size());
+												total_jacobian_row_solved += constraint_island_indices_range.Size();
+											}
 
 
 											if (io_physics_ctx->enableContact && contact_constraint_island_indices_range.Valid())
+											{
 												io_physics_ctx->mPhysicsWorld->mContactConstraintSolver.SolveVelocityConstraint(contact_constraint_island_indices_range.begin, contact_constraint_island_indices_range.Size(), solver_bodies);
+												total_jacobian_row_solved += contact_constraint_island_indices_range.Size() * ContactConstraintSolver::kContactConstraintAxisCount;
+											}
 										}
 
 
@@ -827,8 +814,39 @@ namespace vx
 								}
 							}
 
+
+							///complete solve 
+							///writing back order does not matter
+							//uint32 step_total_jacobian_solved[12]; ///later only thread in flight for current step =task count
+							//std::atomic<uint32> write_total_jacobian_solved;
+
+							//uint32 write_jacobian = write_total_jacobian_solved.load(std::memory_order_acquire);
+							//for (;;)
+							//{
+							//	if (write_total_jacobian_solved.compare_exchange_weak(write_jacobian, write_jacobian + 1, std::memory_order_release))
+							//		step_total_jacobian_solved[write_jacobian] = total_jacobian_row_solved;
+
+							//	_mm_pause();
+							//	write_jacobian = write_total_jacobian_solved.load(std::memory_order_acquire);
+							//}
+
+
+							/////after all threads complete
+							///// sort and write final
+							//std::sort(step_total_jacobian_solved[0], step_total_jacobian_solved[11], [&](uint32 a, uint32 b)
+							//	{
+							//		return a < b;
+							//	});
+
+
+							if(total_jacobian_row_solved > 0)
+							{
+								uint32 claimed_write_idx = io_step->mSimStepProfiling.writeStepTotalJacobianSolved.fetch_add(1, std::memory_order_acq_rel);
+								io_step->mSimStepProfiling.total_jacobian_solved[claimed_write_idx] = total_jacobian_row_solved;
+							}
+
 #else
-							
+						VX_ASSERT(false);
 							for (;;)
 							{
 								const uint32 island_idx = next_island.fetch_add(1, std::memory_order_relaxed);
@@ -895,6 +913,80 @@ namespace vx
 				}
 				
 				mTaskCoordinator->WaitForTasks();
+
+
+				uint32 total_step_workers = mSimStep.mSimStepProfiling.writeStepTotalJacobianSolved.load(std::memory_order_relaxed);
+				
+				if(total_step_workers > 0)
+				{
+					std::sort(mSimStep.mSimStepProfiling.total_jacobian_solved,
+						mSimStep.mSimStepProfiling.total_jacobian_solved + total_step_workers, std::greater<uint32>());
+
+					const uint32 max_step_rows = mSimStep.mSimStepProfiling.total_jacobian_solved[0];
+
+					uint32 total_step_rows = 0;
+					for (uint32 i = 0; i < total_step_workers; ++i)
+					{
+						const uint32 rows = mSimStep.mSimStepProfiling.total_jacobian_solved[i];
+
+						total_step_rows += rows;
+
+						mVelocitySolveProfile.total_jacobian_solved[i] += rows;
+						mVelocitySolveProfile.contributionSampleCount[i]++;
+
+						/// reset
+						mSimStep.mSimStepProfiling.total_jacobian_solved[i] = 0;
+
+						VX_ASSERT(max_step_rows >= rows);
+					}
+
+					mVelocitySolveProfile.sampleCount++;
+
+					//const uint32 max_step_rows = mSimStep.mSimStepProfiling.total_jacobian_solved[0];
+
+					const double step_efficiency =
+						(max_step_rows > 0) ?
+						double(total_step_rows) / (double(mTaskCoordinator->MaxConcurrency()) * double(max_step_rows)) :
+						0.0;
+
+
+					const double step_efficiency_workers =
+						(max_step_rows > 0) ?
+						double(total_step_rows) / (double(total_step_workers) * double(max_step_rows)) :
+						0.0;
+
+
+					mVelocitySolveProfile.totalLoadBalanceEff += step_efficiency;
+				}
+				mSimStep.mSimStepProfiling.writeStepTotalJacobianSolved.store(0, std::memory_order_relaxed);
+
+
+				//const uint32 max_currency = mTaskCoordinator->MaxConcurrency();
+				//const uint32 worker_count = VxMin(total_step_workers, max_currency);
+				//if (worker_count > 0)
+				//{
+				//	uint64 total_rows = 0;
+
+				//	uint32 max_rows = 0;
+				//	uint32 min_rows = UINT32_MAX;
+
+				//	for (uint32 i = 0; i < worker_count; ++i)
+				//	{
+				//		const uint32 rows = mSimStep.mSimStepProfiling.total_jacobian_solved[i];
+
+				//		total_rows += rows;
+				//		max_rows = VxMax(max_rows, rows);
+				//		min_rows = VxMin(min_rows, rows);
+				//	}
+
+				//	const double mean_rows =
+				//		static_cast<double>(total_rows) / static_cast<double>(worker_count);
+
+				//	const double efficiency =
+				//		(mean_rows > 0.0) ?
+				//		static_cast<double>(max_rows - min_rows) / mean_rows :
+				//		0.0;
+				//}
 
 
 				if(mSettings->splitLargeIsland)
@@ -1203,93 +1295,9 @@ namespace vx
 					}, 0);
 			}
 			mTaskCoordinator->WaitForTasks();
-			//for (int island_sort_idx = 0; island_sort_idx < mIslandCoordinator->IslandCount(); ++island_sort_idx)
-			//{
-			//	/// non contact constraint 
-			//	const uint32 _island_idx = mIslandCoordinator->SortedIslandIndices()[island_sort_idx];
-			//	IslandCoordinator::IslandRange<uint32> constraint_island_indices_range = mIslandCoordinator->IslandNonContactConstraintRowIndicesRange(_island_idx);
-			//	const uint32 total_constraint = mConstraintCoordinator.ConstraintCount();
-
-			//	/// contact constraint
-			//	float slop = mSettings->solver.positionCorrectionSlop;
-			//	float min_limit = mSettings->solver.positionCorrectionGlobalLimits[0];
-			//	float max_limit = mSettings->solver.positionCorrectionGlobalLimits[1];
-			//	float limit_scale = mSettings->solver.positionCorrectionBodyLimitScale;
-
-			//	IslandCoordinator::IslandRange<uint32> contact_island_indices_range = mIslandCoordinator->ContactConstraintIndicesIslandRange(_island_idx);
-			//	SolverBody* solver_bodies = mConstraintSolver->GetBodiesPtr();
-
-			//	for (int i = 0; i < mSettings->solver.positionIterations; ++i)
-			//	{
-
-			//		/// non contact constraint 
-			//		if(constraint_island_indices_range.Valid() && constraint_island_indices_range.Size() > 0)
-			//		{
-			//			const uint32* global_row_idx = constraint_island_indices_range.begin;
-			//			do
-			//			{
-			//				const Linear1DRow& row = mConstraintSolver->GetLinearRowPtr()[(*global_row_idx)];
-
-			//				const auto& row_info = row.info;
-			//				if (row_info.NeedPositionCorrection())
-			//				{
-			//					VX_ASSERT(row_info.ConstraintIndex() < total_constraint);
-			//					VX_ASSERT(row_info.RowLocalIndex() == 0); //
-
-			//					mConstraintCoordinator.GetConstraints()[row_info.ConstraintIndex()]->SolvePositionConstraint(dt, baumgarte);
-
-			//					global_row_idx += row_info.RowCount();
-			//					continue;
-			//				}
-
-			//				global_row_idx++;
-			//			} while (global_row_idx < constraint_island_indices_range.end);
-			//		}
-
-
-
-			//		/// contact constraint
-			//		if (mSettings->solver.enableContact && contact_island_indices_range.Valid())
-			//		{
-
-			//			for (const uint32* contact_idx = contact_island_indices_range.begin;
-			//				contact_idx < contact_island_indices_range.end; ++contact_idx)
-			//			{
-
-			//				ContactConstraintSolver::ContactConstraint* constraint = mContactConstraintSolver.GetContactConstraint(*contact_idx);
-
-			//				SolverBodyIndex& body0 = constraint->BodyA();
-			//				SolverBodyIndex& body1 = constraint->BodyB();
-
-			//				if (!body0.Value() && !body1.Value())
-			//				{
-			//					VX_LOG_WARN("either bodies needs to be valid");
-			//					continue;
-			//				}
-
-			//				SolverBody& sbA = solver_bodies[body0.Value()];
-			//				SolverBody& sbB = solver_bodies[body1.Value()];
-
-
-			//				Body* a = &mBodyManager.GetBody(sbA.bodyID);
-			//				Body* b = &mBodyManager.GetBody(sbB.bodyID);
-
-			//				//effective mass 
-			//				float total_inv_mass = sbA.invMass + sbB.invMass;
-			//				ContactConstraintSolver::SolvePositionCorrection(*constraint, a, b, total_inv_mass, baumgarte, slop, min_limit, max_limit, limit_scale);
-			//			}
-			//		}
-
-			//	}
-			//}
-			
-
-
-
 #if !CONTACT_USE_SOLVERBODY
 			mContactConstraintSolver.SolvePositionConstraint(mSettings.solver);
 #endif // !CONTACT_USE_SOLVERBODY
-
 		}
 
 		mConstraintSolver->ReleaseAllocation(mScratchAllocator);
