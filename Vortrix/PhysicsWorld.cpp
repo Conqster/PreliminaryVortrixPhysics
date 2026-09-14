@@ -1420,61 +1420,113 @@ namespace vx
 
 			Colour c = Colour::sMagenta;
 
-			if (draw_settings.bodyColourMode == vx::EBodyColourMode::Instances)
-				c = Colour::RandomColour(it->ID().ID());
-			else if (draw_settings.bodyColourMode == vx::EBodyColourMode::MotionType)
-				c = it->IsDynamic() ? draw_settings.dynamicColour : draw_settings.staticColour;
-			else if (draw_settings.bodyColourMode == vx::EBodyColourMode::MotionState)
+
+			switch (draw_settings.bodyColourMode)
 			{
+			case vx::EBodyColourMode::Instances:
+				c = Colour::RandomColour(it->ID().ID());
+				break;
+			case vx::EBodyColourMode::MotionType:
+				c = it->IsDynamic() ? draw_settings.dynamicColour : draw_settings.staticColour;
+				break;
+			case vx::EBodyColourMode::MotionState:
 				c = it->IsDynamic() ?
 					(it->IsSleeping() ? draw_settings.sleepingColour : draw_settings.dynamicColour) :
 					draw_settings.staticColour;
-			}
-			else if (draw_settings.bodyColourMode == vx::EBodyColourMode::ShapeType)
+				break;
+			case vx::EBodyColourMode::ShapeType:
 				c = shape_col_type[(int)it->GetShape()->Type()];
-			else if (draw_settings.bodyColourMode == vx::EBodyColourMode::Phase)
+				break;
+			case vx::EBodyColourMode::Phase:
 				c = BodySimphaseDebugColour(*it);
-			else if (draw_settings.bodyColourMode == vx::EBodyColourMode::IslandIdx)
-			{
-				uint32 island_idx = it->GetIslandIndex();
-				if (it->IsStatic())
-					c = Colour(0.5f);
-				else if (island_idx == Body::kInvalidIslandIdx)
-					c = draw_settings.sleepingColour;
-				else
-					c = Colour::RandomColour(island_idx);
-			}
-			else if (draw_settings.bodyColourMode == vx::EBodyColourMode::IslandConstraintGroup)
-			{
-				uint32 island_idx = it->GetIslandIndex();
-				if (it->IsStatic())
-					c = Colour(0.5f);
-				else if (island_idx == Body::kInvalidIslandIdx)
-					c = draw_settings.sleepingColour;
-				else
+				break;
+			case vx::EBodyColourMode::MotionMaxLinearVelocity:
+			case vx::EBodyColourMode::MotionMaxAngularVelocity:
 				{
-					uint32 island_constraint_grp = it->mIslandConstraintGroupMask;
-
-
-					Vec3 accumulated_colour = Vec3(0.0f);
-					uint32 count = 0;
-					for (uint32 i = 0; i < 16; ++i)
+					float t;
+					if (draw_settings.bodyColourMode == vx::EBodyColourMode::MotionMaxLinearVelocity)
 					{
-						//if (Bit32(island_constraint_grp) & Bit32(i))
-						if (island_constraint_grp & Bit32(i))
-						{
-							accumulated_colour += Colour::RandomColour(i);
-							count++;
-							//break;
-						}
+						float speed_sq = it->LinearVelocity().LengthSq();
+						t = speed_sq / it->MaxLinearVelocity();
 					}
+					else
+					{
+						float speed_sq = it->AngularVelocity().LengthSq();
+						t = speed_sq / it->MaxAngularVelocity();
+					}
+					if (it->IsDynamic())
+					{
+						Colour min_col = Colour::sCyan;
+						Colour max_col = Colour::sRed;
 
-					if (count > 0)
-						accumulated_colour /= count;
+						t = VxClamp01(t);
 
-					c = vx::Colour(accumulated_colour);
+						auto Lerp_Col = [](Colour col_a, Colour col_b, float t)
+							{
+								float minus_t = 1.0f - t;
+								float r = (minus_t * col_a.R()) + t * col_b.R();
+								float g = (minus_t * col_a.G()) + t * col_b.G();
+								float b = (minus_t * col_a.B()) + t * col_b.B();
+								float a = (minus_t * col_a.A()) + t * col_b.A();
+
+								return Colour(r, g, b, a);
+							};
+
+						c = Lerp_Col(min_col, max_col, t);
+					}
+					else
+						c = draw_settings.staticColour;
+						break;
 				}
+			case vx::EBodyColourMode::IslandIdx:
+				{
+					uint32 island_idx = it->GetIslandIndex();
+					if (it->IsStatic())
+						c = Colour(0.5f);
+					else if (island_idx == Body::kInvalidIslandIdx)
+						c = draw_settings.sleepingColour;
+					else
+						c = Colour::RandomColour(island_idx);
+					break;
+				}
+			case vx::EBodyColourMode::IslandConstraintGroup:
+				{
+					uint32 island_idx = it->GetIslandIndex();
+					if (it->IsStatic())
+						c = Colour(0.5f);
+					else if (island_idx == Body::kInvalidIslandIdx)
+						c = draw_settings.sleepingColour;
+					else
+					{
+						uint32 island_constraint_grp = it->mIslandConstraintGroupMask;
+
+
+						Vec3 accumulated_colour = Vec3(0.0f);
+						uint32 count = 0;
+						for (uint32 i = 0; i < 16; ++i)
+						{
+							//if (Bit32(island_constraint_grp) & Bit32(i))
+							if (island_constraint_grp & Bit32(i))
+							{
+								accumulated_colour += Colour::RandomColour(i);
+								count++;
+								//break;
+							}
+						}
+
+						if (count > 0)
+							accumulated_colour /= count;
+
+						c = vx::Colour(accumulated_colour);
+					}
+					break;
+				}
+			default:
+				VX_LOG_WARN("Unknow bodyColourMode");
+				break;
 			}
+
+
 
 			c.SetAlpha(draw_settings.bodiesDrawColourAlpha);
 			//int shape_enum_idx = (int)(it->GetShape()->Type());
@@ -1669,8 +1721,8 @@ namespace vx
 				{
 					const Vec3 center = body.Position();
 
-					const Vec3 lin_vel = body.GetLinearVelocity();
-					const Vec3 ang_vel = body.GetAngularVelocity();
+					const Vec3 lin_vel = body.LinearVelocity();
+					const Vec3 ang_vel = body.AngularVelocity();
 
 					debug_renderer->DrawArrowCone(center, center + lin_vel, 0.2f, 0.5f, 0.2f, 4, draw_settings.bodyLinearVelocityCol);
 					debug_renderer->DrawArrowCone(center, center + ang_vel, 0.2f, 0.5f, 0.2f, 4, draw_settings.bodyAngularVelocityCol);
@@ -1761,7 +1813,7 @@ namespace vx
 
 			////momentum
 			//	body.GetPointVelocityRelCOM
-			Vec3 ang_vel = body.GetAngularVelocity();
+			Vec3 ang_vel = body.AngularVelocity();
 			Vec3 local_omega(ang_vel.Dot(rt), ang_vel.Dot(up), ang_vel.Dot(fwd));
 			Vec3 local_L(local_omega.X() * I_local.X(),
 				local_omega.Y() * I_local.Y(),

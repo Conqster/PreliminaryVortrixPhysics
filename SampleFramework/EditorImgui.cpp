@@ -208,6 +208,8 @@ void EditorImGui::DrawBodyOverlayDetailsImpl(vx::Body& body, vx::BodyDebug& body
 	{
 		ImGui::SliderFloat("Linear Damping", &body.mLinearDamping, 0.0f, 1.0f);
 		ImGui::SliderFloat("Angular Damping", &body.mAngularDamping, 0.0f, 1.0f);
+		ImGui::DragFloat("Max Squared Linear Speed", &body.mMaxLinearVelocity);
+		ImGui::DragFloat("Max Squared Angular Speed", &body.mMaxAngularVelocity);
 	}
 
 	ImGui::SliderFloat("Friction Coefficent", &body.mFriction, 0.0f, 1.0f);

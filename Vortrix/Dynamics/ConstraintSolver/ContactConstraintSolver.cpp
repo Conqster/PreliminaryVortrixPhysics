@@ -1677,8 +1677,8 @@ for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
 
 				if (dyn_a)
 				{
-					lin_vel0 = bodyA->GetLinearVelocity();
-					ang_vel0 = bodyA->GetAngularVelocity();
+					lin_vel0 = bodyA->LinearVelocity();
+					ang_vel0 = bodyA->AngularVelocity();
 				}
 
 				Vec3 lin_vel1 = Vec3(0.0f);
@@ -1686,8 +1686,8 @@ for (uint32 contact_idx = 0; contact_idx < mNumConstraints; ++contact_idx)
 
 				if (dyn_b)
 				{
-					lin_vel1 = bodyB->GetLinearVelocity();
-					ang_vel1 = bodyB->GetAngularVelocity();
+					lin_vel1 = bodyB->LinearVelocity();
+					ang_vel1 = bodyB->AngularVelocity();
 				}
 
 

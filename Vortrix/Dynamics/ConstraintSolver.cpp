@@ -46,8 +46,8 @@ namespace vx {
 		}
 		else
 		{
-			solver_body.v = body.GetLinearVelocity();
-			solver_body.w = body.GetAngularVelocity();
+			solver_body.v = body.LinearVelocity();
+			solver_body.w = body.AngularVelocity();
 			solver_body.invMass = body.InverseMass();
 		}
 
@@ -92,8 +92,8 @@ namespace vx {
 		}
 		else
 		{
-			solver_body.v = body.GetLinearVelocity();
-			solver_body.w = body.GetAngularVelocity();
+			solver_body.v = body.LinearVelocity();
+			solver_body.w = body.AngularVelocity();
 			solver_body.invMass = body.InverseMass();
 		}
 

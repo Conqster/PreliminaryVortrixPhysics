@@ -416,10 +416,10 @@ namespace vx{
 
 
 		///this is the work of solver body and not direct for Body
-		Vec3 lin_velA = bodyA.GetLinearVelocity();
-		Vec3 lin_velB = bodyB.GetLinearVelocity();
-		Vec3 ang_velA = bodyA.GetAngularVelocity();
-		Vec3 ang_velB = bodyB.GetAngularVelocity();
+		Vec3 lin_velA = bodyA.LinearVelocity();
+		Vec3 lin_velB = bodyB.LinearVelocity();
+		Vec3 ang_velA = bodyA.AngularVelocity();
+		Vec3 ang_velB = bodyB.AngularVelocity();
 		float inv_massA = bodyA.InverseMass();
 		float inv_massB = bodyB.InverseMass();
 

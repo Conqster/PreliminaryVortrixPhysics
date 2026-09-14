@@ -146,7 +146,7 @@ protected:
 		};
 	}
 
-	void CreateGroundPlane(float half_size);
+	void CreateGroundPlane(float half_size, const vx::Vec3& pos = vx::Vec3(0.0f));
 	void CreateBoxStack(const vx::BodySettings& body_settings, const vx::Vec3& counts, const vx::Vec3& half_extent, const vx::Vec3& base_pos);
 	void CreateBoxPyramidStack(const vx::BodySettings& body_settings, int base_width, int base_depth, int height, const vx::Vec3& half_extent, const vx::Vec3& base_pos);
 	void Create1DBoxPyramidStack(const vx::BodySettings& body_settings, int base_width, int base_depth, int height, const vx::Vec3& half_extent, const vx::Vec3& base_pos, vx::Axis shrink_axis);

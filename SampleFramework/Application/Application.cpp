@@ -53,6 +53,7 @@
 #include "SampleFramework/Scenarios/EmptyScenario.h"
 #include "SampleFramework/Scenarios/RandomSpreadBodiesScenario.h"
 #include "SampleFramework/Scenarios/LoadedFromDiskScenario.h"
+#include "SampleFramework/Scenarios/MegaIslandScenario.h"
 
 
 #include "SampleFramework/Instrumentation/ExportProfilingData.h"
@@ -466,6 +467,7 @@ Application::Application(const ApplicationSpecification& app_spec)
 	mScenarioCatergoies.scenarios.push_back(vx::MakeScope<RagdollScenario>());
 	mScenarioCatergoies.scenarios.push_back(vx::MakeScope<EmptyScenario>());
 	mScenarioCatergoies.scenarios.push_back(vx::MakeScope<RandomSpreadBoxBodiesScenario>());
+	mScenarioCatergoies.scenarios.push_back(vx::MakeScope<MegaIslandScenario>());
 	
 	ScenarioCatergory solver_scenarios;
 	solver_scenarios.name = "Solvers";

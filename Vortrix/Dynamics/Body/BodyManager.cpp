@@ -221,8 +221,8 @@ namespace vx
 		
 		BodySimStats& sim_stat = GetBodySimStats(body.ID());
 
-		sim_stat.maxAttainedLinearVelocitySq = VxMax(sim_stat.maxAttainedLinearVelocitySq, body.GetLinearVelocity().LengthSq());
-		sim_stat.maxAttainedAngularVelocitySq = VxMax(sim_stat.maxAttainedAngularVelocitySq, body.GetAngularVelocity().LengthSq());
+		sim_stat.maxAttainedLinearVelocitySq = VxMax(sim_stat.maxAttainedLinearVelocitySq, body.LinearVelocity().LengthSq());
+		sim_stat.maxAttainedAngularVelocitySq = VxMax(sim_stat.maxAttainedAngularVelocitySq, body.AngularVelocity().LengthSq());
 	}
 
 	void BodyManager::UpdateBodiesActiveState(float dt, const SleepingSettings& sleeping_setting)

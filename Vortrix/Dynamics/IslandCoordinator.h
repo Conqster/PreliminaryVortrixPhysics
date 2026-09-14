@@ -193,7 +193,7 @@ namespace vx {
 
 			using BinMask = uint32;
 			static constexpr uint32 kMaxBin = 16; // toal mask bit for 4 bytes (32 bits) int
-			static constexpr uint32 kBatchSize = 16;//32;//16;
+			static constexpr uint32 kBatchSize = 64;//32;//16;
 
 
 

@@ -37,8 +37,8 @@ namespace vx
 
 			t.motionType = EMotionType::Dynamic;
 
-			t.maxLinearVelocity = 100.0f;
-			t.maxAngularVelocity = 35.0f;
+			t.maxLinearVelocity = 500.f;//100.0f;
+			t.maxAngularVelocity = 47.0f;//35.0f;
 			return t;
 		}
 
@@ -169,11 +169,11 @@ namespace vx
 		void SetOrientation(const Quat& quat);
 
 		void SetLinearVelocity(const Vec3& velocity);
-		Vec3 GetLinearVelocity() const { return mLinearVelocity; }
+		Vec3 LinearVelocity() const { return mLinearVelocity; }
 		void AddLinearVelocityStep(const Vec3& delta) { mLinearVelocity += delta; }
 
 		void SetAngularVelocity(const Vec3& velocity);
-		Vec3 GetAngularVelocity() const { return mAngularVelocity; }
+		Vec3 AngularVelocity() const { return mAngularVelocity; }
 		void AddAngularVelocityStep(const Vec3& delta) { mAngularVelocity += delta; }
 
 		/// GetPointVelocityRelCOM

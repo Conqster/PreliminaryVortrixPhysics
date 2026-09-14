@@ -144,7 +144,7 @@ namespace vx
 	void Body::IntegrateVelocity(float dt)
 	{
 		ClampVelocities(); //hack if velocity constraint solve was too strong
-		DampVelocities(dt);
+		//DampVelocities(dt);
 
    		VX_ASSERT(!mLinearVelocity.IsNaN(), "Linear velocituy is nan");
 		VX_ASSERT(!mAngularVelocity.IsNaN(), "Angular velocituy is nan");
@@ -162,12 +162,12 @@ namespace vx
 	}
 	inline void Body::DampVelocities(float dt)
 	{
+		//pow is expensive 
+		//taylor expension 
 		//Newcastle university ncl damping lecture note
 		//mLinearVelocity *= VxPow(1.0f - mLinearDamping, dt);
 		//mAngularVelocity *= VxPow(1.0f - mAngularDamping, dt);
 
-		//pow is expensive 
-		//taylor expension 
 		mLinearVelocity *= VxMax(0.0f, 1.0f - mLinearDamping * dt);
 		mAngularVelocity *= VxMax(0.0f, 1.0f - mAngularDamping * dt);
 

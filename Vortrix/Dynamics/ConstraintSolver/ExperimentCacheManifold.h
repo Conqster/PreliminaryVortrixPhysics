@@ -433,12 +433,12 @@ namespace vx{
 	void WarmStart(ContactConstraint& contact_constraint)
 	{
 		float inv_mass0 = contact_constraint.body0->InverseMass();
-		Vec3 lin_vel0 = contact_constraint.body0->GetLinearVelocity();
-		Vec3 ang_vel0 = contact_constraint.body0->GetAngularVelocity();
+		Vec3 lin_vel0 = contact_constraint.body0->LinearVelocity();
+		Vec3 ang_vel0 = contact_constraint.body0->AngularVelocity();
 
 		float inv_mass1 = contact_constraint.body1->InverseMass();
-		Vec3 lin_vel1 = contact_constraint.body1->GetLinearVelocity();
-		Vec3 ang_vel1 = contact_constraint.body1->GetAngularVelocity();
+		Vec3 lin_vel1 = contact_constraint.body1->LinearVelocity();
+		Vec3 ang_vel1 = contact_constraint.body1->AngularVelocity();
 		for (int i = 0; i < contact_constraint.numConstraintPoints; ++i)
 		{
 			ContactPointConstraint& cpt_c = contact_constraint.contactPoints[i];

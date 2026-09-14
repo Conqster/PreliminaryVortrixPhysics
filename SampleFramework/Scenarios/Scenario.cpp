@@ -491,7 +491,7 @@ void Scenario::PostPhysicsInteract(bool physics_simulated)
 	if (mAllowBaseMouseCast)MouseCastRay(physics_simulated);
 }
 
-void Scenario::CreateGroundPlane(float half_size)
+void Scenario::CreateGroundPlane(float half_size, const vx::Vec3& pos)
 {
 	VX_ASSERT(mPhysicsWorld, "Physics World is null");
 
@@ -499,7 +499,9 @@ void Scenario::CreateGroundPlane(float half_size)
 	vx::PlaneShapeSettings shape_settings(vx::Vec3::Up(), half_size);
 	shape_settings.SetDensity(0.0f);
 	bodies_settings.debug_name = "ground";
+	bodies_settings.position = pos;
 	bodies_settings.shape = vx::MakeRef<vx::PlaneShape>(shape_settings);
+
 	mPhysicsWorld->CreateBody(bodies_settings);
 }
 

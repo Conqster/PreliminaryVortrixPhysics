@@ -168,13 +168,13 @@ namespace vx {
 			{
 				Vec3 x = lambda * inv_massA;
 				mBodyA->ApplyLinearDisplacement(-x);
-				mBodyA->ApplyAngularDisplacement(-(invIA_x_rAx.Multiply3x3(lambda)));
+				mBodyA->ApplyAngularDisplacement(-(invIA_x_rAx.Multiply3x3(lambda).Normalise()));
 			}
 			if (bodyB_nonstatic)
 			{
 				Vec3 x = lambda * inv_massB;
 				mBodyB->ApplyLinearDisplacement(x);
-				mBodyB->ApplyAngularDisplacement(invIB_x_rBx.Multiply3x3(lambda));
+				mBodyB->ApplyAngularDisplacement(invIB_x_rBx.Multiply3x3(lambda).Normalise());
 			}
 		}
 	}
@@ -277,11 +277,11 @@ namespace vx {
 		bool dyn_a = mBodyA->IsDynamic();
 		bool dyn_b = mBodyB->IsDynamic();
 
-		Vec3 lin_velA = mBodyA->GetLinearVelocity();
-		Vec3 lin_velB = mBodyB->GetLinearVelocity();
+		Vec3 lin_velA = mBodyA->LinearVelocity();
+		Vec3 lin_velB = mBodyB->LinearVelocity();
 
-		Vec3 ang_velA = mBodyA->GetAngularVelocity();
-		Vec3 ang_velB = mBodyB->GetAngularVelocity();
+		Vec3 ang_velA = mBodyA->AngularVelocity();
+		Vec3 ang_velB = mBodyB->AngularVelocity();
 
 		Vec3 acc_lambda = Vec3(0.0f);
 		//velocity iteration
@@ -389,11 +389,11 @@ namespace vx {
 		bool dyn_a = mBodyA->IsDynamic();
 		bool dyn_b = mBodyB->IsDynamic();
 
-		Vec3 lin_velA = mBodyA->GetLinearVelocity();
-		Vec3 lin_velB = mBodyB->GetLinearVelocity();
+		Vec3 lin_velA = mBodyA->LinearVelocity();
+		Vec3 lin_velB = mBodyB->LinearVelocity();
 
-		Vec3 ang_velA = mBodyA->GetAngularVelocity();
-		Vec3 ang_velB = mBodyB->GetAngularVelocity();
+		Vec3 ang_velA = mBodyA->AngularVelocity();
+		Vec3 ang_velB = mBodyB->AngularVelocity();
 
 		float inv_massA = mBodyA->InverseMass();
 		float inv_massB = mBodyB->InverseMass();
